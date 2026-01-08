@@ -11,9 +11,14 @@ config_version=5
 [application]
 
 config/name="fatal attraction"
+run/main_scene="uid://xr5pw6ai5suc"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
 [dotnet]
 
 project/assembly_name="fatal attraction"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0

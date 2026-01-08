@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3 uid="uid://cbu86odn3wc34"]
+
+[ext_resource type="Script" uid="uid://b35vckwropdro" path="res://scripts/admirer.gd" id="1_jagjx"]
+[ext_resource type="Texture2D" uid="uid://cucf0ue75ew8e" path="res://assets/sprite-0001.png" id="1_lbwig"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_btdvu"]
+atlas = ExtResource("1_lbwig")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_h8j66"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_btdvu")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_i8m4c"]
+size = Vector2(6, 27)
+
+[node name="admirer" type="CharacterBody2D"]
+script = ExtResource("1_jagjx")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -16)
+sprite_frames = SubResource("SpriteFrames_h8j66")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -14.5)
+shape = SubResource("RectangleShape2D_i8m4c")
