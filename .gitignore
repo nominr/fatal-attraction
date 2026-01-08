@@ -1,0 +1,15 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot
+.godot/
+.import/
+
+# C# / .NET
+bin/
+obj/
+
+# OS junk
+.DS_Store
+Thumbs.db
