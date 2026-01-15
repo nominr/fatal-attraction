@@ -1,0 +1,723 @@
+{
+  "game": {
+    "id": "fatal_attraction",
+    "version": "0.1"
+  },
+
+  "roles": {
+    "admirer": {
+      "displayName": "Admirer",
+
+      "powers": {
+        "kill_npc": {
+          "displayName": "Kill NPCs",
+          "constraints": {
+            "mustBeNonConvert": true
+          },
+          "uiHint": "Kill button (maybe weapons later)"
+        },
+
+        "unconvert_target": {
+          "displayName": "Unconvert targets",
+          "resolution": {
+            "type": "chance",
+            "baseChance": 0.55,
+            "label": "mid"
+          }
+        },
+
+        "unconvert_love_interest": {
+          "displayName": "Unconvert love interest",
+          "resolution": {
+            "type": "chance",
+            "baseChance": 0.55,
+            "label": "mid"
+          }
+        }
+      },
+
+      "goals": {
+        "kill_targets": {
+          "displayName": "Kill targets",
+          "constraints": {
+            "mustBeNonConvert": true
+          }
+        },
+        "marry_love_interest": {
+          "displayName": "Marry love interest",
+          "constraints": {
+            "mustBeNonConvert": true
+          }
+        }
+      },
+
+      "meters": {
+        "love": {
+          "displayName": "Love",
+          "min": 0,
+          "max": 10,
+          "start": 0,
+          "notes": "Raise by talking to interest; similar mechanic to Chaos."
+        }
+      }
+    },
+
+    "prophet": {
+      "displayName": "Prophet",
+
+      "powers": {
+        "convert_npc": {
+          "displayName": "Convert NPCs",
+          "resolution": {
+            "type": "rps"
+          },
+          "cooldown": {
+            "seconds": 1,
+            "scaling": "decreases_as_chaos_or_attempts_increase"
+          },
+          "notes": "NPCs grant immunity."
+        },
+
+        "increase_chaos": {
+          "displayName": "Increase Chaos",
+          "cooldown": {
+            "seconds": 1
+          }
+        },
+
+        "prank": {
+          "displayName": "Prank any character",
+          "resolution": {
+            "type": "immediate"
+          }
+        },
+
+        "set_trap": {
+          "displayName": "Set traps",
+          "resolution": {
+            "type": "delayed"
+          }
+        }
+      },
+
+      "goals": {
+        "convert_quota": {
+          "displayName": "Convert a set number of people"
+        },
+        "chaos_threshold": {
+          "displayName": "Achieve a set level of chaos to win"
+        }
+      },
+
+      "meters": {
+        "chaos": {
+          "displayName": "Chaos",
+          "min": 0,
+          "max": 10,
+          "start": 0,
+          "segments": [
+            {
+              "name": "low",
+              "from": 0,
+              "to": 3,
+              "convertAttemptsRequired": 2
+            },
+            {
+              "name": "mid",
+              "from": 3,
+              "to": 7,
+              "convertAttemptsRequired": 1
+            },
+            {
+              "name": "high",
+              "from": 7,
+              "to": 10,
+              "convertAttemptsRequired": 0
+            }
+          ],
+          "notes": "Higher chaos makes conversion easier."
+        }
+      }
+    },
+
+    "producer": {
+      "displayName": "Producer",
+
+      "powers": {
+        "unconvert_npc": {
+          "displayName": "Unconvert NPCs",
+          "resolution": {
+            "type": "chance",
+            "baseChance": 0.75,
+            "label": "high"
+          }
+        },
+
+        "marry_npc": {
+          "displayName": "Marry NPCs",
+          "effects": [
+            {
+              "meter": "ratings",
+              "delta": 1
+            }
+          ]
+        },
+
+        "cleanup_prank": {
+          "displayName": "Clean-Up Pranks",
+          "effects": [
+            {
+              "meter": "chaos",
+              "delta": -1,
+              "clampMin": 0
+            }
+          ],
+          "notes": "Decreases chaos or prevents it from rising."
+        },
+
+        "report_admirer": {
+          "displayName": "Report Admirer",
+          "notes": "Triggers blitz between Prophet and Producer; Admirer becomes observer."
+        }
+      },
+
+      "goals": {
+        "high_ratings": {
+          "displayName": "Achieve high level of ratings"
+        },
+        "catch_admirer": {
+          "displayName": "Catch Admirer",
+          "type": "subgoal"
+        }
+      },
+
+      "meters": {
+        "ratings": {
+          "displayName": "Ratings",
+          "min": 0,
+          "max": 10,
+          "start": 0,
+          "notes": "Raised through NPC marriage interactions."
+        }
+      }
+    }
+  },
+
+  "systems": {
+    "editorial_attention": {
+      "displayName": "Editorial Attention",
+      "focusTokensPerTurn": 1,
+      "decay": true,
+
+      "focusOptions": {
+        "sudden_deaths": {
+          "displayName": "Sudden NPC deaths",
+          "detectionMultiplier": 2.0
+        },
+        "romantic_escalations": {
+          "displayName": "Romantic escalations",
+          "detectionMultiplier": 1.5
+        },
+        "chaos_spikes": {
+          "displayName": "Chaos spikes",
+          "detectionMultiplier": 1.5
+        },
+        "public_areas": {
+          "displayName": "Public areas",
+          "detectionMultiplier": 1.25
+        }
+      }
+    }
+  },
+
+  "npcs": {
+    "katy": {
+      "id": "katy",
+      "name": "Katy",
+      "role": "love_interest",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Katy walks up to you, smiling warmly.",
+          "options": [
+            {
+              "id": "flirt",
+              "text": "Flirt romantically (Admirer, +2 love)",
+              "requires": { "role": "admirer" },
+              "effects": [
+                { "meter": "love", "delta": 2, "clampMax": 10 },
+                { "notification": "You flirted with Katy! Love increased significantly!" }
+              ]
+            },
+            {
+              "id": "unconvert",
+              "text": "Attempt to unconvert (Admirer, 55% chance)",
+              "requires": { "role": "admirer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.55 },
+              "effects_on_success": [
+                { "notification": "Success! Katy is unconverted." },
+                { "npc": "katy", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert Katy." }
+              ]
+            },
+            {
+              "id": "prank_katy",
+              "text": "Prank Katy (Prophet, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You pranked Katy! Chaos increased." }
+              ]
+            },
+            {
+              "id": "convert_katy",
+              "text": "Try to convert (Prophet, RPS)",
+              "requires": { "role": "prophet" },
+              "resolution": { "type": "rps" },
+              "effects_on_success": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You converted Katy!" },
+                { "npc": "katy", "field": "convertedStatus", "value": true }
+              ],
+              "effects_on_failure": [
+                { "notification": "Katy resisted your conversion." }
+              ]
+            },
+            {
+              "id": "marry",
+              "text": "Marry (Producer, +1 ratings)",
+              "requires": { "role": "producer", "npcMarriageable": true },
+              "marry_initiate": true,
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You set up an NPC marriage! Ratings increased." }
+              ]
+            },
+            {
+              "id": "interview",
+              "text": "Interview (Producer, +1 ratings)",
+              "requires": { "role": "producer" },
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You interviewed Katy! Ratings increased." }
+              ]
+            },
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "john": {
+      "id": "john",
+      "name": "John",
+      "role": "generic",
+      "isTarget": true,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "John approaches you, looking suspicious.",
+          "options": [
+            {
+              "id": "kill",
+              "text": "Kill John (Admirer, TARGET, non-convert only)",
+              "requires": { "role": "admirer", "npcStatus": "nonConverted" },
+              "effects": [
+                { "notification": "John has been eliminated. Target down!" },
+                { "npc": "john", "field": "alive", "value": false }
+              ]
+            },
+            {
+              "id": "talk_john",
+              "text": "Talk to John (Admirer, +1 love)",
+              "requires": { "role": "admirer" },
+              "effects": [
+                { "meter": "love", "delta": 1, "clampMax": 10 },
+                { "notification": "You talked with John about Katy. Love increased!" }
+              ]
+            },
+            {
+              "id": "convert",
+              "text": "Convert John (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "resolution": { "type": "rps" },
+              "effects_on_success": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You converted John!" },
+                { "npc": "john", "field": "convertedStatus", "value": true }
+              ],
+              "effects_on_failure": [
+                { "notification": "John resisted your conversion." }
+              ]
+            },
+            {
+              "id": "prank",
+              "text": "Prank John (Prophet, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You pranked John! Chaos increased." }
+              ]
+            },
+            {
+              "id": "trap",
+              "text": "Set trap near John (Prophet, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You set a trap! Chaos increased." }
+              ]
+            },
+            {
+              "id": "unconvert_john",
+              "text": "Unconvert John (Producer, 75% chance)",
+              "requires": { "role": "producer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.75 },
+              "effects_on_success": [
+                { "notification": "You unconverted John!" },
+                { "npc": "john", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert John." }
+              ]
+            },
+            {
+              "id": "cleanup_john",
+              "text": "Clean up situation (Producer, -1 chaos)",
+              "requires": { "role": "producer" },
+              "effects": [
+                { "meter": "chaos", "delta": -1, "clampMin": 0 },
+                { "notification": "You cleaned up! Chaos decreased." }
+              ]
+            },
+            {
+              "id": "marry_john",
+              "text": "Marry (Producer, +1 ratings)",
+              "requires": { "role": "producer", "npcMarriageable": true },
+              "marry_initiate": true,
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You set up an NPC marriage! Ratings increased." }
+              ]
+            },
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "rebecca": {
+      "id": "rebecca",
+      "name": "Rebecca",
+      "role": "generic",
+      "isTarget": true,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Rebecca glances at you with curiosity.",
+          "options": [
+            {
+              "id": "kill_rebecca",
+              "text": "Kill Rebecca (Admirer, TARGET, non-convert only)",
+              "requires": { "role": "admirer", "npcStatus": "nonConverted" },
+              "effects": [
+                { "notification": "Rebecca has been eliminated. Target down!" },
+                { "npc": "rebecca", "field": "alive", "value": false }
+              ]
+            },
+            {
+              "id": "charm",
+              "text": "Charm Rebecca (Admirer, +1 love)",
+              "requires": { "role": "admirer" },
+              "effects": [
+                { "meter": "love", "delta": 1, "clampMax": 10 },
+                { "notification": "You charmed Rebecca, showing off for Katy. Love increased!" }
+              ]
+            },
+            {
+              "id": "convert_rebecca",
+              "text": "Convert Rebecca (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "resolution": { "type": "rps" },
+              "effects_on_success": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You converted Rebecca!" },
+                { "npc": "rebecca", "field": "convertedStatus", "value": true }
+              ],
+              "effects_on_failure": [
+                { "notification": "Rebecca resisted your conversion." }
+              ]
+            },
+            {
+              "id": "prank_rebecca",
+              "text": "Prank Rebecca (Prophet, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You pranked Rebecca! Chaos increased." }
+              ]
+            },
+            {
+              "id": "manipulate",
+              "text": "Manipulate Rebecca (Prophet, +2 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 2, "clampMax": 10 },
+                { "notification": "You manipulated Rebecca into causing drama! Chaos increased significantly!" }
+              ]
+            },
+            {
+              "id": "cleanup",
+              "text": "Clean up (Producer, -1 chaos, +1 ratings)",
+              "requires": { "role": "producer" },
+              "effects": [
+                { "meter": "chaos", "delta": -1, "clampMin": 0 },
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You cleaned up the situation! Chaos decreased, Ratings increased." }
+              ]
+            },
+            {
+              "id": "marry_rebecca",
+              "text": "Marry (Producer, +1 ratings)",
+              "requires": { "role": "producer", "npcMarriageable": true },
+              "marry_initiate": true,
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You set up an NPC marriage! Ratings increased." }
+              ]
+            },
+            {
+              "id": "interview_rebecca",
+              "text": "Interview Rebecca (Producer, +1 ratings)",
+              "requires": { "role": "producer" },
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You interviewed Rebecca! Ratings increased." }
+              ]
+            },
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "marcus": {
+      "id": "marcus",
+      "name": "Marcus",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Marcus walks over with a confident smile.",
+          "options": [
+            {
+              "id": "talk_marcus",
+              "text": "Talk with Marcus (Admirer, +1 love)",
+              "requires": { "role": "admirer" },
+              "effects": [
+                { "meter": "love", "delta": 1, "clampMax": 10 },
+                { "notification": "You talked with Marcus about relationships. Love increased!" }
+              ]
+            },
+            {
+              "id": "convert_marcus",
+              "text": "Convert Marcus (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "resolution": { "type": "rps" },
+              "effects_on_success": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You converted Marcus to your cause!" },
+                { "npc": "marcus", "field": "convertedStatus", "value": true }
+              ],
+              "effects_on_failure": [
+                { "notification": "Marcus refused your offer." }
+              ]
+            },
+            {
+              "id": "unconvert_marcus",
+              "text": "Unconvert Marcus (Producer, 75% chance)",
+              "requires": { "role": "producer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.75 },
+              "effects_on_success": [
+                { "notification": "You unconverted Marcus!" },
+                { "npc": "marcus", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert Marcus." }
+              ]
+            },
+            {
+              "id": "prank_marcus",
+              "text": "Prank Marcus (Prophet, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You pranked Marcus! Chaos increased." }
+              ]
+            },
+            {
+              "id": "marry_marcus",
+              "text": "Marry (Producer, +1 ratings)",
+              "requires": { "role": "producer", "npcMarriageable": true },
+              "marry_initiate": true,
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You set up an NPC marriage! Ratings increased." }
+              ]
+            },
+            {
+              "id": "interview_marcus",
+              "text": "Interview Marcus (Producer, +1 ratings)",
+              "requires": { "role": "producer" },
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You interviewed Marcus! Ratings increased." }
+              ]
+            },
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "sofia": {
+      "id": "sofia",
+      "name": "Sofia",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Sofia approaches with an intriguing expression.",
+          "options": [
+            {
+              "id": "charm_sofia",
+              "text": "Charm Sofia (Admirer, +1 love)",
+              "requires": { "role": "admirer" },
+              "effects": [
+                { "meter": "love", "delta": 1, "clampMax": 10 },
+                { "notification": "You charmed Sofia! Love increased." }
+              ]
+            },
+            {
+              "id": "convert_sofia",
+              "text": "Convert Sofia (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet" },
+              "resolution": { "type": "rps" },
+              "effects_on_success": [
+                { "meter": "chaos", "delta": 1, "clampMax": 10 },
+                { "notification": "You converted Sofia to your movement!" },
+                { "npc": "sofia", "field": "convertedStatus", "value": true }
+              ],
+              "effects_on_failure": [
+                { "notification": "Sofia is resistant to your ideas." }
+              ]
+            },
+            {
+              "id": "unconvert_sofia",
+              "text": "Unconvert Sofia (Producer, 75% chance)",
+              "requires": { "role": "producer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.75 },
+              "effects_on_success": [
+                { "notification": "You unconverted Sofia!" },
+                { "npc": "sofia", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert Sofia." }
+              ]
+            },
+            {
+              "id": "manipulate_sofia",
+              "text": "Manipulate Sofia (Prophet, +2 chaos)",
+              "requires": { "role": "prophet" },
+              "effects": [
+                { "meter": "chaos", "delta": 2, "clampMax": 10 },
+                { "notification": "You manipulated Sofia into spreading rumors! Chaos increased significantly!" }
+              ]
+            },
+            {
+              "id": "marry_sofia",
+              "text": "Marry (Producer, +2 ratings)",
+              "requires": { "role": "producer", "npcMarriageable": true },
+              "marry_initiate": true,
+              "effects": [
+                { "meter": "ratings", "delta": 2, "clampMax": 10 },
+                { "notification": "You set up an NPC marriage! Ratings increased significantly!" }
+              ]
+            },
+            {
+              "id": "interview_sofia",
+              "text": "Interview Sofia (Producer, +1 ratings)",
+              "requires": { "role": "producer" },
+              "effects": [
+                { "meter": "ratings", "delta": 1, "clampMax": 10 },
+                { "notification": "You interviewed Sofia! Ratings increased." }
+              ]
+            },
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
+          ]
+        }
+      }
+    }
+  },
+
+  "gameRules": {
+    "turnsPerGame": 15,
+    "maxPlayers": 3,
+    "npcsPerTurn": 3,
+    "winConditions": {
+      "admirer": {
+        "primary": { "goal": "marry_love_interest", "requirement": { "meter": "love", "minValue": 8, "npcStatus": "nonConverted" } },
+        "secondary": { "goal": "kill_targets", "requirement": { "npcsKilled": 3 } }
+      },
+      "prophet": {
+        "primary": { "goal": "chaos_threshold", "requirement": { "meter": "chaos", "minValue": 9 } },
+        "secondary": { "goal": "convert_quota", "requirement": { "npcsConverted": 4 } }
+      },
+      "producer": {
+        "primary": { "goal": "high_ratings", "requirement": { "meter": "ratings", "minValue": 8 } },
+        "secondary": { "goal": "catch_admirer", "requirement": { "admirerReported": true } }
+      }
+    }
+  },
+
+  "demoClient": {
+    "mode": "turn_based_text",
+    "input": "single_keyboard",
+    "autoNextTurn": true,
+    "npcPool": ["katy", "john", "rebecca", "marcus", "sofia"],
+    "npcPerTurn": 3,
+
+    "notifications": {
+      "meterUpdate": "You {verb} the {meter} meter ({value}/{max}).",
+      "impactNotice": "{actor} impacted {meter}: {delta} (now {value}/{max}).",
+      "turnStart": "--- TURN {turn} START ---",
+      "turnEnd": "--- TURN {turn} END ---"
+    }
+  }
+}
