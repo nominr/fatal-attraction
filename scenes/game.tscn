@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://xr5pw6ai5suc"]
+[gd_scene load_steps=7 format=3 uid="uid://xr5pw6ai5suc"]
 
 [ext_resource type="PackedScene" uid="uid://cbu86odn3wc34" path="res://scenes/admirer.tscn" id="1_uwrxv"]
 [ext_resource type="Texture2D" uid="uid://711kiotcd7jg" path="res://assets/mock-map.png" id="1_yqjtg"]
@@ -18,8 +18,6 @@ tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 1
 sources/0 = SubResource("TileSetAtlasSource_lnu2h")
 
-[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_uwrxv"]
-
 [node name="Game" type="Node2D"]
 
 [node name="TileMap" type="TileMap" parent="."]
@@ -32,12 +30,6 @@ layer_0/tile_data = PackedInt32Array(-1, 0, 0, -65536, 0, 0, -65535, 0, 0, -6553
 [node name="Camera2D" type="Camera2D" parent="admirer"]
 position = Vector2(0, -14)
 zoom = Vector2(4, 4)
-
-[node name="horizontal-boundry" type="StaticBody2D" parent="."]
-position = Vector2(0, 15)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="horizontal-boundry"]
-shape = SubResource("WorldBoundaryShape2D_uwrxv")
 
 [node name="npc1" parent="." instance=ExtResource("3_lbhrr")]
 position = Vector2(67, -38)
