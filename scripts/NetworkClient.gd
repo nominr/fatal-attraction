@@ -7,6 +7,7 @@ signal turn_started(data: Dictionary)
 signal turn_ended(data: Dictionary)
 signal action_result(data: Dictionary)
 signal game_over(message: String)
+signal lobby_updated(players: Array)
 
 var tcp := StreamPeerTCP.new()
 var connected: bool = false
@@ -37,6 +38,10 @@ func perform_action(npc_id: String, action_id: String) -> void:
 		"action_id": action_id,
 		"role": _role
 	})
+
+func send_start_game() -> void:
+    if not connected: return
+    _send_json({"type": "start_game"})
 
 func _process(_delta: float) -> void:
 	if not connected:
@@ -82,6 +87,9 @@ func _handle_message(msg: Dictionary) -> void:
 		"game_over":
 			var m = String(msg.get("message", ""))
 			game_over.emit(m)
+		"lobby_update":
+            var players = Array(msg.get("players", []))
+            lobby_updated.emit(players)
 		_:
 			pass
 
@@ -89,4 +97,3 @@ func _send_json(d: Dictionary) -> void:
 	var payload := JSON.stringify(d) + "\n"
 	var data := payload.to_utf8_buffer()
 	tcp.put_data(data)
-
