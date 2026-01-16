@@ -61,7 +61,7 @@ func _process(_delta: float) -> void:
             _handle_message(obj)
 
 func _handle_message(msg: Dictionary) -> void:
-    var t := msg.get("type", "")
+    var t: String = msg.get("type", "")
     match t:
         "assigned_role":
             _role = String(msg.get("role", ""))

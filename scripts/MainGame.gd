@@ -121,15 +121,19 @@ func start_new_turn():
 		editorial_panel.hide()
 
 func update_hud():
+	var role: String
 	if USE_NETWORK:
 		# turn label will be updated on turn_started
 		var turn_val = game_engine.current_turn if game_engine.current_turn > 0 else 0
 		turn_label.text = "Turn: %d/%d" % [turn_val, game_engine.max_turns]
-		var role = current_role_net if current_role_net != "" else game_engine.get_current_role()
+		if current_role_net != "":
+			role = current_role_net
+		else:
+			role = game_engine.get_current_role()
 		role_label.text = "Current Player: %s" % role.to_upper()
 	else:
 		turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
-		var role = game_engine.get_current_role()
+		role = game_engine.get_current_role()
 		role_label.text = "Current Player: %s" % role.to_upper()
 	
 	# Update editorial focus display
@@ -331,7 +335,11 @@ func create_npc_panel(npc: GameEngine.NPC) -> PanelContainer:
 	return panel
 
 func _on_action_pressed(npc_id: String, action_id: String):
-	var current_role = USE_NETWORK ? current_role_net : game_engine.get_current_role()
+	var current_role: String
+	if USE_NETWORK:
+		current_role = current_role_net
+	else:
+		current_role = game_engine.get_current_role()
 	var npc_config = game_engine.config.get("npcs", {}).get(npc_id, {})
 	var interaction_tree = npc_config.get("interactionTree", {})
 	var root = interaction_tree.get("root", {})
