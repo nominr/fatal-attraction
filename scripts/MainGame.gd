@@ -15,6 +15,11 @@ extends Control
 @onready var editorial_panel: PanelContainer = $EditorialPanel
 @onready var editorial_options: VBoxContainer = $EditorialPanel/MarginContainer/VBoxContainer/OptionsContainer
 
+# Lobby UI
+var lobby_panel: PanelContainer
+var ip_input: LineEdit
+var status_label: Label
+
 var current_npcs: Array = []
 var game_started: bool = false
 var marriage_modal: Control = null
@@ -23,27 +28,33 @@ var editorial_label: Label = null
 
 # Networking
 const USE_NETWORK: bool = true
-var server_host: String = "168.5.63.240"  # Set to host laptop's LAN IP
+var server_host: String = "127.0.0.1" 
 var server_port: int = 3000
 var network_client: NetworkClient = null
 var current_role_net: String = ""
 
 func _ready():
-	start_button.pressed.connect(_on_start_button_pressed)
+	# game_engine signals
 	game_engine.notification_added.connect(_on_notification_added)
 	game_engine.meter_updated.connect(_on_meter_updated)
-	game_engine.turn_started.connect(_on_turn_started)
-	game_engine.turn_ended.connect(_on_turn_ended)
+	# Turn signals removed/ignored for real-time
 
 	if USE_NETWORK:
 		network_client = NetworkClient.new()
 		add_child(network_client)
 		network_client.assigned_role.connect(_on_net_assigned_role)
 		network_client.snapshot_received.connect(_on_net_snapshot)
-		network_client.turn_started.connect(_on_net_turn_started)
-		network_client.turn_ended.connect(_on_net_turn_ended)
+		# Map state update to snapshot logic or separate handler
+		if !network_client.has_signal("state_update"):
+			network_client.add_user_signal("state_update")
+		
+		# We will manually connect raw signals if needed, or assume network client parses them
+		# For now, let's adapt standard signals
 		network_client.action_result.connect(_on_net_action_result)
 		network_client.game_over.connect(_on_net_game_over)
+	
+	# Create Lobby UI
+	create_lobby_ui()
 	
 	# Create editorial focus label
 	editorial_label = Label.new()
@@ -52,11 +63,80 @@ func _ready():
 	var role_idx = $HUD.get_children().find(role_label)
 	$HUD.move_child(editorial_label, role_idx + 1)
 	
-	# Show goals at start
-	show_all_goals()
+	# Hide game UI initially
 	npc_container.hide()
 	notification_panel.hide()
 	editorial_panel.hide()
+	goal_panel.hide()
+	$HUD.hide()
+
+func create_lobby_ui():
+	lobby_panel = PanelContainer.new()
+	lobby_panel.anchors_preset = 15 # Full rect
+	lobby_panel.anchor_right = 1.0
+	lobby_panel.anchor_bottom = 1.0
+	add_child(lobby_panel)
+	
+	var center = CenterContainer.new()
+	lobby_panel.add_child(center)
+	
+	var vbox = VBoxContainer.new()
+	vbox.custom_minimum_size = Vector2(300, 0)
+	center.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "FATAL ATTRACTION"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 32)
+	vbox.add_child(title)
+	
+	vbox.add_child(HSeparator.new())
+	
+	var ip_label = Label.new()
+	ip_label.text = "Host IP Address:"
+	vbox.add_child(ip_label)
+	
+	ip_input = LineEdit.new()
+	ip_input.text = "127.0.0.1"
+	ip_input.placeholder_text = "Enter Host IP"
+	vbox.add_child(ip_input)
+	
+	var join_btn = Button.new()
+	join_btn.text = "JOIN GAME"
+	join_btn.add_theme_font_size_override("font_size", 24)
+	join_btn.pressed.connect(_on_join_pressed)
+	vbox.add_child(join_btn)
+	
+	vbox.add_child(HSeparator.new())
+	
+	var host_btn = Button.new()
+	host_btn.text = "HOST GAME (Run Server)"
+	host_btn.pressed.connect(_on_host_pressed)
+	vbox.add_child(host_btn)
+	
+	var local_ip_label = Label.new()
+	local_ip_label.text = "Your IP: " + str(IP.resolve_hostname(str(OS.get_environment("COMPUTERNAME")), 1))
+	local_ip_label.add_theme_color_override("font_color", Color.GRAY)
+	vbox.add_child(local_ip_label)
+
+	status_label = Label.new()
+	status_label.text = ""
+	vbox.add_child(status_label)
+
+func _on_join_pressed():
+	server_host = ip_input.text
+	status_label.text = "Connecting to " + server_host + "..."
+	var player_name = OS.get_unique_id()
+	network_client.connect_to_server(server_host, server_port, player_name)
+
+func _on_host_pressed():
+	# In a real build, this would start the server process. 
+	# For now, we assume the user might be running the server separately or we just show instructions.
+	# But if this is the "server" instance, we can just connect to localhost if the server is running there.
+	status_label.text = "Please run the server executable or console application."
+	server_host = "127.0.0.1"
+	ip_input.text = "127.0.0.1"
+
 
 func show_all_goals():
 	var goals_text = "[center][b][color=gold]FATAL ATTRACTION - PLAYER GOALS[/color][/b][/center]\n\n"
@@ -123,29 +203,19 @@ func start_new_turn():
 func update_hud():
 	var role: String
 	if USE_NETWORK:
-		# turn label will be updated on turn_started
-		var turn_val = game_engine.current_turn if game_engine.current_turn > 0 else 0
-		turn_label.text = "Turn: %d/%d" % [turn_val, game_engine.max_turns]
-		if current_role_net != "":
-			role = current_role_net
-		else:
-			role = game_engine.get_current_role()
-		role_label.text = "Current Player: %s" % role.to_upper()
+		role = current_role_net
+		if role == "": role = game_engine.get_current_role()
+		role_label.text = "Role: %s" % role.to_upper()
+		turn_label.text = "" # No turns anymore
 	else:
-		turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
 		role = game_engine.get_current_role()
-		role_label.text = "Current Player: %s" % role.to_upper()
+		role_label.text = "Role: %s" % role.to_upper()
 	
 	# Update editorial focus display
 	var focus_text = ""
 	if game_engine.editorial_focus != "":
 		var focus_display = game_engine.editorial_focus.replace("_", " ").capitalize()
-		if role == "admirer" and (game_engine.editorial_focus == "romantic_escalations" or game_engine.editorial_focus == "sudden_deaths"):
-			focus_text = "📺 Editorial Focus: " + focus_display
-		elif role == "prophet" and game_engine.editorial_focus == "chaos_spikes":
-			focus_text = "📺 Editorial Focus: Chaos Spikes"
-		elif game_engine.editorial_focus == "public_areas":
-			focus_text = "📺 Editorial Focus: Public Areas"
+		focus_text = "📺 Editorial Focus: " + focus_display
 	editorial_label.text = focus_text
 	
 	# Update meters
@@ -154,12 +224,26 @@ func update_hud():
 	
 	var player = game_engine.get_player_state(role)
 	if player:
+		# Add Role Description/Powers hint
+		var hint = Label.new()
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if role == "admirer":
+			hint.text = "Objective: Kill target (weapons) or Marry love interest (Love 10).\nPowers: Kill, Unconvert targets/love."
+		elif role == "prophet":
+			hint.text = "Objective: Convert people & Raise Chaos (10).\nPowers: Convert (RPS), Prank, Trap."
+		elif role == "producer":
+			hint.text = "Objective: Max Ratings (10).\nPowers: Marry NPCs, Unconvert, Report Admirer."
+		hint.add_theme_font_size_override("font_size", 12)
+		hint.add_theme_color_override("font_color", Color.LIGHT_SLATE_GRAY)
+		meters_container.add_child(hint)
+		meters_container.add_child(HSeparator.new())
+
 		for meter_name in player.meters:
 			var meter = player.meters[meter_name]
 			var meter_display = create_meter_display(meter_name, meter.value, meter.max_value)
 			meters_container.add_child(meter_display)
 	
-	# Add targets remaining for Admirer
+	# Add extra meters depending on role
 	if role == "admirer":
 		var targets_remaining = 0
 		for npc_id in game_engine.npcs:
@@ -172,11 +256,10 @@ func update_hud():
 		targets_label.add_theme_color_override("font_color", Color.ORANGE_RED)
 		meters_container.add_child(targets_label)
 	
-	# Add converted count for Prophet
 	if role == "prophet":
 		var converted_npcs = game_engine.get_converted_npcs()
 		var converted_label = Label.new()
-		converted_label.text = "🔄 Converted: %d/2" % converted_npcs.size()
+		converted_label.text = "🔄 Converted: %d" % converted_npcs.size()
 		converted_label.add_theme_color_override("font_color", Color.PURPLE)
 		meters_container.add_child(converted_label)
 
@@ -422,9 +505,17 @@ func _on_action_pressed(npc_id: String, action_id: String):
 # Networking signal handlers
 func _on_net_assigned_role(role: String) -> void:
 	current_role_net = role
+	lobby_panel.hide()
+	$HUD.show()
+	notification_panel.show()
+	npc_container.show()
+	update_hud()
 
 func _on_net_snapshot(state: Dictionary) -> void:
-	# Update meters from snapshot
+	_process_server_state(state)
+
+func _process_server_state(state: Dictionary) -> void:
+	# Update meters
 	var players: Dictionary = state.get("players", {})
 	for role in players.keys():
 		var player = game_engine.get_player_state(role)
@@ -434,21 +525,19 @@ func _on_net_snapshot(state: Dictionary) -> void:
 				if player.meters.has(m):
 					player.meters[m].value = float(meters[m].get("value", player.meters[m].value))
 					player.meters[m].max_value = float(meters[m].get("max", player.meters[m].max_value))
+	
+	# Update NPCs
+	current_npcs = Array(state.get("npcs", []))
+	display_npcs()
+	
 	update_hud()
 
 func _on_net_turn_started(data: Dictionary) -> void:
-	var turn = int(data.get("turn", game_engine.current_turn))
-	game_engine.current_turn = turn
-	current_role_net = String(data.get("active_role", current_role_net))
-	turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
-	role_label.text = "Current Player: %s" % current_role_net.to_upper()
-	current_npcs = Array(data.get("npcs", []))
-	display_npcs()
+	# Fallback if server still sends it, treat as update
+	_process_server_state(data)
 
 func _on_net_turn_ended(_data: Dictionary) -> void:
-	# Clear NPCs UI until next turn
-	for child in npc_container.get_children():
-		child.queue_free()
+	pass
 
 func _on_net_action_result(data: Dictionary) -> void:
 	# Notifications

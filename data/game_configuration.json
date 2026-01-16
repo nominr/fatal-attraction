@@ -7,197 +7,106 @@
   "roles": {
     "admirer": {
       "displayName": "Admirer",
-
       "powers": {
         "kill_npc": {
           "displayName": "Kill NPCs",
-          "constraints": {
-            "mustBeNonConvert": true
-          },
-          "uiHint": "Kill button (maybe weapons later)"
+          "constraints": { "mustBeNonConvert": true },
+          "uiHint": "Kill button"
         },
-
         "unconvert_target": {
           "displayName": "Unconvert targets",
-          "resolution": {
-            "type": "chance",
-            "baseChance": 0.55,
-            "label": "mid"
-          }
+          "resolution": { "type": "chance", "baseChance": 0.55 },
+          "constraints": { "mustBeTarget": true }
         },
-
         "unconvert_love_interest": {
           "displayName": "Unconvert love interest",
-          "resolution": {
-            "type": "chance",
-            "baseChance": 0.55,
-            "label": "mid"
-          }
+          "resolution": { "type": "chance", "baseChance": 0.55 },
+          "constraints": { "mustBeLoveInterest": true }
         }
       },
-
       "goals": {
         "kill_targets": {
-          "displayName": "Kill targets",
-          "constraints": {
-            "mustBeNonConvert": true
-          }
+          "displayName": "Kill targets (non-converts)",
+          "constraints": { "mustBeNonConvert": true }
         },
         "marry_love_interest": {
-          "displayName": "Marry love interest",
-          "constraints": {
-            "mustBeNonConvert": true
-          }
+          "displayName": "Marry love interest (non-convert)",
+          "constraints": { "mustBeNonConvert": true }
         }
       },
-
       "meters": {
         "love": {
           "displayName": "Love",
-          "min": 0,
-          "max": 10,
-          "start": 0,
-          "notes": "Raise by talking to interest; similar mechanic to Chaos."
+          "min": 0, "max": 10, "start": 0,
+          "notes": "Raise by talking to interest"
         }
       }
     },
-
     "prophet": {
       "displayName": "Prophet",
-
       "powers": {
         "convert_npc": {
           "displayName": "Convert NPCs",
-          "resolution": {
-            "type": "rps"
-          },
-          "cooldown": {
-            "seconds": 1,
-            "scaling": "decreases_as_chaos_or_attempts_increase"
-          },
-          "notes": "NPCs grant immunity."
+          "resolution": { "type": "rps" },
+          "constraints": { "coolOff": true }
         },
-
         "increase_chaos": {
           "displayName": "Increase Chaos",
-          "cooldown": {
-            "seconds": 1
-          }
+          "constraints": { "coolOff": true }
         },
-
         "prank": {
-          "displayName": "Prank any character",
-          "resolution": {
-            "type": "immediate"
-          }
+          "displayName": "Prank Character",
+          "resolution": { "type": "immediate" }
         },
-
         "set_trap": {
-          "displayName": "Set traps",
-          "resolution": {
-            "type": "delayed"
-          }
+          "displayName": "Set Trap",
+          "resolution": { "type": "delayed" }
         }
       },
-
       "goals": {
-        "convert_quota": {
-          "displayName": "Convert a set number of people"
-        },
-        "chaos_threshold": {
-          "displayName": "Achieve a set level of chaos to win"
-        }
+        "convert_quota": { "displayName": "Convert a set number of people" },
+        "chaos_threshold": { "displayName": "Achieve high chaos" }
       },
-
       "meters": {
         "chaos": {
           "displayName": "Chaos",
-          "min": 0,
-          "max": 10,
-          "start": 0,
+          "min": 0, "max": 10, "start": 0,
           "segments": [
-            {
-              "name": "low",
-              "from": 0,
-              "to": 3,
-              "convertAttemptsRequired": 2
-            },
-            {
-              "name": "mid",
-              "from": 3,
-              "to": 7,
-              "convertAttemptsRequired": 1
-            },
-            {
-              "name": "high",
-              "from": 7,
-              "to": 10,
-              "convertAttemptsRequired": 0
-            }
-          ],
-          "notes": "Higher chaos makes conversion easier."
+            { "name": "hard", "from": 0, "to": 3 },
+            { "name": "normal", "from": 3, "to": 7 },
+            { "name": "easy", "from": 7, "to": 10 }
+          ]
         }
       }
     },
-
     "producer": {
       "displayName": "Producer",
-
       "powers": {
         "unconvert_npc": {
           "displayName": "Unconvert NPCs",
-          "resolution": {
-            "type": "chance",
-            "baseChance": 0.75,
-            "label": "high"
-          }
+          "resolution": { "type": "chance", "baseChance": 0.75 }
         },
-
         "marry_npc": {
           "displayName": "Marry NPCs",
-          "effects": [
-            {
-              "meter": "ratings",
-              "delta": 1
-            }
-          ]
+          "effects": [{ "meter": "ratings", "delta": 1 }]
         },
-
         "cleanup_prank": {
           "displayName": "Clean-Up Pranks",
-          "effects": [
-            {
-              "meter": "chaos",
-              "delta": -1,
-              "clampMin": 0
-            }
-          ],
-          "notes": "Decreases chaos or prevents it from rising."
+          "effects": [{ "meter": "chaos", "delta": -1 }]
         },
-
         "report_admirer": {
           "displayName": "Report Admirer",
-          "notes": "Triggers blitz between Prophet and Producer; Admirer becomes observer."
+          "notes": "Admirer becomes observer"
         }
       },
-
       "goals": {
-        "high_ratings": {
-          "displayName": "Achieve high level of ratings"
-        },
-        "catch_admirer": {
-          "displayName": "Catch Admirer",
-          "type": "subgoal"
-        }
+        "high_ratings": { "displayName": "High Ratings" },
+        "catch_admirer": { "displayName": "Catch Admirer" }
       },
-
       "meters": {
         "ratings": {
           "displayName": "Ratings",
-          "min": 0,
-          "max": 10,
-          "start": 0,
-          "notes": "Raised through NPC marriage interactions."
+          "min": 0, "max": 10, "start": 0
         }
       }
     }
