@@ -21,12 +21,29 @@ var marriage_modal: Control = null
 var pending_marry_npc: GameEngine.NPC = null
 var editorial_label: Label = null
 
+# Networking
+const USE_NETWORK: bool = true
+var server_host: String = "127.0.0.1"  # Set to host laptop's LAN IP
+var server_port: int = 3000
+var network_client: NetworkClient = null
+var current_role_net: String = ""
+
 func _ready():
 	start_button.pressed.connect(_on_start_button_pressed)
 	game_engine.notification_added.connect(_on_notification_added)
 	game_engine.meter_updated.connect(_on_meter_updated)
 	game_engine.turn_started.connect(_on_turn_started)
 	game_engine.turn_ended.connect(_on_turn_ended)
+
+	if USE_NETWORK:
+		network_client = NetworkClient.new()
+		add_child(network_client)
+		network_client.assigned_role.connect(_on_net_assigned_role)
+		network_client.snapshot_received.connect(_on_net_snapshot)
+		network_client.turn_started.connect(_on_net_turn_started)
+		network_client.turn_ended.connect(_on_net_turn_ended)
+		network_client.action_result.connect(_on_net_action_result)
+		network_client.game_over.connect(_on_net_game_over)
 	
 	# Create editorial focus label
 	editorial_label = Label.new()
@@ -83,25 +100,37 @@ func _on_start_button_pressed():
 	goal_panel.hide()
 	npc_container.show()
 	notification_panel.show()
-	start_new_turn()
+	if USE_NETWORK:
+		# Connect to LAN server
+		var player_name = OS.get_unique_id()
+		network_client.connect_to_server(server_host, server_port, player_name)
+	else:
+		start_new_turn()
 
 func start_new_turn():
-	game_engine.start_turn()
-	update_hud()
-	
-	# Get multiple NPCs for this turn
-	var npc_count = game_engine.config.get("gameRules", {}).get("npcsPerTurn", 3)
-	current_npcs = game_engine.get_random_npcs(npc_count)
-	
-	display_npcs()
-	
-	# Hide editorial panel by default - will be shown via button
-	editorial_panel.hide()
+	if USE_NETWORK:
+		# Wait for server turn_started events
+		update_hud()
+		editorial_panel.hide()
+	else:
+		game_engine.start_turn()
+		update_hud()
+		var npc_count = game_engine.config.get("gameRules", {}).get("npcsPerTurn", 3)
+		current_npcs = game_engine.get_random_npcs(npc_count)
+		display_npcs()
+		editorial_panel.hide()
 
 func update_hud():
-	turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
-	var role = game_engine.get_current_role()
-	role_label.text = "Current Player: %s" % role.to_upper()
+	if USE_NETWORK:
+		# turn label will be updated on turn_started
+		var turn_val = game_engine.current_turn if game_engine.current_turn > 0 else 0
+		turn_label.text = "Turn: %d/%d" % [turn_val, game_engine.max_turns]
+		var role = current_role_net if current_role_net != "" else game_engine.get_current_role()
+		role_label.text = "Current Player: %s" % role.to_upper()
+	else:
+		turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
+		var role = game_engine.get_current_role()
+		role_label.text = "Current Player: %s" % role.to_upper()
 	
 	# Update editorial focus display
 	var focus_text = ""
@@ -186,9 +215,47 @@ func display_npcs():
 		editorial_button.pressed.connect(show_editorial_attention)
 		npc_container.add_child(editorial_button)
 	
-	for npc in current_npcs:
-		var npc_panel = create_npc_panel(npc)
-		npc_container.add_child(npc_panel)
+	if USE_NETWORK:
+		for net_npc in current_npcs:
+			var panel = PanelContainer.new()
+			panel.custom_minimum_size = Vector2(600, 150)
+			var vbox = VBoxContainer.new()
+			panel.add_child(vbox)
+			var header = HBoxContainer.new()
+			vbox.add_child(header)
+			var npc_name_label = Label.new()
+			npc_name_label.text = String(net_npc.get("id", "NPC")).capitalize()
+			npc_name_label.add_theme_font_size_override("font_size", 18)
+			npc_name_label.add_theme_color_override("font_color", Color.WHITE)
+			header.add_child(npc_name_label)
+			var desc_label = Label.new()
+			desc_label.text = String(net_npc.get("prompt", "An NPC appears."))
+			desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			vbox.add_child(desc_label)
+			var actions_label = Label.new()
+			actions_label.text = "Actions:"
+			actions_label.add_theme_font_size_override("font_size", 14)
+			vbox.add_child(actions_label)
+			var actions_container = HBoxContainer.new()
+			vbox.add_child(actions_container)
+			var role = current_role_net if current_role_net != "" else game_engine.get_current_role()
+			var actions: Array = net_npc.get("actions", [])
+			for a in actions:
+				# Server sends unified actions; filter per role by checking availability client-side if needed
+				var btn = Button.new()
+				btn.text = String(a.get("text", "Action"))
+				btn.pressed.connect(_on_action_pressed.bind(String(net_npc.get("id", "")), String(a.get("id", ""))))
+				actions_container.add_child(btn)
+			if actions.is_empty():
+				var no_action_label = Label.new()
+				no_action_label.text = "No actions available for your role."
+				no_action_label.add_theme_color_override("font_color", Color.GRAY)
+				actions_container.add_child(no_action_label)
+			npc_container.add_child(panel)
+	else:
+		for npc in current_npcs:
+			var npc_panel = create_npc_panel(npc)
+			npc_container.add_child(npc_panel)
 
 func create_npc_panel(npc: GameEngine.NPC) -> PanelContainer:
 	var panel = PanelContainer.new()
@@ -264,7 +331,7 @@ func create_npc_panel(npc: GameEngine.NPC) -> PanelContainer:
 	return panel
 
 func _on_action_pressed(npc_id: String, action_id: String):
-	var current_role = game_engine.get_current_role()
+	var current_role = USE_NETWORK ? current_role_net : game_engine.get_current_role()
 	var npc_config = game_engine.config.get("npcs", {}).get(npc_id, {})
 	var interaction_tree = npc_config.get("interactionTree", {})
 	var root = interaction_tree.get("root", {})
@@ -319,7 +386,10 @@ func _on_action_pressed(npc_id: String, action_id: String):
 		return
 	
 	# Regular action
-	game_engine.perform_action(npc_id, action_id, current_role)
+	if USE_NETWORK:
+		network_client.perform_action(npc_id, action_id)
+	else:
+		game_engine.perform_action(npc_id, action_id, current_role)
 	
 	# Check win condition
 	var win_msg = game_engine.check_win_condition(current_role)
@@ -328,7 +398,8 @@ func _on_action_pressed(npc_id: String, action_id: String):
 		return
 	
 	# End turn after one action
-	game_engine.end_turn()
+	if not USE_NETWORK:
+		game_engine.end_turn()
 	
 	# Check if game is over
 	if game_engine.is_game_over():
@@ -336,8 +407,61 @@ func _on_action_pressed(npc_id: String, action_id: String):
 		return
 	
 	# Start next turn
-	await get_tree().create_timer(0.5).timeout
-	start_new_turn()
+	if not USE_NETWORK:
+		await get_tree().create_timer(0.5).timeout
+		start_new_turn()
+
+# Networking signal handlers
+func _on_net_assigned_role(role: String) -> void:
+	current_role_net = role
+
+func _on_net_snapshot(state: Dictionary) -> void:
+	# Update meters from snapshot
+	var players: Dictionary = state.get("players", {})
+	for role in players.keys():
+		var player = game_engine.get_player_state(role)
+		if player:
+			var meters: Dictionary = players[role].get("meters", {})
+			for m in meters.keys():
+				if player.meters.has(m):
+					player.meters[m].value = float(meters[m].get("value", player.meters[m].value))
+					player.meters[m].max_value = float(meters[m].get("max", player.meters[m].max_value))
+	update_hud()
+
+func _on_net_turn_started(data: Dictionary) -> void:
+	var turn = int(data.get("turn", game_engine.current_turn))
+	game_engine.current_turn = turn
+	current_role_net = String(data.get("active_role", current_role_net))
+	turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
+	role_label.text = "Current Player: %s" % current_role_net.to_upper()
+	current_npcs = Array(data.get("npcs", []))
+	display_npcs()
+
+func _on_net_turn_ended(_data: Dictionary) -> void:
+	# Clear NPCs UI until next turn
+	for child in npc_container.get_children():
+		child.queue_free()
+
+func _on_net_action_result(data: Dictionary) -> void:
+	# Notifications
+	var notifs: Array = Array(data.get("notifications", []))
+	for n in notifs:
+		_on_notification_added(String(n))
+	# Meter updates
+	var mus: Array = Array(data.get("meter_updates", []))
+	for u in mus:
+		var role = String(u.get("role", ""))
+		var meter_name = String(u.get("meter", ""))
+		var value = float(u.get("value", 0.0))
+		var maxv = float(u.get("max", 10.0))
+		var player = game_engine.get_player_state(role)
+		if player and player.meters.has(meter_name):
+			player.meters[meter_name].value = value
+			player.meters[meter_name].max_value = maxv
+	update_hud()
+
+func _on_net_game_over(message: String) -> void:
+	show_game_over(message)
 
 func show_editorial_attention():
 	# Create a semi-transparent background that blocks clicks

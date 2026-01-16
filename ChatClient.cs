@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 using FatalAttraction.Engine;
 
@@ -254,6 +255,20 @@ namespace FatalAttraction.Client
             if (!File.Exists(configPath))
             {
                 Console.WriteLine($"❌ Error: Configuration file not found at {configPath}");
+                return;
+            }
+
+            // LAN server mode: dotnet run -- --server [port]
+            if (args.Length > 0 && args[0].Equals("--server", StringComparison.OrdinalIgnoreCase))
+            {
+                int port = 3000;
+                if (args.Length > 1 && int.TryParse(args[1], out var p)) port = p;
+                Console.WriteLine($"Starting LAN server on port {port}...");
+                var server = new FatalAttraction.Networking.LanServer(configPath, port);
+                server.Start();
+                Console.WriteLine("Press Ctrl+C to stop server.");
+                // Keep process alive
+                Thread.Sleep(Timeout.Infinite);
                 return;
             }
 
