@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://c7qkx8ywsxfdi"]
 
-[ext_resource type="Script" path="res://scripts/MainGame.gd" id="1_mainscript"]
-[ext_resource type="Script" path="res://scripts/GameEngine.gd" id="2_enginescript"]
+[ext_resource type="Script" uid="uid://bjj2gxvpxge2t" path="res://scripts/MainGame.gd" id="1_mainscript"]
+[ext_resource type="Script" uid="uid://c7myfoguoltbh" path="res://scripts/GameEngine.gd" id="2_enginescript"]
 
 [node name="MainGame" type="Control"]
 layout_mode = 3
@@ -36,18 +36,7 @@ bbcode_enabled = true
 scroll_following = true
 
 [node name="StartButton" type="Button" parent="GoalPanel"]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -100.0
-offset_top = -60.0
-offset_right = 100.0
-offset_bottom = -20.0
-grow_horizontal = 2
-grow_vertical = 0
+layout_mode = 2
 text = "START GAME"
 
 [node name="HUD" type="VBoxContainer" parent="."]
@@ -71,19 +60,17 @@ horizontal_alignment = 1
 layout_mode = 2
 
 [node name="EditorialPanel" type="PanelContainer" parent="."]
-visible = false
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 0.0
-anchor_top = 0.0
+anchors_preset = -1
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_right = -20.0
-offset_bottom = -20.0
+offset_left = 294.0
+offset_top = 185.0
+offset_right = 274.0
+offset_bottom = 165.0
 grow_horizontal = 0
 grow_vertical = 0
-z_index = 100
-mouse_filter = 0
+
 [node name="MarginContainer" type="MarginContainer" parent="EditorialPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 20
@@ -104,7 +91,7 @@ layout_mode = 2
 
 [node name="NPCContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 14
+anchors_preset = -1
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 1.0

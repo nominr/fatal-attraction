@@ -19,6 +19,7 @@ var current_npcs: Array = []
 var game_started: bool = false
 var marriage_modal: Control = null
 var pending_marry_npc: GameEngine.NPC = null
+var editorial_label: Label = null
 
 func _ready():
 	start_button.pressed.connect(_on_start_button_pressed)
@@ -26,6 +27,13 @@ func _ready():
 	game_engine.meter_updated.connect(_on_meter_updated)
 	game_engine.turn_started.connect(_on_turn_started)
 	game_engine.turn_ended.connect(_on_turn_ended)
+	
+	# Create editorial focus label
+	editorial_label = Label.new()
+	editorial_label.text = ""
+	$HUD.add_child(editorial_label)
+	var role_idx = $HUD.get_children().find(role_label)
+	$HUD.move_child(editorial_label, role_idx + 1)
 	
 	# Show goals at start
 	show_all_goals()
@@ -87,17 +95,25 @@ func start_new_turn():
 	
 	display_npcs()
 	
-	# Show editorial attention for Producer
-	var current_role = game_engine.get_current_role()
-	if current_role == "producer":
-		show_editorial_attention()
-	else:
-		editorial_panel.hide()
+	# Hide editorial panel by default - will be shown via button
+	editorial_panel.hide()
 
 func update_hud():
 	turn_label.text = "Turn: %d/%d" % [game_engine.current_turn, game_engine.max_turns]
 	var role = game_engine.get_current_role()
 	role_label.text = "Current Player: %s" % role.to_upper()
+	
+	# Update editorial focus display
+	var focus_text = ""
+	if game_engine.editorial_focus != "":
+		var focus_display = game_engine.editorial_focus.replace("_", " ").capitalize()
+		if role == "admirer" and (game_engine.editorial_focus == "romantic_escalations" or game_engine.editorial_focus == "sudden_deaths"):
+			focus_text = "📺 Editorial Focus: " + focus_display
+		elif role == "prophet" and game_engine.editorial_focus == "chaos_spikes":
+			focus_text = "📺 Editorial Focus: Chaos Spikes"
+		elif game_engine.editorial_focus == "public_areas":
+			focus_text = "📺 Editorial Focus: Public Areas"
+	editorial_label.text = focus_text
 	
 	# Update meters
 	for child in meters_container.get_children():
@@ -122,6 +138,14 @@ func update_hud():
 		targets_label.text = "🎯 Targets Remaining: %d" % targets_remaining
 		targets_label.add_theme_color_override("font_color", Color.ORANGE_RED)
 		meters_container.add_child(targets_label)
+	
+	# Add converted count for Prophet
+	if role == "prophet":
+		var converted_npcs = game_engine.get_converted_npcs()
+		var converted_label = Label.new()
+		converted_label.text = "🔄 Converted: %d/2" % converted_npcs.size()
+		converted_label.add_theme_color_override("font_color", Color.PURPLE)
+		meters_container.add_child(converted_label)
 
 func create_meter_display(meter_name: String, value: float, max_value: float) -> HBoxContainer:
 	var container = HBoxContainer.new()
@@ -154,6 +178,13 @@ func display_npcs():
 	title.text = "NPC Encounters"
 	title.add_theme_font_size_override("font_size", 20)
 	npc_container.add_child(title)
+	
+	# Add editorial attention button for Producer
+	if game_engine.get_current_role() == "producer":
+		var editorial_button = Button.new()
+		editorial_button.text = "Adjust Editorial Attention"
+		editorial_button.pressed.connect(show_editorial_attention)
+		npc_container.add_child(editorial_button)
 	
 	for npc in current_npcs:
 		var npc_panel = create_npc_panel(npc)
@@ -249,6 +280,38 @@ func _on_action_pressed(npc_id: String, action_id: String):
 	if not action:
 		return
 	
+	# Check if this is an admirer marry love action
+	if action.get("marry_admirer_love", false):
+		# Validate love meter is at max
+		var player = game_engine.get_player_state(current_role)
+		var love_meter = player.get_meter("love") if player else null
+		
+		if not love_meter or love_meter.value < 10.0:
+			game_engine.add_notification("💔 You need maximum love (10/10) to marry Katy!")
+			return
+		
+		# Perform the action to marry and emit notifications
+		game_engine.perform_action(npc_id, action_id, current_role)
+		
+		# Check win condition
+		var win_msg = game_engine.check_win_condition(current_role)
+		if not win_msg.is_empty():
+			show_game_over(win_msg)
+			return
+		
+		# End turn after one action
+		game_engine.end_turn()
+		
+		# Check if game is over
+		if game_engine.is_game_over():
+			show_game_over("GAME OVER - No winner by turn limit")
+			return
+		
+		# Start next turn
+		await get_tree().create_timer(0.5).timeout
+		start_new_turn()
+		return
+	
 	# Check if this is a marriage initiation action
 	if action.get("marry_initiate", false):
 		pending_marry_npc = game_engine.get_npc(npc_id)
@@ -277,8 +340,22 @@ func _on_action_pressed(npc_id: String, action_id: String):
 	start_new_turn()
 
 func show_editorial_attention():
-	editorial_panel.show()
+	# Create a semi-transparent background that blocks clicks
+	var background = ColorRect.new()
+	background.color = Color.BLACK
+	background.color.a = 0.5
+	background.anchors_preset = 15
+	background.anchor_right = 1.0
+	background.anchor_bottom = 1.0
+	background.z_index = 999
+	background.mouse_filter = Control.MOUSE_FILTER_STOP
+	background.name = "EditorialBackground"
+	add_child(background)
+	
+	# Ensure editorial panel is above the background
 	editorial_panel.z_index = 1000
+	move_child(editorial_panel, -1)  # Move to end (top of draw order)
+	editorial_panel.show()
 	
 	# Clear existing options
 	for child in editorial_options.get_children():
@@ -298,11 +375,47 @@ func show_editorial_attention():
 		button.text = focus.get("displayName", focus_id)
 		button.pressed.connect(_on_editorial_focus_selected.bind(focus_id))
 		editorial_options.add_child(button)
+	
+	# Add report admirer button if condition met
+	if game_engine.admirer_can_be_reported:
+		var report_button = Button.new()
+		report_button.text = "Report Admirer"
+		report_button.pressed.connect(_on_report_admirer)
+		editorial_options.add_child(report_button)
 
 func _on_editorial_focus_selected(focus_id: String):
 	game_engine.editorial_focus = focus_id
 	game_engine.add_notification("📺 Producer focused on: %s" % focus_id.replace("_", " ").capitalize())
+
+	# Apply ratings change for chaos/romance focuses (50/50 chance +2 or -1)
+	if focus_id == "chaos_spikes" or focus_id == "romantic_escalations":
+		var producer = game_engine.get_player_state("producer")
+		if producer and producer.meters.has("ratings"):
+			var delta = 2 if randf() < 0.5 else -1
+			producer.meters["ratings"].add(delta)
+			var verb = "raised" if delta > 0 else "lowered"
+			game_engine.add_notification("[PRODUCER] %s ratings by %d (now %.1f/%.0f)" % [
+				verb, delta, producer.meters["ratings"].value, producer.meters["ratings"].max_value
+			])
+			game_engine.meter_updated.emit("producer", "ratings", producer.meters["ratings"].value, producer.meters["ratings"].max_value)
+
 	editorial_panel.hide()
+
+	# Remove background
+	for child in get_children():
+		if child.name == "EditorialBackground":
+			child.queue_free()
+
+func _on_report_admirer():
+	game_engine.admirer_reported = true
+	game_engine.admirer_can_be_reported = false
+	game_engine.add_notification("📺 Producer reported the Admirer! Admirer becomes an observer.")
+	editorial_panel.hide()
+	
+	# Remove background
+	for child in get_children():
+		if child.name == "EditorialBackground":
+			child.queue_free()
 
 func show_marriage_modal():
 	# Create a semi-transparent background

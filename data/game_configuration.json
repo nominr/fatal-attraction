@@ -252,6 +252,16 @@
               ]
             },
             {
+              "id": "marry",
+              "text": "Marry Katy (Admirer, requires love 10/10 & unconverted)",
+              "requires": { "role": "admirer", "npcStatus": "nonConverted" },
+              "marry_admirer_love": true,
+              "effects": [
+                { "notification": "You proposed to Katy! Love story achieved!" },
+                { "npc": "katy", "field": "married", "value": true }
+              ]
+            },
+            {
               "id": "unconvert",
               "text": "Attempt to unconvert (Admirer, 55% chance)",
               "requires": { "role": "admirer", "npcStatus": "converted" },
@@ -276,7 +286,7 @@
             {
               "id": "convert_katy",
               "text": "Try to convert (Prophet, RPS)",
-              "requires": { "role": "prophet" },
+              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
               "resolution": { "type": "rps" },
               "effects_on_success": [
                 { "meter": "chaos", "delta": 1, "clampMax": 10 },
@@ -285,16 +295,6 @@
               ],
               "effects_on_failure": [
                 { "notification": "Katy resisted your conversion." }
-              ]
-            },
-            {
-              "id": "marry",
-              "text": "Marry (Producer, +1 ratings)",
-              "requires": { "role": "producer", "npcMarriageable": true },
-              "marry_initiate": true,
-              "effects": [
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You set up an NPC marriage! Ratings increased." }
               ]
             },
             {
@@ -346,8 +346,8 @@
             },
             {
               "id": "convert",
-              "text": "Convert John (Prophet, RPS, +1 chaos)",
-              "requires": { "role": "prophet" },
+              "text": "Try to convert John (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
               "resolution": { "type": "rps" },
               "effects_on_success": [
                 { "meter": "chaos", "delta": 1, "clampMax": 10 },
@@ -374,6 +374,19 @@
               "effects": [
                 { "meter": "chaos", "delta": 1, "clampMax": 10 },
                 { "notification": "You set a trap! Chaos increased." }
+              ]
+            },
+            {
+              "id": "unconvert_john_admirer",
+              "text": "Unconvert John (Admirer, 55% chance)",
+              "requires": { "role": "admirer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.55 },
+              "effects_on_success": [
+                { "notification": "You unconverted John!" },
+                { "npc": "john", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert John." }
               ]
             },
             {
@@ -448,8 +461,8 @@
             },
             {
               "id": "convert_rebecca",
-              "text": "Convert Rebecca (Prophet, RPS, +1 chaos)",
-              "requires": { "role": "prophet" },
+              "text": "Try to convert Rebecca (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
               "resolution": { "type": "rps" },
               "effects_on_success": [
                 { "meter": "chaos", "delta": 1, "clampMax": 10 },
@@ -476,6 +489,19 @@
               "effects": [
                 { "meter": "chaos", "delta": 2, "clampMax": 10 },
                 { "notification": "You manipulated Rebecca into causing drama! Chaos increased significantly!" }
+              ]
+            },
+            {
+              "id": "unconvert_rebecca_admirer",
+              "text": "Unconvert Rebecca (Admirer, 55% chance)",
+              "requires": { "role": "admirer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.55 },
+              "effects_on_success": [
+                { "notification": "You unconverted Rebecca!" },
+                { "npc": "rebecca", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert Rebecca." }
               ]
             },
             {
@@ -538,8 +564,8 @@
             },
             {
               "id": "convert_marcus",
-              "text": "Convert Marcus (Prophet, RPS, +1 chaos)",
-              "requires": { "role": "prophet" },
+              "text": "Try to convert Marcus (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
               "resolution": { "type": "rps" },
               "effects_on_success": [
                 { "meter": "chaos", "delta": 1, "clampMax": 10 },
@@ -548,6 +574,19 @@
               ],
               "effects_on_failure": [
                 { "notification": "Marcus refused your offer." }
+              ]
+            },
+            {
+              "id": "unconvert_marcus_admirer",
+              "text": "Unconvert Marcus (Admirer, 55% chance)",
+              "requires": { "role": "admirer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.55 },
+              "effects_on_success": [
+                { "notification": "You unconverted Marcus!" },
+                { "npc": "marcus", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert Marcus." }
               ]
             },
             {
@@ -622,8 +661,8 @@
             },
             {
               "id": "convert_sofia",
-              "text": "Convert Sofia (Prophet, RPS, +1 chaos)",
-              "requires": { "role": "prophet" },
+              "text": "Try to convert Sofia (Prophet, RPS, +1 chaos)",
+              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
               "resolution": { "type": "rps" },
               "effects_on_success": [
                 { "meter": "chaos", "delta": 1, "clampMax": 10 },
@@ -632,6 +671,19 @@
               ],
               "effects_on_failure": [
                 { "notification": "Sofia is resistant to your ideas." }
+              ]
+            },
+            {
+              "id": "unconvert_sofia_admirer",
+              "text": "Unconvert Sofia (Admirer, 55% chance)",
+              "requires": { "role": "admirer", "npcStatus": "converted" },
+              "resolution": { "type": "chance", "successChance": 0.55 },
+              "effects_on_success": [
+                { "notification": "You unconverted Sofia!" },
+                { "npc": "sofia", "field": "convertedStatus", "value": false }
+              ],
+              "effects_on_failure": [
+                { "notification": "Failed to unconvert Sofia." }
               ]
             },
             {
@@ -692,15 +744,15 @@
     "npcsPerTurn": 3,
     "winConditions": {
       "admirer": {
-        "primary": { "goal": "marry_love_interest", "requirement": { "meter": "love", "minValue": 8, "npcStatus": "nonConverted" } },
+        "primary": { "goal": "marry_love_interest", "requirement": { "meter": "love", "minValue": 10, "npcStatus": "nonConverted" } },
         "secondary": { "goal": "kill_targets", "requirement": { "npcsKilled": 3 } }
       },
       "prophet": {
-        "primary": { "goal": "chaos_threshold", "requirement": { "meter": "chaos", "minValue": 9 } },
+        "primary": { "goal": "chaos_and_converts", "requirement": { "meter": "chaos", "minValue": 10, "npcsConverted": 2 } },
         "secondary": { "goal": "convert_quota", "requirement": { "npcsConverted": 4 } }
       },
       "producer": {
-        "primary": { "goal": "high_ratings", "requirement": { "meter": "ratings", "minValue": 8 } },
+        "primary": { "goal": "high_ratings", "requirement": { "meter": "ratings", "minValue": 10 } },
         "secondary": { "goal": "catch_admirer", "requirement": { "admirerReported": true } }
       }
     }
@@ -721,3 +773,4 @@
     }
   }
 }
+

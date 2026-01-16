@@ -17,6 +17,8 @@ var players: Dictionary = {}  # Role -> PlayerState
 var npcs: Dictionary = {}  # ID -> NPC
 var notifications: Array = []
 var editorial_focus: String = ""
+var admirer_can_be_reported: bool = false
+var admirer_reported: bool = false
 
 const ROLES = ["admirer", "prophet", "producer"]
 
@@ -165,12 +167,20 @@ func get_alive_npcs() -> Array:
 			alive.append(npc)
 	return alive
 
+func get_converted_npcs() -> Array:
+	var converted = []
+	for npc_id in npcs:
+		var npc = npcs[npc_id]
+		if npc.converted and npc.alive:
+			converted.append(npc)
+	return converted
+
 func get_marriageable_npcs(exclude_npc_id: String = "") -> Array:
-	"""Get NPCs that can be married (not love interest, not married, not the excluded one)"""
+	"""Get NPCs that can be married (not love interest, not married, not converted, not the excluded one)"""
 	var marriageable = []
 	for npc_id in npcs:
 		var npc = npcs[npc_id]
-		if npc.alive and not npc.is_love_interest and not npc.married and npc_id != exclude_npc_id:
+		if npc.alive and not npc.is_love_interest and not npc.married and not npc.converted and npc_id != exclude_npc_id:
 			marriageable.append(npc)
 	return marriageable
 
@@ -216,6 +226,16 @@ func start_turn():
 	for meter_name in player.meters:
 		var meter = player.meters[meter_name]
 		add_notification("  %s: %.1f/%.0f" % [meter_name.to_upper(), meter.value, meter.max_value])
+	
+	# Notify about editorial focus if relevant
+	if editorial_focus != "":
+		var focus_display = editorial_focus.replace("_", " ").capitalize()
+		if role == "admirer" and (editorial_focus == "romantic_escalations" or editorial_focus == "sudden_deaths"):
+			add_notification("📺 Producer is focusing on " + focus_display + "!")
+		elif role == "prophet" and editorial_focus == "chaos_spikes":
+			add_notification("📺 Producer is focusing on chaos spikes!")
+		elif editorial_focus == "public_areas":
+			add_notification("📺 Producer is focusing on public areas!")
 	
 	turn_started.emit(current_turn, role)
 
@@ -271,7 +291,20 @@ func is_option_available(option: Dictionary, player_role: String, npc: NPC) -> b
 	
 	# Check marriageable requirement (has available NPCs to marry to)
 	if requires.has("npcMarriageable"):
-		if not npc.married and get_marriageable_npcs(npc.id).is_empty():
+		# Can't initiate marriage if this NPC is already married
+		if npc.married:
+			return false
+		# Can't marry if this NPC is converted
+		if npc.converted:
+			return false
+		# Can't marry if no available partners
+		if get_marriageable_npcs(npc.id).is_empty():
+			return false
+	
+	# If this is a convert action, check NPC is not married
+	var action_id = option.get("id", "")
+	if action_id.begins_with("convert_") or action_id == "convert":
+		if npc.married:
 			return false
 	
 	return true
@@ -293,6 +326,10 @@ func perform_action(npc_id: String, action_id: String, player_role: String) -> b
 	
 	if not option:
 		return false
+	
+	# Check for admirer kill under editorial focus
+	if action_id in ["kill", "kill_rebecca"] and player_role == "admirer" and editorial_focus != "":
+		admirer_can_be_reported = true
 	
 	# Resolve action
 	var success = true
@@ -368,12 +405,39 @@ func check_win_condition(player_role: String) -> String:
 	var primary = win_config.get("primary", {})
 	var requirement = primary.get("requirement", {})
 	
+	# Check for prophet - requires both chaos at max AND 2+ converted NPCs
+	if player_role == "prophet" and primary.get("goal") == "chaos_and_converts":
+		var chaos_meter = player.get_meter("chaos")
+		if chaos_meter and chaos_meter.value >= 10.0:
+			# Count converted NPCs
+			var converted_count = 0
+			for npc_id in npcs:
+				var npc = npcs[npc_id]
+				if npc.converted:
+					converted_count += 1
+			
+			if converted_count >= requirement.get("npcsConverted", 2):
+				var goal = primary.get("goal", "win")
+				return "%s WINS! (%s)" % [player_role.to_upper(), goal]
+		return ""
+	
 	# Check meter requirement - win when meter is maxed out
 	if requirement.has("meter"):
 		var meter_name = requirement["meter"]
 		var meter = player.get_meter(meter_name)
 		
 		if meter and meter.value >= meter.max_value:
+			# For admirer marriage win, also check if love interest is married and unconverted
+			if player_role == "admirer" and primary.get("goal") == "marry_love_interest":
+				# Find the love interest (should be Katy)
+				for npc_id in npcs:
+					var npc = npcs[npc_id]
+					if npc.is_love_interest and npc.married and not npc.converted:
+						var goal = primary.get("goal", "win")
+						return "%s WINS! (%s)" % [player_role.to_upper(), goal]
+				# Love meter is max but marriage condition not met
+				return ""
+			
 			var goal = primary.get("goal", "win")
 			return "%s WINS! (%s)" % [player_role.to_upper(), goal]
 	
@@ -404,5 +468,6 @@ func get_game_status() -> Dictionary:
 		"current_role": get_current_role(),
 		"players": players_dict,
 		"npcs": npcs_dict,
-		"editorial_focus": editorial_focus
+		"editorial_focus": editorial_focus,
+		"admirer_reported": admirer_reported
 	}
