@@ -23,7 +23,7 @@ var editorial_label: Label = null
 
 # Networking
 const USE_NETWORK: bool = true
-var server_host: String = "127.0.0.1"  # Set to host laptop's LAN IP
+var server_host: String = "168.5.63.240"  # Set to host laptop's LAN IP
 var server_port: int = 3000
 var network_client: NetworkClient = null
 var current_role_net: String = ""
