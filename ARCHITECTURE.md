@@ -9,33 +9,33 @@
 │  - Player I/O & display                              │
 │  - Notification rendering                            │
 └────────────────┬────────────────────────────────────┘
-                 │
-                 ↓
+				 │
+				 ↓
 ┌─────────────────────────────────────────────────────┐
 │            GameEngine (Orchestrator)                 │
 │  - State management                                  │
 │  - Turn progression                                  │
 │  - Win condition checking                            │
 └────────────────┬────────────────────────────────────┘
-                 │
-      ┌──────────┼──────────┐
-      ↓          ↓          ↓
-    ┌──────────────────┐  ┌──────────────────┐
-    │   GameState      │  │ Interaction      │
-    │ - Players        │  │ Resolver         │
-    │ - NPCs           │  │ - Action filter  │
-    │ - Notifications  │  │ - Effect apply   │
-    │ - Config (JSON)  │  │ - RNG resolve    │
-    └──────────────────┘  └──────────────────┘
-           │
-           ↓
-    ┌──────────────────────────────────────┐
-    │  game_configuration.json              │
-    │  ├─ Roles & powers                    │
-    │  ├─ NPCs & interaction trees          │
-    │  ├─ Game rules                        │
-    │  └─ Meters & effects                  │
-    └──────────────────────────────────────┘
+				 │
+	  ┌──────────┼──────────┐
+	  ↓          ↓          ↓
+	┌──────────────────┐  ┌──────────────────┐
+	│   GameState      │  │ Interaction      │
+	│ - Players        │  │ Resolver         │
+	│ - NPCs           │  │ - Action filter  │
+	│ - Notifications  │  │ - Effect apply   │
+	│ - Config (JSON)  │  │ - RNG resolve    │
+	└──────────────────┘  └──────────────────┘
+		   │
+		   ↓
+	┌──────────────────────────────────────┐
+	│  game_configuration.json              │
+	│  ├─ Roles & powers                    │
+	│  ├─ NPCs & interaction trees          │
+	│  ├─ Game rules                        │
+	│  └─ Meters & effects                  │
+	└──────────────────────────────────────┘
 ```
 
 ## Class Hierarchy
@@ -348,9 +348,9 @@ Trigger after N turns
    - View Chaos meter
    - Meet random NPC
    - Options:
-     - Convert: RPS (50% success)
-     - Prank: +1 Chaos immediate
-     - Set trap: Delayed effect (future)
+	 - Convert: RPS (50% success)
+	 - Prank: +1 Chaos immediate
+	 - Set trap: Delayed effect (future)
 3. **Mechanics**: Chaos segments affect conversion difficulty
 
 ### Producer
@@ -359,10 +359,10 @@ Trigger after N turns
    - View Ratings meter
    - Meet random NPC
    - Options:
-     - Marry NPC: +1 Ratings
-     - Unconvert: 75% success
-     - Cleanup: -1 Chaos
-     - Report Admirer: (future)
+	 - Marry NPC: +1 Ratings
+	 - Unconvert: 75% success
+	 - Cleanup: -1 Chaos
+	 - Report Admirer: (future)
 3. **Detection**: Watch for Admirer actions
 
 ## Extension Points

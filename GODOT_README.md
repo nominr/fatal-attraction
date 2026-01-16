@@ -192,9 +192,9 @@ Edit role config:
 ```json
 "meters": {
   "love": {
-    "min": 0,
-    "max": 10,
-    "start": 0
+	"min": 0,
+	"max": 10,
+	"start": 0
   }
 }
 ```
@@ -205,7 +205,7 @@ Edit `gameRules.winConditions`:
 ```json
 "admirer": {
   "primary": {
-    "requirement": { "meter": "love", "minValue": 5 }
+	"requirement": { "meter": "love", "minValue": 5 }
   }
 }
 ```

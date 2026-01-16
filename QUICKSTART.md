@@ -40,20 +40,20 @@ fatal-attraction/
 
 ```
 Start Game
-    ↓
+	↓
 [TURN LOOP] for each turn ≤ 10
-    ├─ Player 1 (Admirer)
-    │   ├─ View meters
-    │   ├─ Get random NPC
-    │   ├─ Choose action
-    │   ├─ Resolve action (chance/RPS)
-    │   └─ Apply effects
-    │
-    ├─ Player 2 (Prophet)
-    │   └─ [same as Admirer]
-    │
-    └─ Player 3 (Producer)
-        └─ [same as Admirer]
+	├─ Player 1 (Admirer)
+	│   ├─ View meters
+	│   ├─ Get random NPC
+	│   ├─ Choose action
+	│   ├─ Resolve action (chance/RPS)
+	│   └─ Apply effects
+	│
+	├─ Player 2 (Prophet)
+	│   └─ [same as Admirer]
+	│
+	└─ Player 3 (Producer)
+		└─ [same as Admirer]
 
 Check win conditions
 Show final summary
@@ -111,17 +111,17 @@ Console.WriteLine(meter); // "love: 10/10"
 ```json
 "roles": {
   "admirer": {
-    "displayName": "Admirer",
-    "powers": {
-      "kill_npc": { ... },
-      "unconvert_target": { ... }
-    },
-    "goals": {
-      "kill_targets": { ... }
-    },
-    "meters": {
-      "love": { "min": 0, "max": 10, "start": 0 }
-    }
+	"displayName": "Admirer",
+	"powers": {
+	  "kill_npc": { ... },
+	  "unconvert_target": { ... }
+	},
+	"goals": {
+	  "kill_targets": { ... }
+	},
+	"meters": {
+	  "love": { "min": 0, "max": 10, "start": 0 }
+	}
   }
 }
 ```
@@ -130,25 +130,25 @@ Console.WriteLine(meter); // "love: 10/10"
 ```json
 "npcs": {
   "katy": {
-    "id": "katy",
-    "name": "Katy",
-    "role": "love_interest",
-    "convertedStatus": false,
-    "interactionTree": {
-      "root": {
-        "text": "Katy walks up to you...",
-        "options": [
-          {
-            "id": "talk",
-            "text": "Talk",
-            "requires": { "role": "admirer" },
-            "effects": [
-              { "meter": "love", "delta": 1 }
-            ]
-          }
-        ]
-      }
-    }
+	"id": "katy",
+	"name": "Katy",
+	"role": "love_interest",
+	"convertedStatus": false,
+	"interactionTree": {
+	  "root": {
+		"text": "Katy walks up to you...",
+		"options": [
+		  {
+			"id": "talk",
+			"text": "Talk",
+			"requires": { "role": "admirer" },
+			"effects": [
+			  { "meter": "love", "delta": 1 }
+			]
+		  }
+		]
+	  }
+	}
   }
 }
 ```
@@ -158,12 +158,12 @@ Console.WriteLine(meter); // "love: 10/10"
 "gameRules": {
   "turnsPerGame": 10,
   "winConditions": {
-    "admirer": {
-      "primary": {
-        "goal": "marry_love_interest",
-        "requirement": { "meter": "love", "minValue": 8 }
-      }
-    }
+	"admirer": {
+	  "primary": {
+		"goal": "marry_love_interest",
+		"requirement": { "meter": "love", "minValue": 8 }
+	  }
+	}
   }
 }
 ```
@@ -229,7 +229,7 @@ Edit `gameRules.winConditions`:
 ```json
 "admirer": {
   "primary": {
-    "requirement": { "meter": "love", "minValue": 5 }
+	"requirement": { "meter": "love", "minValue": 5 }
   }
 }
 ```

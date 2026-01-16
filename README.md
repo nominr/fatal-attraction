@@ -87,20 +87,20 @@ Each NPC has a decision tree with role-specific options:
   "name": "Katy",
   "role": "love_interest",
   "interactionTree": {
-    "root": {
-      "text": "Katy walks up to you, smiling warmly.",
-      "options": [
-        {
-          "id": "talk",
-          "text": "Talk and raise love",
-          "requires": { "role": "admirer" },
-          "effects": [
-            { "meter": "love", "delta": 1, "clampMax": 10 },
-            { "notification": "You talked with Katy..." }
-          ]
-        }
-      ]
-    }
+	"root": {
+	  "text": "Katy walks up to you, smiling warmly.",
+	  "options": [
+		{
+		  "id": "talk",
+		  "text": "Talk and raise love",
+		  "requires": { "role": "admirer" },
+		  "effects": [
+			{ "meter": "love", "delta": 1, "clampMax": 10 },
+			{ "notification": "You talked with Katy..." }
+		  ]
+		}
+	  ]
+	}
   }
 }
 ```
