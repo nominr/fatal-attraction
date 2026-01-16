@@ -40,6 +40,10 @@ func perform_action(npc_id: String, action_id: String) -> void:
 		"role": _role
 	})
 
+func send_start_game() -> void:
+    if not connected: return
+    _send_json({"type": "start_game"})
+
 func _process(_delta: float) -> void:
 	if not connected:
 		return
@@ -87,8 +91,7 @@ func _handle_message(msg: Dictionary) -> void:
 		"game_over":
 			var m = String(msg.get("message", ""))
 			game_over.emit(m)
-		"lobby_poll":
-			# If server sends lobby updates
+		"lobby_update":
 			var players = Array(msg.get("players", []))
 			lobby_updated.emit(players)
 		_:

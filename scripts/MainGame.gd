@@ -56,6 +56,9 @@ func _ready():
 	# Create Lobby UI
 	create_lobby_ui()
 	
+	if USE_NETWORK:
+		network_client.lobby_updated.connect(_on_lobby_updated)
+	
 	# Create editorial focus label
 	editorial_label = Label.new()
 	editorial_label.text = ""
@@ -69,6 +72,31 @@ func _ready():
 	editorial_panel.hide()
 	goal_panel.hide()
 	$HUD.hide()
+
+func _on_host_pressed():
+	# Start server node
+	var script = load("res://scripts/LanServerNode.cs")
+	if script:
+		lan_server_node = script.new()
+		add_child(lan_server_node)
+		lan_server_node.StartServer(server_port)
+		
+		# Connect to self
+		server_host = "127.0.0.1"
+		network_client.connect_to_server("127.0.0.1", server_port, "Host")
+		
+		status_label.text = "Hosting on Port " + str(server_port) + ". Waiting for players..."
+		
+		# Show start game button if we have it referenced or recreate it in lobby
+		# Current create_lobby_ui doesn't have start button referenced well, let's fix that
+		if _lobby_start_btn:
+			_lobby_start_btn.disabled = false
+			_lobby_start_btn.show()
+	else:
+		status_label.text = "Error loading server script! Check mono setup."
+
+# Keep reference to start button
+var _lobby_start_btn: Button
 
 func create_lobby_ui():
 	lobby_panel = PanelContainer.new()
@@ -114,6 +142,13 @@ func create_lobby_ui():
 	host_btn.pressed.connect(_on_host_pressed)
 	vbox.add_child(host_btn)
 	
+	_lobby_start_btn = Button.new()
+	_lobby_start_btn.text = "START GAME NOW"
+	_lobby_start_btn.add_theme_color_override("font_color", Color.GREEN)
+	_lobby_start_btn.pressed.connect(_on_lobby_start_pressed)
+	_lobby_start_btn.hide() # Hidden until hosted
+	vbox.add_child(_lobby_start_btn)
+	
 	var local_ip_label = Label.new()
 	local_ip_label.text = "Your IP: " + str(IP.resolve_hostname(str(OS.get_environment("COMPUTERNAME")), 1))
 	local_ip_label.add_theme_color_override("font_color", Color.GRAY)
@@ -123,19 +158,14 @@ func create_lobby_ui():
 	status_label.text = ""
 	vbox.add_child(status_label)
 
-func _on_join_pressed():
-	server_host = ip_input.text
-	status_label.text = "Connecting to " + server_host + "..."
-	var player_name = OS.get_unique_id()
-	network_client.connect_to_server(server_host, server_port, player_name)
+func _on_lobby_start_pressed():
+	network_client.send_start_game()
 
-func _on_host_pressed():
-	# In a real build, this would start the server process. 
-	# For now, we assume the user might be running the server separately or we just show instructions.
-	# But if this is the "server" instance, we can just connect to localhost if the server is running there.
-	status_label.text = "Please run the server executable or console application."
-	server_host = "127.0.0.1"
-	ip_input.text = "127.0.0.1"
+func _on_lobby_updated(players: Array):
+	var text = "Connected Players:\n"
+	for p in players:
+		text += "- " + String(p.get("role", "")).to_upper() + " (" + String(p.get("name", "")) + ")\n"
+	status_label.text = text
 
 
 func show_all_goals():
