@@ -91,10 +91,11 @@ namespace FatalAttraction.Networking
                         // Send snapshot
                         SendSnapshot(conn);
 
-                        // If all roles connected, start first turn broadcast
+                        // If all roles connected, maybe notify?
+                        // For real-time, we just let them play.
                         if (AllRolesConnected())
                         {
-                            BroadcastTurnStart();
+                            Console.WriteLine("[LAN] All roles connected. Game is live.");
                         }
                     }
                     else if (type == "perform_action")
@@ -106,53 +107,20 @@ namespace FatalAttraction.Networking
 
                         lock (_lock)
                         {
-                            // Validate active role
-                            // Active role rotation is tracked in clients; for simplicity assume role matches current player index order
-                            // Trust server-side validation via GetAvailableActions
-                            bool success = _engine.PerformAction(npcId, actionId, role);
-
-                            // Build deltas
-                            var notifications = new JArray(_engine.GetNotifications());
-
-                            var meterUpdates = new JArray();
-                            foreach (var kvp in _engine.GameState.Players)
-                            {
-                                var pRole = kvp.Key;
-                                var player = kvp.Value;
-                                foreach (var m in player.Meters.Values)
-                                {
-                                    meterUpdates.Add(new JObject
-                                    {
-                                        ["role"] = pRole.ToString().ToLower(),
-                                        ["meter"] = m.Name,
-                                        ["value"] = m.Value,
-                                        ["max"] = m.MaxValue
-                                    });
-                                }
-                            }
-
-                            var npcUpdates = new JArray();
-                            foreach (var n in _engine.GameState.NPCs.Values)
-                            {
-                                npcUpdates.Add(new JObject
-                                {
-                                    ["npc_id"] = n.Id,
-                                    ["converted"] = n.Converted,
-                                    ["alive"] = n.Alive,
-                                    ["married"] = false // field exists in Godot only; keep false here
-                                });
-                            }
+                            // Real-time handling
+                            var result = _engine.HandleAction(npcId, actionId, role);
+                            bool success = result["success"].Value<bool>();
+                            var notifications = result["notifications"] as JArray;
 
                             Broadcast(new JObject
                             {
                                 ["type"] = "action_result",
                                 ["success"] = success,
-                                ["notifications"] = notifications,
-                                ["meter_updates"] = meterUpdates,
-                                ["npc_updates"] = npcUpdates
+                                ["notifications"] = notifications
                             });
 
-                            // Win check
+                            BroadcastState();
+
                             var winMsg = _engine.CheckWinCondition(role);
                             if (winMsg != null)
                             {
@@ -162,10 +130,6 @@ namespace FatalAttraction.Networking
                                     ["message"] = winMsg
                                 });
                             }
-
-                            _engine.EndTurn();
-                            BroadcastTurnEnd();
-                            BroadcastTurnStart();
                         }
                     }
                 }
@@ -182,113 +146,94 @@ namespace FatalAttraction.Networking
 
         private void SendSnapshot(ClientConnection conn)
         {
-            var players = new JObject();
-            foreach (var kvp in _engine.GameState.Players)
-            {
-                var role = kvp.Key.ToString().ToLower();
-                var meters = new JObject();
-                foreach (var m in kvp.Value.Meters.Values)
-                {
-                    meters[m.Name] = new JObject
-                    {
-                        ["value"] = m.Value,
-                        ["max"] = m.MaxValue
-                    };
-                }
-                players[role] = new JObject { ["meters"] = meters };
-            }
-
+            var status = _engine.GetGameStatus(); 
+            // Add NPCs
             var npcs = new JArray();
             foreach (var n in _engine.GameState.NPCs.Values)
             {
-                npcs.Add(new JObject
-                {
-                    ["id"] = n.Id,
-                    ["name"] = n.Name,
-                    ["alive"] = n.Alive,
-                    ["converted"] = n.Converted
+                npcs.Add(new JObject {
+                     ["id"] = n.Id,
+                     ["name"] = n.Name,
+                     ["alive"] = n.Alive,
+                     ["converted"] = n.Converted
                 });
             }
+            status["npcs"] = npcs;
 
             Send(conn, new JObject
             {
                 ["type"] = "snapshot",
-                ["state"] = new JObject
-                {
-                    ["current_turn"] = _engine.GameState.CurrentTurn,
-                    ["max_turns"] = _engine.GameState.MaxTurns,
-                    ["players"] = players,
-                    ["npcs"] = npcs,
-                    ["editorial_focus"] = _engine.GameState.EditorialFocus ?? ""
-                }
+                ["state"] = status
             });
         }
 
-        private void BroadcastTurnStart()
+        private void BroadcastState()
         {
-            // Pick NPCs according to config (default 1 if missing)
-            int npcCount = _engine.GameState.Config["gameRules"]?["npcsPerTurn"]?.Value<int>() ?? 1;
-            var alive = _engine.GameState.NPCs.Values.Where(n => n.Alive).ToList();
-            alive = alive.OrderBy(_ => _random.Next()).ToList();
-            var picked = alive.Take(Math.Max(1, npcCount)).ToList();
-
-            var npcsPayload = new JArray();
-            foreach (var npc in picked)
+             var status = _engine.GetGameStatus();
+            var npcs = new JArray();
+            foreach (var n in _engine.GameState.NPCs.Values)
             {
-                var prompt = _engine.GameState.Config["npcs"][npc.Id]["interactionTree"]["root"]["text"].Value<string>();
-                // Provide actions for each role for convenience; client filters per active role
-                var actions = _engine.GetAvailableActions(npc.Id, Role.Admirer)
-                    .Union(_engine.GetAvailableActions(npc.Id, Role.Prophet))
-                    .Union(_engine.GetAvailableActions(npc.Id, Role.Producer))
-                    .Distinct(new JTokenIdComparer())
-                    .Select(a => new JObject { ["id"] = a["id"].Value<string>(), ["text"] = a["text"].Value<string>() });
-                npcsPayload.Add(new JObject
-                {
-                    ["id"] = npc.Id,
-                    ["prompt"] = prompt,
-                    ["actions"] = new JArray(actions)
+                npcs.Add(new JObject {
+                     ["id"] = n.Id,
+                     ["name"] = n.Name,
+                     ["alive"] = n.Alive,
+                     ["converted"] = n.Converted,
+                     ["married"] = false
                 });
             }
+            status["npcs"] = npcs;
 
             Broadcast(new JObject
             {
-                ["type"] = "turn_started",
-                ["turn"] = _engine.GameState.CurrentTurn,
-                ["active_role"] = GetActiveRoleString(),
-                ["npcs"] = npcsPayload,
-                ["editorial_focus"] = _engine.GameState.EditorialFocus ?? ""
+                ["type"] = "state_update",
+                ["state"] = status
             });
         }
 
-        private void BroadcastTurnEnd()
+        private void BroadcastState()
         {
+             var status = _engine.GetGameStatus();
+             // Add detailed NPC state for clients
+            var npcs = new JArray();
+            foreach (var n in _engine.GameState.NPCs.Values)
+            {
+                npcs.Add(new JObject {
+                     ["id"] = n.Id,
+                     ["name"] = n.Name,
+                     ["alive"] = n.Alive,
+                     ["converted"] = n.Converted,
+                     ["married"] = false // Godot specific, but server tracks logic
+                });
+            }
+            status["npcs"] = npcs;
+
             Broadcast(new JObject
             {
-                ["type"] = "turn_ended",
-                ["turn"] = _engine.GameState.CurrentTurn
+                ["type"] = "state_update",
+                ["state"] = status
             });
         }
 
-        private string GetActiveRoleString()
-        {
-            // Rotate roles based on current turn and index, mirroring ChatClient order
-            var order = new[] { Role.Admirer, Role.Prophet, Role.Producer };
-            int idx = (_engine.GameState.CurrentTurn - 1) % order.Length;
-            return order[idx].ToString().ToLower();
-        }
 
         private Role AssignRole(ClientConnection conn)
         {
-            foreach (var role in new[] { Role.Admirer, Role.Prophet, Role.Producer })
+            // Strict order: 1->Admirer, 2->Prophet, 3->Producer
+            if (!_roleToClient.ContainsKey(Role.Admirer))
             {
-                if (!_roleToClient.ContainsKey(role))
-                {
-                    _roleToClient[role] = conn;
-                    return role;
-                }
+                _roleToClient[Role.Admirer] = conn;
+                return Role.Admirer;
             }
-            // If all taken, default to Admirer (spectator mode can be added later)
-            return Role.Admirer;
+            if (!_roleToClient.ContainsKey(Role.Prophet))
+            {
+                _roleToClient[Role.Prophet] = conn;
+                return Role.Prophet;
+            }
+            if (!_roleToClient.ContainsKey(Role.Producer))
+            {
+                _roleToClient[Role.Producer] = conn;
+                return Role.Producer;
+            }
+            return Role.Admirer; // Fallback
         }
 
         private bool AllRolesConnected()
