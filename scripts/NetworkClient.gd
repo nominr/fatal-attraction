@@ -41,8 +41,8 @@ func perform_action(npc_id: String, action_id: String) -> void:
 	})
 
 func send_start_game() -> void:
-    if not connected: return
-    _send_json({"type": "start_game"})
+	if not connected: return
+	_send_json({"type": "start_game"})
 
 func _process(_delta: float) -> void:
 	if not connected:

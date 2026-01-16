@@ -31,6 +31,7 @@ const USE_NETWORK: bool = true
 var server_host: String = "127.0.0.1" 
 var server_port: int = 3000
 var network_client: NetworkClient = null
+var lan_server_node = null
 var current_role_net: String = ""
 
 func _ready():
@@ -157,6 +158,12 @@ func create_lobby_ui():
 	status_label = Label.new()
 	status_label.text = ""
 	vbox.add_child(status_label)
+
+func _on_join_pressed():
+	server_host = ip_input.text
+	status_label.text = "Connecting to " + server_host + "..."
+	var player_name = OS.get_unique_id()
+	network_client.connect_to_server(server_host, server_port, player_name)
 
 func _on_lobby_start_pressed():
 	network_client.send_start_game()
