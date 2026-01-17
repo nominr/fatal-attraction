@@ -327,6 +327,16 @@ namespace FatalAttraction.Networking
             {
                 return obj["id"]?.Value<string>()?.GetHashCode() ?? 0;
             }
+            }
+        
+        public void Stop()
+        {
+            try { _listener.Stop(); } catch { }
+            lock (_lock)
+            {
+                foreach (var c in _clients.ToList()) Disconnect(c);
+            }
+            Console.WriteLine("[LAN] Server stopped.");
         }
     }
 }
