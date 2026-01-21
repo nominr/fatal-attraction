@@ -46,13 +46,16 @@ namespace FatalAttraction.Engine
 		public string Name { get; set; }
 		public bool Converted { get; set; } = false;
 		public bool Alive { get; set; } = true;
+		public bool Married { get; set; } = false;
 		public bool IsLoveInterest { get; set; } = false;
+		public bool IsTarget { get; set; } = false;
 
-		public NPC(string id, string name, bool isLoveInterest = false)
+		public NPC(string id, string name, bool isLoveInterest = false, bool isTarget = false)
 		{
 			Id = id;
 			Name = name;
 			IsLoveInterest = isLoveInterest;
+			IsTarget = isTarget;
 		}
 	}
 
@@ -83,7 +86,6 @@ namespace FatalAttraction.Engine
 		public Dictionary<string, NPC> NPCs { get; private set; } = new();
 		public List<string> Notifications { get; private set; } = new();
 		public string EditorialFocus { get; set; }
-		public bool AdmirerReported { get; set; } = false;
 
 		public GameState(string configPath)
 		{
@@ -138,8 +140,11 @@ namespace FatalAttraction.Engine
 					var npc = new NPC(
 						npcId,
 						npcConfig["name"].Value<string>(),
-						npcConfig["role"]?.Value<string>() == "love_interest"
+						npcConfig["role"]?.Value<string>() == "love_interest",
+						npcConfig["isTarget"]?.Value<bool>() ?? false
 					);
+					npc.Married = npcConfig["married"]?.Value<bool>() ?? false;
+					npc.Converted = npcConfig["convertedStatus"]?.Value<bool>() ?? false;
 					
 					NPCs[npcId] = npc;
 				}
@@ -201,12 +206,13 @@ namespace FatalAttraction.Engine
 			if (npc == null)
 				return new();
 
+			var player = _gameState.GetPlayerState(playerRole);
 			var options = npcConfig["interactionTree"]?["root"]?["options"] as JArray ?? new();
 			var availableOptions = new List<JToken>();
 
 			foreach (var option in options)
 			{
-				if (IsOptionAvailable(option, playerRole, npc))
+				if (IsOptionAvailable(option, playerRole, npc, player))
 				{
 					availableOptions.Add(option);
 				}
@@ -215,15 +221,22 @@ namespace FatalAttraction.Engine
 			return availableOptions;
 		}
 
-		private bool IsOptionAvailable(JToken option, Role playerRole, NPC npc)
+		private bool IsOptionAvailable(JToken option, Role playerRole, NPC npc, PlayerState player = null)
 		{
+			// Dead NPCs cannot be interacted with (except "leave")
+			var actionId = option["id"]?.Value<string>();
+			if (!npc.Alive && actionId != "leave")
+				return false;
+
 			var requires = option["requires"];
 			if (requires != null)
 			{
+				// Role check
 				var requiredRole = requires["role"]?.Value<string>();
 				if (!string.IsNullOrEmpty(requiredRole) && requiredRole != playerRole.ToString().ToLower())
 					return false;
 
+				// Converted status check
 				var requiredStatus = requires["npcStatus"]?.Value<string>();
 				if (!string.IsNullOrEmpty(requiredStatus))
 				{
@@ -232,22 +245,52 @@ namespace FatalAttraction.Engine
 					if (requiredStatus == "nonConverted" && npc.Converted)
 						return false;
 				}
+
+				// Marriage eligibility check (NPC must not be married)
+				var marriageCheck = requires["npcMarriageable"]?.Value<bool>();
+				if (marriageCheck == true && npc.Married)
+					return false;
+			}
+
+			// Special check for Admirer's marry action - requires love meter at max
+			var isAdmirerMarry = option["marry_admirer_love"]?.Value<bool>() ?? false;
+			if (isAdmirerMarry && player != null)
+			{
+				var loveMeter = player.GetMeter("love");
+				if (loveMeter == null || loveMeter.Value < loveMeter.MaxValue)
+					return false;
+				// Also can't marry if already married
+				if (npc.Married)
+					return false;
 			}
 
 			return true;
 		}
 
-		public bool ResolveInteraction(string npcId, string optionId, Role playerRole)
+		public (bool success, string failReason) ResolveInteraction(string npcId, string optionId, Role playerRole)
 		{
 			var npcConfig = _gameState.Config["npcs"]?[npcId];
 			if (npcConfig == null)
-				return false;
+				return (false, "NPC not found");
+
+			var npc = _gameState.GetNPC(npcId);
+			if (npc == null)
+				return (false, "NPC not found");
+
+			// Check if NPC is dead first
+			if (!npc.Alive && optionId != "leave")
+				return (false, $"{npc.Name} is no longer available");
 
 			var options = npcConfig["interactionTree"]?["root"]?["options"] as JArray ?? new();
 			var option = options.FirstOrDefault(o => o["id"]?.Value<string>() == optionId);
 
 			if (option == null)
-				return false;
+				return (false, "Invalid action");
+
+			// CRITICAL: Revalidate at execution time to prevent race conditions
+			var player = _gameState.GetPlayerState(playerRole);
+			if (!IsOptionAvailable(option, playerRole, npc, player))
+				return (false, $"Action no longer valid for {npc.Name}");
 
 			// Resolve chance-based or RPS actions
 			var resolutionType = option["resolution"]?["type"]?.Value<string>();
@@ -273,7 +316,10 @@ namespace FatalAttraction.Engine
 				ApplyEffect(effect, playerRole, npcId, success);
 			}
 
-			return success;
+			if (!success)
+				return (false, "Action failed (chance roll)");
+
+			return (true, null);
 		}
 
 		private void ApplyEffect(JToken effect, Role playerRole, string npcId, bool success)
@@ -314,6 +360,8 @@ namespace FatalAttraction.Engine
 						npc.Converted = value.Value<bool>();
 					else if (field == "alive")
 						npc.Alive = value.Value<bool>();
+					else if (field == "married")
+						npc.Married = value.Value<bool>();
 				}
 			}
 		}
@@ -351,103 +399,7 @@ namespace FatalAttraction.Engine
 			return InteractionResolver.GetNPCInteractions(npcId, playerRole);
 		}
 
-		public JObject HandleAction(string npcId, string actionId, Role playerRole)
-		{
-			var result = new JObject
-			{
-				["success"] = false,
-				["notifications"] = new JArray()
-			};
-
-			// Check if Admirer is reported (Observer mode)
-			if (playerRole == Role.Admirer && GameState.AdmirerReported)
-			{
-				result["notifications"] = new JArray("You have been reported! You are now an observer.");
-				return result;
-			}
-
-			var npc = GameState.GetNPC(npcId);
-
-			// Special Action Logic based on ID conventions
-			if (actionId.StartsWith("kill"))
-			{
-				if (npc != null && !npc.Converted)
-				{
-					npc.Alive = false;
-					result["success"] = true;
-					((JArray)result["notifications"]).Add($"{playerRole} killed {npc.Name}!");
-				}
-			}
-			else if (actionId.StartsWith("convert"))
-			{
-				// Simple probabilistic conversion for now (RPS placeholder)
-				if (npc != null && !npc.Converted)
-				{
-					// Success based on chaos level or pure chance
-					var chaos = GameState.GetPlayerState(Role.Prophet)?.GetMeter("chaos")?.Value ?? 0;
-					var chance = 0.3 + (chaos * 0.05); // higher chaos = easier convert
-					if (_random.NextDouble() < chance)
-					{
-						npc.Converted = true;
-						result["success"] = true;
-						 // Add Chaos
-						GameState.GetPlayerState(Role.Prophet)?.GetMeter("chaos")?.Add(1);
-						((JArray)result["notifications"]).Add($"Prophet converted {npc.Name}!");
-					}
-					else
-					{
-						((JArray)result["notifications"]).Add($"{npc.Name} resisted conversion.");
-					}
-				}
-			}
-			else if (actionId == "report_admirer")
-			{
-				GameState.AdmirerReported = true;
-				result["success"] = true;
-				((JArray)result["notifications"]).Add("PRODUCER REPORTED THE ADMIRER! Admirer is now powerless.");
-			}
-			else if (actionId.StartsWith("unconvert"))
-			{
-				 if (npc != null && npc.Converted)
-				 {
-					double chance = playerRole == Role.Producer ? 0.75 : 0.55;
-					if (_random.NextDouble() < chance)
-					{
-						npc.Converted = false;
-						result["success"] = true;
-						((JArray)result["notifications"]).Add($"{playerRole} unconverted {npc.Name}!");
-					}
-					else
-					{
-						((JArray)result["notifications"]).Add($"Failed to unconvert {npc.Name}.");
-					}
-				 }
-			}
-			else if (actionId.StartsWith("marry"))
-			{
-				 // Marriage logic
-				 if (npc != null)
-				 {
-					 result["success"] = true;
-					 GameState.GetPlayerState(Role.Producer)?.GetMeter("ratings")?.Add(1);
-					 if (playerRole == Role.Admirer && npc.IsLoveInterest)
-						GameState.GetPlayerState(Role.Admirer)?.GetMeter("love")?.Add(5); // Big boost
-
-					 ((JArray)result["notifications"]).Add($"{playerRole} arranged a marriage for {npc.Name}!");
-				 }
-			}
-			else
-			{
-				// Fallback to interaction resolver (generic prompts)
-				// For this refactor we rely on the special cases above for the core mechanics interaction
-				// But we can still support the text tree via Resolver if needed.
-				bool resolved = InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
-				result["success"] = resolved;
-			}
-
-			return result;
-		}
-		public bool PerformAction(string npcId, string actionId, Role playerRole)
+			public (bool success, string failReason) PerformAction(string npcId, string actionId, Role playerRole)
 		{
 			return InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
 		}
@@ -512,8 +464,7 @@ namespace FatalAttraction.Engine
 			{
 				{ "turn", GameState.CurrentTurn },
 				{ "max_turns", GameState.MaxTurns },
-				{ "editorial_focus", GameState.EditorialFocus ?? "" },
-				{ "admirer_reported", GameState.AdmirerReported }
+				{ "editorial_focus", GameState.EditorialFocus }
 			};
 
 			var playersObj = new JObject();

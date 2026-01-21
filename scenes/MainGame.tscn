@@ -1,7 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://c7qkx8ywsxfdi"]
 
-[ext_resource type="Script" uid="uid://bjj2gxvpxge2t" path="res://scripts/MainGame.gd" id="1_mainscript"]
-[ext_resource type="Script" uid="uid://c7myfoguoltbh" path="res://scripts/GameEngine.gd" id="2_enginescript"]
+[ext_resource type="Script" path="res://scripts/MainGame.cs" id="1_mainscript"]
 
 [node name="MainGame" type="Control"]
 layout_mode = 3
@@ -11,9 +10,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_mainscript")
-
-[node name="GameEngine" type="Node" parent="."]
-script = ExtResource("2_enginescript")
 
 [node name="GoalPanel" type="PanelContainer" parent="."]
 layout_mode = 1

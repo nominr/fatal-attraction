@@ -11,10 +11,14 @@ config_version=5
 [application]
 
 config/name="fatal attraction"
-run/main_scene="res://scenes/MainGame.tscn"
+run/main_scene="res://scenes/Lobby.tscn"
 config/features=PackedStringArray("4.5", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+NetworkManager="*res://scripts/NetworkManager.cs"
+
 [dotnet]
 
-project/assembly_name="fatal attraction"
+project/assembly_name="FatalAttraction"
