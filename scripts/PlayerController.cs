@@ -23,6 +23,7 @@ public partial class PlayerController : CharacterBody2D
 
 	// Networking
 	private bool _isLocalPlayer = false;
+	public bool IsLocalPlayer => _isLocalPlayer;
 
 	public override void _Ready()
 	{
@@ -127,10 +128,13 @@ public partial class PlayerController : CharacterBody2D
 		}
 	}
 
+	// Input control
+	public bool InputEnabled { get; set; } = true;
+
 	public override void _PhysicsProcess(double delta)
 	{
 		// Only process input for the local player
-		if (!_isLocalPlayer) return;
+		if (!_isLocalPlayer || !InputEnabled) return;
 
 		var velocity = Vector2.Zero;
 

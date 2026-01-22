@@ -28,6 +28,7 @@ public partial class GameWorld : Node2D
 	// Spawned entities
 	private Dictionary<string, NPCEntity> _npcEntities = new();
 	private Dictionary<long, PlayerController> _playerControllers = new();
+	private PlayerController _localPlayer;
 	
 	// UI Components
 	private InteractionPanel _interactionPanel;
@@ -205,6 +206,10 @@ public partial class GameWorld : Node2D
 			// Check if this is our local player
 			bool isLocal = kvp.Key == Multiplayer.GetUniqueId();
 			player.SetLocalPlayer(isLocal);
+			if (isLocal)
+			{
+				_localPlayer = player;
+			}
 			
 			GD.Print($"Spawning player {kvp.Key} as {kvp.Value.Role}, isLocal={isLocal}");
 			
@@ -224,7 +229,12 @@ public partial class GameWorld : Node2D
 
 	private void OnNPCClicked(string npcId)
 	{
-		if (string.IsNullOrEmpty(_myRole)) return;
+		GD.Print($"GameWorld received OnNPCClicked for {npcId}. Current Role: '{_myRole}'");
+		if (string.IsNullOrEmpty(_myRole)) 
+		{
+			GD.Print("Role is empty, ignoring click.");
+			return;
+		}
 
 		// Get available actions from cached state
 		var allActions = _localGameState?["all_actions"] as JObject;
@@ -252,6 +262,21 @@ public partial class GameWorld : Node2D
 	{
 		if (Multiplayer.IsServer() && _gameActive)
 		{
+			// Check for Win Condition
+			if (_gameEngine.GameState.IsGameOver)
+			{
+				_gameActive = false;
+				string winner = _gameEngine.GameState.Winner;
+				string prevNotif = winner != null ? $"{winner.ToUpper()} WINS!" : "GAME OVER";
+				if (winner == null) _gameEngine.GameState.AddNotification("GAME OVER - TIME UP!"); // Only add if not already won
+				
+				BroadcastGameState();
+				return;
+			}
+			
+			// Update Game Engine (Traps, etc.)
+			_gameEngine.Update(delta);
+			
 			_timeRemaining -= delta;
 			if (_timeRemaining <= 0)
 			{
@@ -431,6 +456,47 @@ public partial class GameWorld : Node2D
 				_notificationText.AddText(msg + "\n");
 			}
 		}
+
+		// Game Over check
+		bool isGameOver = _localGameState["game_over"]?.Value<bool>() ?? false;
+		if (isGameOver)
+		{
+			// 1. DISABLE PLAYER INPUT
+			if (_localPlayer != null)
+			{
+				_localPlayer.InputEnabled = false;
+				_localPlayer.Velocity = Vector2.Zero; // Stop moving immediately
+			}
+
+			string winner = _localGameState["winner"]?.Value<string>();
+			string winText = !string.IsNullOrEmpty(winner) ? $"{winner.ToUpper()} WINS!" : "GAME OVER";
+			
+			// 2. BLOCK UI CLICKS & SHOW OVERLAY
+			if (!HasNode("GameOverOverlay"))
+			{
+				// Full screen blocking rect
+				var overlay = new ColorRect();
+				overlay.Name = "GameOverOverlay";
+				overlay.Size = _worldSize; // Cover entire world
+				overlay.Color = new Color(0, 0, 0, 0.7f); // Semi-transparent black
+				overlay.MouseFilter = Control.MouseFilterEnum.Stop; // BLOCK ALL CLICKS
+				overlay.ZIndex = 99; // Above everything else
+				_uiLayer.AddChild(overlay);
+
+				// Centered Label
+				var label = new Label();
+				label.Name = "GameOverLabel";
+				label.Text = winText;
+				label.AddThemeFontSizeOverride("font_size", 64);
+				label.HorizontalAlignment = HorizontalAlignment.Center;
+				label.VerticalAlignment = VerticalAlignment.Center;
+				label.AnchorsPreset = (int)Control.LayoutPreset.Center;
+				// Center in overlay
+				label.Position = _worldSize / 2 - new Vector2(200, 50);
+				label.ZIndex = 100;
+				_uiLayer.AddChild(label);
+			}
+		}
 	}
 
 	private void UpdateNPCVisuals()
@@ -458,8 +524,20 @@ public partial class GameWorld : Node2D
 
 		long senderId = Multiplayer.GetRemoteSenderId();
 		string senderRole = _networkManager.Players[senderId].Role.ToLower();
-
 		Role roleEnum = Enum.Parse<Role>(senderRole, true);
+
+		// Special Handling: Global Actions (e.g. Set Trap)
+		if (npcId == "global")
+		{
+			if (actionId == "set_trap" && roleEnum == Role.Prophet)
+			{
+				// TODO: Check cooldown or limits if needed
+				_gameEngine.CreateTrap(roleEnum);
+				BroadcastGameState();
+			}
+			return;
+		}
+
 		var (success, failReason) = _gameEngine.PerformAction(npcId, actionId, roleEnum);
 
 		if (success)

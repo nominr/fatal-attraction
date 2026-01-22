@@ -126,7 +126,7 @@ public partial class NPCEntity : Area2D
 		
 		var collisionShape = new CollisionShape2D();
 		var shape = new CircleShape2D();
-		shape.Radius = 80; // Larger than clickable area
+		shape.Radius = 120; // Increased range
 		collisionShape.Shape = shape;
 		_interactionArea.AddChild(collisionShape);
 		
@@ -138,30 +138,60 @@ public partial class NPCEntity : Area2D
 
 	private void OnInputEvent(Node viewport, InputEvent @event, long shapeIdx)
 	{
-		if (@event is InputEventMouseButton mouseEvent)
+		// Kept for specific physics interaction if working
+		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
 		{
-			if (mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
+			TryInteract();
+		}
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		// Fallback: Check global mouse position distance if physics click failed
+		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
+		{
+			float dist = GetGlobalMousePosition().DistanceTo(GlobalPosition);
+			if (dist < 80) // Visual click radius
 			{
-				if (_playerInRange)
-				{
-					GD.Print($"NPC {NpcId} clicked!");
-					EmitSignal(SignalName.NPCClicked, NpcId);
-				}
-				else
-				{
-					GD.Print($"Must be closer to interact with {NpcName}");
-				}
+				GD.Print($"Fallback click detected! Dist: {dist}, InRange: {_playerInRange}. Emitting signal anyway.");
+				EmitSignal(SignalName.NPCClicked, NpcId);
+				GetViewport().SetInputAsHandled();
 			}
+		}
+	}
+
+	private void TryInteract()
+	{
+		if (_playerInRange)
+		{
+			GD.Print($"Interacting with {NpcId}");
+			EmitSignal(SignalName.NPCClicked, NpcId);
+		}
+		else
+		{
+			GD.Print($"Must be closer to interact with {NpcName}");
 		}
 	}
 
 	private void OnBodyEntered(Node2D body)
 	{
-		// Check if it's a player (you'll tag your player CharacterBody2D)
+		// Check if it's a player
 		if (body.IsInGroup("players"))
 		{
+			GD.Print($"Body entered {NpcName}: {body.Name}");
 			_playerInRange = true;
-			_interactHint.Visible = true;
+			
+			// Auto-interact if it's the local player
+			if (body is PlayerController player && player.IsLocalPlayer)
+			{
+				GD.Print($"Local player entered {NpcName} range. Auto-interacting.");
+				EmitSignal(SignalName.NPCClicked, NpcId);
+			}
+			else
+			{
+				// Keep hint for remote players (optional, or just logic consistency)
+				_interactHint.Visible = true;
+			}
 		}
 	}
 
@@ -169,6 +199,7 @@ public partial class NPCEntity : Area2D
 	{
 		if (body.IsInGroup("players"))
 		{
+			GD.Print($"Body exited {NpcName}: {body.Name}");
 			_playerInRange = false;
 			_interactHint.Visible = false;
 		}

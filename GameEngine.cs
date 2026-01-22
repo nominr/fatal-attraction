@@ -13,6 +13,13 @@ namespace FatalAttraction.Engine
 		Producer
 	}
 
+	public class Trap
+	{
+		public string Id { get; set; } = Guid.NewGuid().ToString();
+		public double TimeAlive { get; set; } = 0;
+		public string CreatorRole { get; set; }
+	}
+
 	public class Meter
 	{
 		public string Name { get; set; }
@@ -84,6 +91,7 @@ namespace FatalAttraction.Engine
 		public int MaxTurns { get; private set; }
 		public Dictionary<Role, PlayerState> Players { get; private set; } = new();
 		public Dictionary<string, NPC> NPCs { get; private set; } = new();
+		public List<Trap> Traps { get; private set; } = new();
 		public List<string> Notifications { get; private set; } = new();
 		public string EditorialFocus { get; set; }
 
@@ -152,9 +160,6 @@ namespace FatalAttraction.Engine
 		}
 
 		public PlayerState GetPlayerState(Role role)
-		{
-			return Players.ContainsKey(role) ? Players[role] : null;
-		}
 
 		public NPC GetNPC(string npcId)
 		{
@@ -175,7 +180,7 @@ namespace FatalAttraction.Engine
 
 		public bool AdvanceTurn()
 		{
-			if (CurrentTurn < MaxTurns)
+			if (CurrentTurn < MaxTurns && Winner == null)
 			{
 				CurrentTurn++;
 				return true;
@@ -183,7 +188,8 @@ namespace FatalAttraction.Engine
 			return false;
 		}
 
-		public bool IsGameOver => CurrentTurn >= MaxTurns;
+		public string Winner { get; set; }
+		public bool IsGameOver => CurrentTurn >= MaxTurns || Winner != null;
 	}
 
 	public class InteractionResolver
@@ -212,13 +218,140 @@ namespace FatalAttraction.Engine
 
 			foreach (var option in options)
 			{
-				if (IsOptionAvailable(option, playerRole, npc, player))
+				// Check for Prophet "convert_npc" power/action
+				// The JSON config has "convert_<npcname>" or generic "convert" IDs.
+				// We need to detect if this is a "RPS" resolution type or specific ID logic.
+				// User wants: Hard (0-3 chaos) -> 3 options. Normal (3-7) -> 2 options. Easy (7-10) -> 1 option.
+				
+				// Identify convert action by ID or properties
+				string id = option["id"]?.Value<string>();
+				bool isConvert = id != null && (id.StartsWith("convert") || id.Contains("convert_"));
+				
+				if (isConvert && playerRole == Role.Prophet)
 				{
-					availableOptions.Add(option);
+					if (!IsOptionAvailable(option, playerRole, npc, player)) continue;
+
+					// Dynamic Generation
+					var chaosMeter = player.GetMeter("chaos");
+					double chaos = chaosMeter?.Value ?? 0;
+
+					// Determine "Level"
+					string difficulty = "hard";
+					if (chaos >= 7) difficulty = "easy";
+					else if (chaos >= 3) difficulty = "normal";
+
+					// Generate Options based on difficulty
+					// We need to know what the "Winning" move is.
+					// For Simplicity: The server decides the winning move deterministically or randomly for this interaction turn?
+					// Let's generate 3 virtual options.
+					// But we need to ensure the server validates them correctly.
+					// We'll generate "convert_rock", "convert_paper", "convert_scissors".
+					
+					var rpsOptions = new List<JToken>();
+					string[] moves = { "rock", "paper", "scissors" };
+					
+					if (difficulty == "hard") // All 3
+					{
+						rpsOptions.Add(CreateRPSOption(id, "Rock", "rock"));
+						rpsOptions.Add(CreateRPSOption(id, "Paper", "paper"));
+						rpsOptions.Add(CreateRPSOption(id, "Scissors", "scissors"));
+					}
+					else if (difficulty == "normal") // 2 Options (1 Winner, 1 Loser)
+					{
+						// We need a winning move. Let's say CPU picks Random.
+						// We can't easily sync "CPU Pick" to UI here without server state.
+						// Workaround: We present 2 random moves. The SERVER resolution logic will handle the "Guaranteed Win" math.
+						// WAIT: User said "at level normal its given two options (one of which is guaranteed to win)".
+						// This implies pre-knowledge of the win.
+						// This is complex without persistent state per interaction.
+						// Simplification: We show "Convert (Safe)" and "Convert (Risky)"? No, user said RPS.
+						// Let's stick to showing subsets.
+						
+						// Strategy: Show 2 options. Interaction Resolution will force a win IF the player picks the "right" one?
+						// Or just boost the win chance?
+						// "Guaranteed to win" implies: IF I pick X, I win. If I pick Y, I might lose?
+						// Actually: "one of which is guaranteed to win" -> If I pick that one, I win.
+						// This means the "Right Answer" must be presented.
+						// Let's just present standard Rock/Paper/Scissors but modify the Resolution to CHEAT in favor of the player?
+						// User said: "at level hard it its given one option that is guaranteed to win" -> Easy mode = 1 button that wins.
+						
+						// IMPLEMENTATION:
+						// Hard: Show R, P, S. (Normal RPS logic).
+						// Normal: Show 2 buttons (e.g. Rock, Paper). 
+						// Easy: Show 1 button (e.g. Rock).
+						// LOGIC CHANGE in ResolveInteraction:
+						// If Difficulty is Easy: Whatever they clicked IS the winner (Action Succeeded).
+						// If Difficulty is Normal: If they picked the "Winning" one?
+						// REALITY: We can't change the buttons on the fly *easily* and guarantee sync.
+						// TRICK: We always show R/P/S but disable some? 
+						// OR: We create "magic" buttons.
+						
+						// Let's return virtual options.
+						rpsOptions.Add(CreateRPSOption(id, "Rock", "rock"));
+						rpsOptions.Add(CreateRPSOption(id, "Paper", "paper"));
+						rpsOptions.Add(CreateRPSOption(id, "Scissors", "scissors"));
+						
+						// Filter based on difficulty?
+						// If Easy, we only want to show 1. Which one?
+						// If we pick randomly, the user sees "Rock" this time, "Paper" next time.
+						// That's fine.
+						
+						int countToShow = difficulty == "easy" ? 1 : (difficulty == "normal" ? 2 : 3);
+						// Shuffle and take count?
+						// We need consistency for the frame? No, this is called on click.
+						// But we need the server to accept the ID.
+						
+						// Let's just return ALL 3, but in ResolveInteraction we handle the logic.
+						// User wants the UI to reflect it.
+						// So we must filter here.
+						
+						// We need a deterministic seed so valid options don't jitter?
+						int seed = npcId.GetHashCode() + GameState.CurrentTurn;
+						var rng = new Random(seed);
+						var successfulMove = moves[rng.Next(moves.Length)]; // This turn, this move wins?
+						
+						if (difficulty == "easy")
+						{
+							// Only show the winner
+							availableOptions.Add(CreateRPSOption(id, $"Use {successfulMove} (Guaranteed)", successfulMove));
+						}
+						else if (difficulty == "normal")
+						{
+							// Show winner + 1 loser
+							availableOptions.Add(CreateRPSOption(id, $"Use {successfulMove}", successfulMove));
+							// Find a loser
+							string loser = moves.Where(m => m != successfulMove).ElementAt(rng.Next(2));
+							availableOptions.Add(CreateRPSOption(id, $"Use {loser}", loser));
+						}
+						else
+						{
+							// Show all
+							availableOptions.Add(CreateRPSOption(id, "Rock", "rock"));
+							availableOptions.Add(CreateRPSOption(id, "Paper", "paper"));
+							availableOptions.Add(CreateRPSOption(id, "Scissors", "scissors"));
+						}
+					}
+				}
+				else
+				{
+					if (IsOptionAvailable(option, playerRole, npc, player))
+					{
+						availableOptions.Add(option);
+					}
 				}
 			}
 
 			return availableOptions;
+		}
+
+		private JObject CreateRPSOption(string baseId, string label, string moveSuffix)
+		{
+			return new JObject
+			{
+				{ "id", $"{baseId}_{moveSuffix}" }, // e.g. convert_katy_rock
+				{ "text", label },
+				{ "requires", new JObject() } // Already validated
+			};
 		}
 
 		private bool IsOptionAvailable(JToken option, Role playerRole, NPC npc, PlayerState player = null)
@@ -252,16 +385,12 @@ namespace FatalAttraction.Engine
 					return false;
 			}
 
-			// Special check for Admirer's marry action - requires love meter at max
+			// Special check for Admirer's marry action - ALWAYS available if single
 			var isAdmirerMarry = option["marry_admirer_love"]?.Value<bool>() ?? false;
-			if (isAdmirerMarry && player != null)
+			if (isAdmirerMarry)
 			{
-				var loveMeter = player.GetMeter("love");
-				if (loveMeter == null || loveMeter.Value < loveMeter.MaxValue)
-					return false;
-				// Also can't marry if already married
-				if (npc.Married)
-					return false;
+				if (npc.Married) return false;
+				// We don't block by love meter anymore, logic is handled in Resolve logic
 			}
 
 			return true;
@@ -292,23 +421,103 @@ namespace FatalAttraction.Engine
 			if (!IsOptionAvailable(option, playerRole, npc, player))
 				return (false, $"Action no longer valid for {npc.Name}");
 
-			// Resolve chance-based or RPS actions
-			var resolutionType = option["resolution"]?["type"]?.Value<string>();
 			bool success = true;
 
-			if (resolutionType == "chance")
+			// 3. Prophet RPS Resolution
+			if (playerRole == Role.Prophet && (optionId.EndsWith("_rock") || optionId.EndsWith("_paper") || optionId.EndsWith("_scissors")))
 			{
-				var successChance = option["resolution"]["successChance"].Value<double>();
-				success = _random.NextDouble() < successChance;
+				int lastUnderscore = optionId.LastIndexOf('_');
+				string baseId = optionId.Substring(0, lastUnderscore);
+				string playerMove = optionId.Substring(lastUnderscore + 1);
+
+				// Re-validate base option availability to be safe
+				option = options.FirstOrDefault(o => o["id"]?.Value<string>() == baseId);
+				if (option == null) return (false, "Invalid RPS base action");
+
+				// Chaos / Difficulty Logic
+				var chaosMeter = player.GetMeter("chaos");
+				double chaos = chaosMeter?.Value ?? 0;
+				string difficulty = "hard";
+				if (chaos >= 7) difficulty = "easy";
+				else if (chaos >= 3) difficulty = "normal";
+
+				// Deterministic Win Move
+				int seed = npcId.GetHashCode() + GameState.CurrentTurn;
+				var rng = new Random(seed);
+				string[] moves = { "rock", "paper", "scissors" };
+				string winningMove = moves[rng.Next(moves.Length)]; 
+
+				// Game Rules:
+				// Easy: Guaranteed win (we only showed the winner).
+				// Normal: We showed Winner + Loser. If they picked Winner, they win.
+				// Hard: Standard RPS (1/3 chance).
+				
+				if (difficulty == "easy")
+				{
+					success = true;
+				}
+				else if (difficulty == "normal")
+				{
+					success = (playerMove == winningMove);
+				}
+				else
+				{
+					// Hard Mode: 33% chance strictly
+					success = (playerMove == winningMove);
+				}
+				
+				string result = success ? "WON" : "LOST";
+				_gameState.AddNotification($"{playerRole} played {playerMove} and {result} against {npc.Name}!");
 			}
-			else if (resolutionType == "rps")
+			else if (isAdmirerMarry)
 			{
-				// Simplified RPS: 50% success for demo
-				success = _random.NextDouble() < 0.5;
+				// Admirer Logic...
+				// Logic continues...
+				if (targets.Any(t => t.Alive))
+				{
+					return (false, "You cannot marry while rivals (Targets) are still alive!");
+				}
+
+				// 2. Probability Math: (8 * score + 5) / 100
+				var loveMeter = player.GetMeter("love");
+				double loveScore = loveMeter?.Value ?? 0;
+				double chance = (8.0 * loveScore + 5.0) / 100.0;
+				
+				// Clamp chance to reasonable bounds if needed (max 1.0)
+				chance = Math.Min(chance, 1.0);
+
+				success = _random.NextDouble() < chance;
+
+				if (success)
+				{
+					_gameState.Winner = "Admirer";
+					_gameState.AddNotification("ADMIRER WINS! Love has conquered all!");
+				}
+				else
+				{
+					_gameState.AddNotification($"Marriage rejected! (Chance was {chance:P0})");
+					return (false, "Marriage proposal rejected. Try increasing Love.");
+				}
+			}
+			else
+			{
+				// Standard resolution
+				var resolutionType = option["resolution"]?["type"]?.Value<string>();
+				if (resolutionType == "chance")
+				{
+					var successChance = option["resolution"]["successChance"].Value<double>();
+					success = _random.NextDouble() < successChance;
+				}
+				else if (resolutionType == "rps")
+				{
+					// Simplified RPS: 50% success for demo
+					success = _random.NextDouble() < 0.5;
+				}
 			}
 
 			// Apply effects
 			var effectsKey = success ? "effects_on_success" : "effects_on_failure";
+			// For admirer marriage success, we use standard effects too for marriage status
 			var effects = option[effectsKey] ?? option["effects"] ?? new JArray();
 
 			foreach (var effect in effects.Children())
@@ -316,7 +525,7 @@ namespace FatalAttraction.Engine
 				ApplyEffect(effect, playerRole, npcId, success);
 			}
 
-			if (!success)
+			if (!success && !isAdmirerMarry) // Admirer fail is already handled
 				return (false, "Action failed (chance roll)");
 
 			return (true, null);
@@ -399,7 +608,14 @@ namespace FatalAttraction.Engine
 			return InteractionResolver.GetNPCInteractions(npcId, playerRole);
 		}
 
-			public (bool success, string failReason) PerformAction(string npcId, string actionId, Role playerRole)
+		public void CreateTrap(Role playerRole)
+		{
+			var trap = new Trap { CreatorRole = playerRole.ToString() };
+			GameState.Traps.Add(trap);
+			GameState.AddNotification("A trap has been set...");
+		}
+
+		public (bool success, string failReason) PerformAction(string npcId, string actionId, Role playerRole)
 		{
 			return InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
 		}
@@ -458,13 +674,44 @@ namespace FatalAttraction.Engine
 			return GameState.GetAndClearNotifications();
 		}
 
+		public void Update(double deltaSeconds)
+		{
+			for (int i = GameState.Traps.Count - 1; i >= 0; i--)
+			{
+				var trap = GameState.Traps[i];
+				trap.TimeAlive += deltaSeconds;
+
+				// P(x) = 0.5 * e^(-2x)
+				// We treat this as "Probability of triggering right now".
+				// To approximate continuous check, we allow the check to run periodically.
+				// For simulation, we'll check against p * delta.
+				double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
+
+				if (_random.NextDouble() < (p * deltaSeconds))
+				{
+					GameState.AddNotification("A TRAP TRIGGERED! Chaos erupts!");
+					
+					// Add Chaos
+					if (Enum.TryParse<Role>(trap.CreatorRole, out var role))
+					{
+						var player = GameState.GetPlayerState(role);
+						var chaosMeter = player?.GetMeter("chaos");
+						chaosMeter?.Add(1);
+					}
+					GameState.Traps.RemoveAt(i);
+				}
+			}
+		}
+
 		public JObject GetGameStatus()
 		{
 			var status = new JObject
 			{
 				{ "turn", GameState.CurrentTurn },
 				{ "max_turns", GameState.MaxTurns },
-				{ "editorial_focus", GameState.EditorialFocus }
+				{ "editorial_focus", GameState.EditorialFocus },
+				{ "game_over", GameState.IsGameOver },
+				{ "winner", GameState.Winner }
 			};
 
 			var playersObj = new JObject();

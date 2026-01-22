@@ -132,14 +132,15 @@ public partial class NetworkManager : Node
 	{
 		if (Multiplayer.IsServer())
 		{
+			GD.Print($"Server sending StartGame RPC to {Multiplayer.GetPeers().Length} peers.");
 			Rpc(MethodName.StartGame);
 		}
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-	private void StartGame()
+	public void StartGame()
 	{
-		GD.Print("Game Starting!");
+		GD.Print($"StartGame RPC received from {Multiplayer.GetRemoteSenderId()} on peer {Multiplayer.GetUniqueId()}");
 		EmitSignal(SignalName.GameStarted);
 	}
 

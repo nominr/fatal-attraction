@@ -133,10 +133,12 @@ public partial class Lobby : Control
 
 	private void OnGameStarted()
 	{
-		GD.Print("Transitioning to main game...");
-		// Transition code - assuming usage of SceneTree.ChangeSceneToPacked
-		// But since we are passing args, we might need a different approach or set globals
-		// For now, simpler transition
+		GD.Print("Lobby: GameStarted signal received. Transitioning scene...");
+		if (MainGameScene == null)
+		{
+			GD.PrintErr("Lobby: MainGameScene is null!");
+			return;
+		}
 		GetTree().ChangeSceneToPacked(MainGameScene);
 	}
 

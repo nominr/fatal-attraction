@@ -11,24 +11,30 @@ if [ ! -d "$GODOT_APP_PATH" ]; then
     exit 1
 fi
 
+GODOT_EXEC="$GODOT_APP_PATH/Contents/MacOS/Godot"
+
 echo "Launching Host Instance..."
-open -n "$GODOT_APP_PATH" --args --path "$PROJECT_PATH" &
+"$GODOT_EXEC" --path "$PROJECT_PATH" > host.log 2>&1 &
 PID_HOST=$!
 echo "Host launching..."
 
 sleep 2
 
 echo "Launching Client 1..."
-open -n "$GODOT_APP_PATH" --args --path "$PROJECT_PATH" &
+echo "Launching Client 1..."
+"$GODOT_EXEC" --path "$PROJECT_PATH" > client1.log 2>&1 &
 echo "Client 1 launching..."
 
 sleep 1
 
 echo "Launching Client 2..."
-open -n "$GODOT_APP_PATH" --args --path "$PROJECT_PATH" &
+echo "Launching Client 2..."
+"$GODOT_EXEC" --path "$PROJECT_PATH" > client2.log 2>&1 &
 echo "Client 2 launching..."
 
 echo "Done! You should see 3 Godot windows."
 echo "1. Host: Enter Name -> Select 'Producer' -> Host"
 echo "2. Client 1: Enter Name -> IP '127.0.0.1' -> Select 'Admirer' -> Join"
 echo "3. Client 2: Enter Name -> IP '127.0.0.1' -> Select 'Prophet' -> Join"
+
+echo "Logs available in host.log, client1.log, client2.log"
