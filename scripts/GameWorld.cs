@@ -134,13 +134,13 @@ public partial class GameWorld : Node2D
 		_timeRemaining = 300.0;
 
 		SpawnNPCs();
-		SpawnPlayers();
+		SpawnAllPlayers();
 		BroadcastGameState();
 	}
 
 	private void InitializeClient()
 	{
-		// Request state from server
+		// Request state from server - players will be spawned when state arrives
 		RpcId(1, MethodName.RequestGameState);
 	}
 
@@ -179,8 +179,15 @@ public partial class GameWorld : Node2D
 		}
 	}
 
-	private void SpawnPlayers()
+	private void SpawnAllPlayers()
 	{
+		// Clear existing players
+		foreach (var kvp in _playerControllers)
+		{
+			kvp.Value.QueueFree();
+		}
+		_playerControllers.Clear();
+
 		var startPositions = new Vector2[]
 		{
 			new Vector2(100, 700),
@@ -194,10 +201,24 @@ public partial class GameWorld : Node2D
 			var player = new PlayerController();
 			player.Position = startPositions[idx % startPositions.Length];
 			player.SetRole(kvp.Value.Role);
-			player.SetLocalPlayer(kvp.Key == Multiplayer.GetUniqueId());
+			
+			// Check if this is our local player
+			bool isLocal = kvp.Key == Multiplayer.GetUniqueId();
+			player.SetLocalPlayer(isLocal);
+			
+			GD.Print($"Spawning player {kvp.Key} as {kvp.Value.Role}, isLocal={isLocal}");
+			
 			AddChild(player);
 			_playerControllers[kvp.Key] = player;
 			idx++;
+		}
+		
+		// Also set our role from network manager for UI
+		long myId = Multiplayer.GetUniqueId();
+		if (_networkManager.Players.ContainsKey(myId))
+		{
+			_myRole = _networkManager.Players[myId].Role;
+			_roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 		}
 	}
 
@@ -307,8 +328,59 @@ public partial class GameWorld : Node2D
 	private void UpdateGameState(string json)
 	{
 		_localGameState = JObject.Parse(json);
+		
+		// Spawn NPCs if not spawned yet (clients)
+		if (_npcEntities.Count == 0)
+		{
+			SpawnNPCsFromState();
+		}
+		
+		// Spawn/update players
+		if (_playerControllers.Count == 0 || _playerControllers.Count != _networkManager.Players.Count)
+		{
+			SpawnAllPlayers();
+		}
+		
 		UpdateUI();
 		UpdateNPCVisuals();
+	}
+
+	private void SpawnNPCsFromState()
+	{
+		var npcPositions = new Dictionary<string, Vector2>
+		{
+			{ "katy", new Vector2(200, 200) },
+			{ "john", new Vector2(600, 200) },
+			{ "rebecca", new Vector2(1000, 200) },
+			{ "marcus", new Vector2(400, 500) },
+			{ "sofia", new Vector2(800, 500) }
+		};
+
+		var npcColors = new Dictionary<string, Color>
+		{
+			{ "katy", Colors.DeepPink },
+			{ "john", Colors.DodgerBlue },
+			{ "rebecca", Colors.Orange },
+			{ "marcus", Colors.LimeGreen },
+			{ "sofia", Colors.Orchid }
+		};
+
+		var activeNpcs = _localGameState?["active_npcs"];
+		if (activeNpcs == null) return;
+
+		foreach (string npcId in activeNpcs)
+		{
+			if (_npcEntities.ContainsKey(npcId)) continue;
+			
+			var entity = new NPCEntity();
+			entity.NpcId = npcId;
+			entity.NpcName = npcId.Substring(0, 1).ToUpper() + npcId.Substring(1); // Capitalize
+			entity.NpcColor = npcColors.GetValueOrDefault(npcId, Colors.Blue);
+			entity.Position = npcPositions.GetValueOrDefault(npcId, new Vector2(600, 400));
+			entity.NPCClicked += OnNPCClicked;
+			AddChild(entity);
+			_npcEntities[npcId] = entity;
+		}
 	}
 
 	private void UpdateUI()

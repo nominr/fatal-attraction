@@ -71,15 +71,20 @@ public partial class PlayerController : CharacterBody2D
 	public void SetLocalPlayer(bool isLocal)
 	{
 		_isLocalPlayer = isLocal;
-		if (isLocal)
+		GD.Print($"SetLocalPlayer called: isLocal={isLocal}, _sprite exists={_sprite != null}");
+		
+		if (_sprite != null)
 		{
-			// Add visual indicator that this is the local player
-			_sprite.Modulate = Colors.White;
-		}
-		else
-		{
-			// Other players are slightly dimmed
-			_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, 1f);
+			if (isLocal)
+			{
+				// Add visual indicator that this is the local player
+				_sprite.Modulate = Colors.White;
+			}
+			else
+			{
+				// Other players are slightly dimmed
+				_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, 1f);
+			}
 		}
 	}
 
@@ -89,7 +94,12 @@ public partial class PlayerController : CharacterBody2D
 	public void SetRole(string role)
 	{
 		PlayerRole = role;
-		_roleLabel.Text = role;
+		GD.Print($"SetRole called: role={role}");
+		
+		if (_roleLabel != null)
+		{
+			_roleLabel.Text = role;
+		}
 
 		// Set color based on role
 		Color roleColor = role.ToLower() switch
