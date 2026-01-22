@@ -7,6 +7,9 @@ using System;
 /// </summary>
 public partial class PlayerController : CharacterBody2D
 {
+	[Signal]
+	public delegate void PositionChangedEventHandler(long playerId, Vector2 position);
+
 	[Export]
 	public float Speed { get; set; } = 200.0f;
 
@@ -16,6 +19,9 @@ public partial class PlayerController : CharacterBody2D
 	[Export]
 	public string PlayerRole { get; set; } = "Observer";
 
+	[Export]
+	public int PlayerIndex { get; set; } = 1; // 1, 2, or 3 for sprite selection
+
 	// Visual elements
 	private Sprite2D _sprite;
 	private Label _nameLabel;
@@ -24,6 +30,9 @@ public partial class PlayerController : CharacterBody2D
 	// Networking
 	private bool _isLocalPlayer = false;
 	public bool IsLocalPlayer => _isLocalPlayer;
+	private long _playerId = 0;
+	private Vector2 _lastSentPosition = Vector2.Zero;
+	private const float PositionSyncThreshold = 2.0f; // Only sync if moved more than this
 
 	public override void _Ready()
 	{
@@ -38,32 +47,57 @@ public partial class PlayerController : CharacterBody2D
 		// Create collision shape
 		var collisionShape = new CollisionShape2D();
 		var shape = new CircleShape2D();
-		shape.Radius = 20;
+		shape.Radius = 16; // 32x32 sprite / 2
 		collisionShape.Shape = shape;
 		AddChild(collisionShape);
 
-		// Player sprite (colored circle)
+		// Player sprite - will be loaded when role is set
 		_sprite = new Sprite2D();
-		var texture = new GradientTexture2D();
-		texture.Width = 48;
-		texture.Height = 48;
-		texture.Fill = GradientTexture2D.FillEnum.Radial;
-		texture.FillFrom = new Vector2(0.5f, 0.5f);
-		texture.FillTo = new Vector2(1f, 0.5f);
-		var gradient = new Gradient();
-		gradient.SetColor(0, PlayerColor);
-		gradient.SetColor(1, PlayerColor.Darkened(0.4f));
-		texture.Gradient = gradient;
-		_sprite.Texture = texture;
 		AddChild(_sprite);
+		
+		// Load sprite based on role (will be called again when role is set)
+		LoadSpriteForRole(PlayerRole);
 
 		// Role label below player
 		_roleLabel = new Label();
 		_roleLabel.Text = PlayerRole;
 		_roleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_roleLabel.Position = new Vector2(-40, 25);
+		_roleLabel.Position = new Vector2(-40, 20);
 		_roleLabel.CustomMinimumSize = new Vector2(80, 20);
 		AddChild(_roleLabel);
+	}
+
+	private void LoadSpriteForRole(string role)
+	{
+		if (_sprite == null) return;
+		
+		// Map role to sprite number: Admirer=1, Prophet=2, Producer=3
+		int spriteNum = role.ToLower() switch
+		{
+			"admirer" => 1,
+			"prophet" => 2,
+			"producer" => 3,
+			_ => 1 // default to sprite 1
+		};
+		
+		// Use correct path from assets folder
+		string spritePath = $"res://assets/sprite-000{spriteNum}.png";
+		var texture = GD.Load<Texture2D>(spritePath);
+		
+		if (texture != null)
+		{
+			_sprite.Texture = texture;
+			GD.Print($"Loaded player sprite for {role}: {spritePath}");
+		}
+		else
+		{
+			GD.PrintErr($"Failed to load sprite: {spritePath}");
+			// Fallback to generated texture
+			var fallbackTexture = new GradientTexture2D();
+			fallbackTexture.Width = 32;
+			fallbackTexture.Height = 32;
+			_sprite.Texture = fallbackTexture;
+		}
 	}
 
 	/// <summary>
@@ -102,16 +136,8 @@ public partial class PlayerController : CharacterBody2D
 			_roleLabel.Text = role;
 		}
 
-		// Set color based on role
-		Color roleColor = role.ToLower() switch
-		{
-			"admirer" => Colors.Red,
-			"prophet" => Colors.Purple,
-			"producer" => Colors.Gold,
-			_ => Colors.Gray
-		};
-
-		SetColor(roleColor);
+		// Load the correct sprite for this role
+		LoadSpriteForRole(role);
 	}
 
 	/// <summary>
@@ -130,6 +156,30 @@ public partial class PlayerController : CharacterBody2D
 
 	// Input control
 	public bool InputEnabled { get; set; } = true;
+
+	/// <summary>
+	/// Set the network player ID for this controller
+	/// </summary>
+	public void SetPlayerId(long playerId)
+	{
+		_playerId = playerId;
+		_lastSentPosition = Position; // Initialize to current position
+		GD.Print($"PlayerController: Set player ID {playerId} at position {Position}");
+	}
+
+	/// <summary>
+	/// Update position from network sync (for remote players)
+	/// </summary>
+	public void UpdateRemotePosition(Vector2 newPosition)
+	{
+		if (_isLocalPlayer)
+		{
+			GD.Print($"[PlayerController] Ignoring UpdateRemotePosition for local player {_playerId}");
+			return; // Don't override local player position
+		}
+		GD.Print($"[PlayerController] Updating remote player {_playerId} position from {Position} to {newPosition}");
+		Position = newPosition;
+	}
 
 	public override void _PhysicsProcess(double delta)
 	{
@@ -155,5 +205,13 @@ public partial class PlayerController : CharacterBody2D
 
 		Velocity = velocity;
 		MoveAndSlide();
+
+		// Emit position change if moved significantly
+		if (Position.DistanceTo(_lastSentPosition) > PositionSyncThreshold)
+		{
+			_lastSentPosition = Position;
+			GD.Print($"[PlayerController] Player {_playerId} emitting PositionChanged signal at {Position}");
+			EmitSignal(SignalName.PositionChanged, _playerId, Position);
+		}
 	}
 }

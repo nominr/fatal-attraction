@@ -75,6 +75,10 @@ public partial class Lobby : Control
 		_hostButton.Disabled = true;
 		_joinButton.Disabled = true;
 		_startButton.Disabled = false; // Host can start
+		
+		// Host also needs to request their role
+		string role = _roleOption.GetItemText(_roleOption.Selected);
+		_networkManager.SendRoleRequest(role);
 	}
 
 	private void OnJoinPressed()
