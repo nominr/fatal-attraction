@@ -106,23 +106,34 @@ public partial class GameWorld : Node2D
 
 	private void SetupBackground()
 	{
-		// Simple background
-		var bg = new ColorRect();
-		bg.Color = new Color(0.15f, 0.15f, 0.2f, 1f);
-		bg.Size = _worldSize;
-		bg.ZIndex = -10;
-		AddChild(bg);
-
-		// World boundary
-		var boundary = new Line2D();
-		boundary.AddPoint(new Vector2(0, 0));
-		boundary.AddPoint(new Vector2(_worldSize.X, 0));
-		boundary.AddPoint(new Vector2(_worldSize.X, _worldSize.Y));
-		boundary.AddPoint(new Vector2(0, _worldSize.Y));
-		boundary.AddPoint(new Vector2(0, 0));
-		boundary.Width = 3;
-		boundary.DefaultColor = Colors.White;
-		AddChild(boundary);
+		// Load the mock map as background
+		var mapTexture = GD.Load<Texture2D>("res://assets/tilemap-basic.png");
+		
+		if (mapTexture != null)
+		{
+			var mapSprite = new Sprite2D();
+			mapSprite.Texture = mapTexture;
+			mapSprite.Centered = false; // Position from top-left
+			mapSprite.ZIndex = -10;
+			
+			// Scale to fill the world
+			float scaleX = _worldSize.X / mapTexture.GetWidth();
+			float scaleY = _worldSize.Y / mapTexture.GetHeight();
+			mapSprite.Scale = new Vector2(scaleX, scaleY);
+			
+			AddChild(mapSprite);
+			GD.Print($"Background map loaded: {mapTexture.GetWidth()}x{mapTexture.GetHeight()}, scaled to {_worldSize}");
+		}
+		else
+		{
+			// Fallback to simple colored background
+			var bg = new ColorRect();
+			bg.Color = new Color(0.15f, 0.15f, 0.2f, 1f);
+			bg.Size = _worldSize;
+			bg.ZIndex = -10;
+			AddChild(bg);
+			GD.PrintErr("Failed to load tilemap-basic.png, using fallback background");
+		}
 	}
 
 	private void InitializeServer()
@@ -200,13 +211,22 @@ public partial class GameWorld : Node2D
 		{
 			var player = new PlayerController();
 			player.Position = startPositions[idx % startPositions.Length];
+			player.PlayerIndex = (idx % 3) + 1; // 1, 2, or 3 for sprite selection
 			player.SetRole(kvp.Value.Role);
+			player.SetPlayerId(kvp.Key); // Set the network player ID
 			
 			// Check if this is our local player
 			bool isLocal = kvp.Key == Multiplayer.GetUniqueId();
 			player.SetLocalPlayer(isLocal);
 			
-			GD.Print($"Spawning player {kvp.Key} as {kvp.Value.Role}, isLocal={isLocal}");
+			// Connect to position change signal for local player only
+			// (Remote players get updated via RPC, not signal)
+			if (isLocal)
+			{
+				player.PositionChanged += OnPlayerPositionChanged;
+			}
+			
+			GD.Print($"Spawning player {kvp.Key} as {kvp.Value.Role}, sprite={player.PlayerIndex}, isLocal={isLocal}");
 			
 			AddChild(player);
 			_playerControllers[kvp.Key] = player;
@@ -448,6 +468,51 @@ public partial class GameWorld : Node2D
 				bool married = state["married"]?.Value<bool>() ?? false;
 				kvp.Value.UpdateState(alive, converted, married);
 			}
+		}
+	}
+
+	// ---- POSITION SYNCHRONIZATION ----
+
+	private void OnPlayerPositionChanged(long playerId, Vector2 position)
+	{
+		GD.Print($"GameWorld: OnPlayerPositionChanged called - Player {playerId} at {position}, IsServer={Multiplayer.IsServer()}");
+		// This is called when a local player moves
+		// If we're the server, broadcast to all clients
+		// If we're a client, send to server
+		if (Multiplayer.IsServer())
+		{
+			// Server broadcasts to all clients
+			GD.Print($"GameWorld: Server broadcasting position for player {playerId}");
+			Rpc(MethodName.SyncPlayerPosition, playerId, position);
+		}
+		else
+		{
+			// Client sends to server only
+			GD.Print($"GameWorld: Client sending position to server for player {playerId}");
+			RpcId(1, MethodName.SyncPlayerPosition, playerId, position);
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+	private void SyncPlayerPosition(long playerId, Vector2 position)
+	{
+		GD.Print($"GameWorld: SyncPlayerPosition RPC received - Player {playerId} at {position}, IsServer={Multiplayer.IsServer()}");
+		// Update the player controller's position
+		if (_playerControllers.TryGetValue(playerId, out var controller))
+		{
+			GD.Print($"GameWorld: Found controller for player {playerId}, updating position");
+			controller.UpdateRemotePosition(position);
+		}
+		else
+		{
+			GD.Print($"GameWorld: WARNING - No controller found for player {playerId}");
+		}
+		
+		// If we're the server and received this from a client, broadcast to all other clients
+		if (Multiplayer.IsServer())
+		{
+			GD.Print($"GameWorld: Server re-broadcasting position for player {playerId}");
+			Rpc(MethodName.SyncPlayerPosition, playerId, position);
 		}
 	}
 

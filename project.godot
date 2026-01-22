@@ -22,3 +22,7 @@ NetworkManager="*res://scripts/NetworkManager.cs"
 [dotnet]
 
 project/assembly_name="FatalAttraction"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0

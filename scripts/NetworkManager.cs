@@ -119,8 +119,12 @@ public partial class NetworkManager : Node
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void RegisterPlayer(string name)
 	{
-		var id = Multiplayer.GetRemoteSenderId();
-		GD.Print($"Registering player {name} ({id})");
+		var senderId = Multiplayer.GetRemoteSenderId();
+		// For locally-called RPCs (like host registering itself), sender ID is 0
+		// Use the actual unique ID in that case
+		long id = senderId == 0 ? Multiplayer.GetUniqueId() : senderId;
+		
+		GD.Print($"Registering player {name} (senderId={senderId}, actualId={id})");
 		
 		var info = new PlayerInfo { Name = name, Id = (int)id, Role = "Observer" };
 		Players[id] = info;
