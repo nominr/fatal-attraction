@@ -85,10 +85,23 @@ public partial class NetworkManager : Node
 	private void OnPeerDisconnected(long id)
 	{
 		GD.Print($"Peer disconnected: {id}");
-		if (Players.ContainsKey(id))
+		if (Multiplayer.IsServer())
 		{
-			Players.Remove(id);
-			EmitSignal(SignalName.PlayerDisconnected, id);
+			// Update server state and broadcast removal to all clients
+			if (Players.ContainsKey(id))
+			{
+				Players.Remove(id);
+				Rpc(MethodName.SyncPlayerLeft, id);
+			}
+		}
+		else
+		{
+			// Client just updates local view
+			if (Players.ContainsKey(id))
+			{
+				Players.Remove(id);
+				EmitSignal(SignalName.PlayerDisconnected, id);
+			}
 		}
 	}
 
@@ -128,8 +141,24 @@ public partial class NetworkManager : Node
 		
 		var info = new PlayerInfo { Name = name, Id = (int)id, Role = "Observer" };
 		Players[id] = info;
-		
-		EmitSignal(SignalName.PlayerConnected, id, name);
+
+		if (Multiplayer.IsServer())
+		{
+			// Broadcast the new player to all peers
+			Rpc(MethodName.SyncPlayerJoined, id, name);
+			// Send the full current player list to the newly joined peer
+			foreach (var kvp in Players)
+			{
+				RpcId(id, MethodName.SyncPlayerJoined, kvp.Key, kvp.Value.Name);
+				// Also sync role for each player
+				RpcId(id, MethodName.SyncPlayerRole, kvp.Key, kvp.Value.Role);
+			}
+		}
+		else
+		{
+			// Local execution for the origin peer (client or host)
+			EmitSignal(SignalName.PlayerConnected, id, name);
+		}
 	}
 
 	public void SendStartGame()
@@ -182,6 +211,28 @@ public partial class NetworkManager : Node
 			Players[playerId] = info;
 			GD.Print($"Player {playerId} assigned role {role}");
 			EmitSignal(SignalName.PlayerConnected, playerId, info.Name);
+		}
+	}
+
+	// Broadcast: server informs clients a player joined
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void SyncPlayerJoined(long playerId, string name)
+	{
+		var info = new PlayerInfo { Name = name, Id = (int)playerId, Role = Players.ContainsKey(playerId) ? Players[playerId].Role : "Observer" };
+		Players[playerId] = info;
+		EmitSignal(SignalName.PlayerConnected, playerId, name);
+		GD.Print($"Synced player join: {playerId} ({name})");
+	}
+
+	// Broadcast: server informs clients a player left
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void SyncPlayerLeft(long playerId)
+	{
+		if (Players.ContainsKey(playerId))
+		{
+			Players.Remove(playerId);
+			EmitSignal(SignalName.PlayerDisconnected, playerId);
+			GD.Print($"Synced player left: {playerId}");
 		}
 	}
 }

@@ -168,8 +168,12 @@ public partial class PlayerController : CharacterBody2D
 	/// </summary>
 	public void UpdateRemotePosition(Vector2 newPosition)
 	{
-		if (_isLocalPlayer) return; // Don't override local player position
-		GD.Print($"PlayerController: Updating remote player {_playerId} position to {newPosition}");
+		if (_isLocalPlayer)
+		{
+			GD.Print($"[PlayerController] Ignoring UpdateRemotePosition for local player {_playerId}");
+			return; // Don't override local player position
+		}
+		GD.Print($"[PlayerController] Updating remote player {_playerId} position from {Position} to {newPosition}");
 		Position = newPosition;
 	}
 
@@ -202,7 +206,7 @@ public partial class PlayerController : CharacterBody2D
 		if (Position.DistanceTo(_lastSentPosition) > PositionSyncThreshold)
 		{
 			_lastSentPosition = Position;
-			GD.Print($"PlayerController: Player {_playerId} emitting position {Position}");
+			GD.Print($"[PlayerController] Player {_playerId} emitting PositionChanged signal at {Position}");
 			EmitSignal(SignalName.PositionChanged, _playerId, Position);
 		}
 	}
