@@ -66,6 +66,11 @@ public partial class PlayerController : CharacterBody2D
 		// Load sprite based on role (will be called again when role is set)
 		LoadSpriteForRole(PlayerRole);
 
+		// Add camera for local player
+		var camera = new Camera2D();
+		camera.Enabled = false; // Will be enabled when SetLocalPlayer is called
+		AddChild(camera);
+
 		// Role label below player
 		_roleLabel = new Label();
 		_roleLabel.Text = PlayerRole;
@@ -118,6 +123,23 @@ public partial class PlayerController : CharacterBody2D
 	{
 		_isLocalPlayer = isLocal;
 		GD.Print($"SetLocalPlayer called: isLocal={isLocal}, _sprite exists={_sprite != null}");
+		
+		// Enable camera for local player
+		var camera = GetNodeOrNull<Camera2D>("Camera2D");
+		GD.Print($"Looking for Camera2D, found: {camera != null}");
+		if (camera != null)
+		{
+			camera.Enabled = isLocal;
+			if (isLocal)
+			{
+				camera.MakeCurrent(); // Explicitly make this camera active
+				GD.Print($"Camera enabled and made current for local player {_playerId}");
+			}
+		}
+		else
+		{
+			GD.PrintErr("Camera2D not found in PlayerController!");
+		}
 		
 		if (_sprite != null)
 		{

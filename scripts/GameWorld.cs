@@ -66,7 +66,7 @@ public partial class GameWorld : Node2D
 				tileMapNode.Scale = new Vector2(4.0f, 4.0f);
 				// Center the tilemap - offset it to align with viewport center
 				// The tilemap data uses negative coordinates, so we need to offset it
-				tileMapNode.Position = new Vector2(600, 200); // Center of 1200x800 world
+				tileMapNode.Position = new Vector2(500, 200); // Center of 1200x800 world
 				tileMapNode.ZIndex = -10; // Ensure it's behind everything
 				GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
 			}
