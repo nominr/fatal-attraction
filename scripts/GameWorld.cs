@@ -44,11 +44,13 @@ public partial class GameWorld : Node2D
 	
 	private Label _timerLabel;
 	private Label _roleLabel;
+	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
 
 	// World bounds
 	private Vector2 _worldSize = new Vector2(1200, 800);
+	private const int PROPHET_CONVERT_GOAL = 5;
 
 	public override void _Ready()
 	{
@@ -115,13 +117,21 @@ public partial class GameWorld : Node2D
 		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
 		hudContainer.AddChild(_roleLabel);
 
+		_convertedLabel = new Label();
+		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
+		_convertedLabel.Visible = false; // Only relevant for Prophet
+		hudContainer.AddChild(_convertedLabel);
+
 		_metersContainer = new VBoxContainer();
 		hudContainer.AddChild(_metersContainer);
 
 		// Notification Panel (bottom right)
+		var viewportSize = GetViewportRect().Size; // Use actual viewport to avoid clipping on smaller windows
 		var notifPanel = new PanelContainer();
-		notifPanel.Position = new Vector2(800, 500);
 		notifPanel.CustomMinimumSize = new Vector2(380, 280);
+		notifPanel.Position = new Vector2(
+			Mathf.Max(20, viewportSize.X - notifPanel.CustomMinimumSize.X - 30),
+			Mathf.Max(20, viewportSize.Y - notifPanel.CustomMinimumSize.Y - 30));
 		_uiLayer.AddChild(notifPanel);
 
 		var notifMargin = new MarginContainer();
@@ -235,10 +245,13 @@ public partial class GameWorld : Node2D
 		_uiLayer.AddChild(_goalsMenu);
 
 		// Goals Button (upper right corner)
+		var viewportSize = GetViewportRect().Size;
 		_goalsButton = new Button();
 		_goalsButton.Text = "📋 GOALS";
-		_goalsButton.Position = new Vector2(1050, 20); // Upper right for 1200x800 world
 		_goalsButton.CustomMinimumSize = new Vector2(120, 40);
+		_goalsButton.Position = new Vector2(
+			Mathf.Max(20, viewportSize.X - _goalsButton.CustomMinimumSize.X - 30),
+			20);
 		_goalsButton.Pressed += OnGoalsButtonPressed;
 		_uiLayer.AddChild(_goalsButton);
 	}
@@ -852,12 +865,27 @@ public partial class GameWorld : Node2D
 		}
 		_roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 
+		bool isProphet = (_myRole?.ToLower() == "prophet");
+
 		// Update Trap Button Visibility
 		// Update Trap Button Visibility
 		if (_uiLayer.GetNodeOrNull<Button>("TrapButton") is Button trapBtn)
 		{
-			bool isProphet = (_myRole?.ToLower() == "prophet");
 			trapBtn.Visible = isProphet;
+		}
+
+		// Prophet conversion progress
+		if (_convertedLabel != null)
+		{
+			var npcStates = _localGameState?["npc_states"] as JObject;
+			int convertedCount = npcStates?.Properties()
+				.Where(p => p.Value["converted"]?.Value<bool>() == true)
+				.Count() ?? 0;
+
+			int goal = PROPHET_CONVERT_GOAL;
+			convertedCount = Math.Min(convertedCount, goal);
+			_convertedLabel.Text = $"Converted: {convertedCount}/{goal}";
+			_convertedLabel.Visible = isProphet;
 		}
 
 		// PRODUCER ACTIONS VISIBILITY

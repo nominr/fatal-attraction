@@ -1577,13 +1577,13 @@
           "requirement": {
             "meter": "chaos",
             "minValue": 10,
-            "npcsConverted": 4
+            "npcsConverted": 5
           }
         },
         "secondary": {
           "goal": "convert_quota",
           "requirement": {
-            "npcsConverted": 4
+            "npcsConverted": 5
           }
         }
       },
