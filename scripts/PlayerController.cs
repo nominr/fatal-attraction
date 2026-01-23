@@ -26,6 +26,7 @@ public partial class PlayerController : CharacterBody2D
 	private Sprite2D _sprite;
 	private Label _nameLabel;
 	private Label _roleLabel;
+	private Camera2D _camera;
 
 	// Networking
 	private bool _isLocalPlayer = false;
@@ -67,9 +68,9 @@ public partial class PlayerController : CharacterBody2D
 		LoadSpriteForRole(PlayerRole);
 
 		// Add camera for local player
-		var camera = new Camera2D();
-		camera.Enabled = false; // Will be enabled when SetLocalPlayer is called
-		AddChild(camera);
+		_camera = new Camera2D();
+		_camera.Enabled = false; // Will be enabled when SetLocalPlayer is called
+		AddChild(_camera);
 
 		// Role label below player
 		_roleLabel = new Label();
@@ -125,20 +126,18 @@ public partial class PlayerController : CharacterBody2D
 		GD.Print($"SetLocalPlayer called: isLocal={isLocal}, _sprite exists={_sprite != null}");
 		
 		// Enable camera for local player
-		var camera = GetNodeOrNull<Camera2D>("Camera2D");
-		GD.Print($"Looking for Camera2D, found: {camera != null}");
-		if (camera != null)
+		if (_camera != null)
 		{
-			camera.Enabled = isLocal;
+			_camera.Enabled = isLocal;
 			if (isLocal)
 			{
-				camera.MakeCurrent(); // Explicitly make this camera active
+				_camera.MakeCurrent(); // Explicitly make this camera active
 				GD.Print($"Camera enabled and made current for local player {_playerId}");
 			}
 		}
 		else
 		{
-			GD.PrintErr("Camera2D not found in PlayerController!");
+			GD.PrintErr("Camera reference is null!");
 		}
 		
 		if (_sprite != null)

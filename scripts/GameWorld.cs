@@ -231,7 +231,12 @@ public partial class GameWorld : Node2D
 			
 			GD.Print($"[GameWorld] Spawning player {kvp.Key} as {kvp.Value.Role}, sprite={player.PlayerIndex}, isLocal={isLocal}, pos={player.Position}");
 			
+			// Add child first so _Ready() gets called and camera is created
 			AddChild(player);
+			
+			// Then set local player status (camera must exist first)
+			player.SetLocalPlayer(isLocal);
+			
 			_playerControllers[kvp.Key] = player;
 			idx++;
 		}
