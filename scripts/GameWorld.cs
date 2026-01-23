@@ -39,14 +39,18 @@ public partial class GameWorld : Node2D
 
 	// World bounds
 	private Vector2 _worldSize = new Vector2(1200, 800);
+	private Random _random = new Random();
 
 	public override void _Ready()
 	{
 		_networkManager = GetNode<NetworkManager>("/root/NetworkManager");
-
+		
 		SetupUI();
 		SetupBackground();
-
+		
+		// Ensure random is seeded differently if possible, but default is time-based which is fine for one instance.
+		// For deterministic NPC spawning, we use local instances.
+		
 		if (Multiplayer.IsServer())
 		{
 			InitializeServer();
@@ -106,23 +110,19 @@ public partial class GameWorld : Node2D
 
 	private void SetupBackground()
 	{
-		// Load the mock map as background
-		var mapTexture = GD.Load<Texture2D>("res://assets/tilemap-basic.png");
+		// Load the demo world scene
+		var scene = GD.Load<PackedScene>("res://scenes/demo_world.tscn");
 		
-		if (mapTexture != null)
+		if (scene != null)
 		{
-			var mapSprite = new Sprite2D();
-			mapSprite.Texture = mapTexture;
-			mapSprite.Centered = false; // Position from top-left
-			mapSprite.ZIndex = -10;
-			
-			// Scale to fill the world
-			float scaleX = _worldSize.X / mapTexture.GetWidth();
-			float scaleY = _worldSize.Y / mapTexture.GetHeight();
-			mapSprite.Scale = new Vector2(scaleX, scaleY);
-			
-			AddChild(mapSprite);
-			GD.Print($"Background map loaded: {mapTexture.GetWidth()}x{mapTexture.GetHeight()}, scaled to {_worldSize}");
+			var mapNode = scene.Instantiate() as Node2D;
+			if (mapNode != null)
+			{
+				mapNode.Name = "GameMap";
+				mapNode.ZIndex = -10; // Ensure it's behind players/NPCs
+				AddChild(mapNode);
+				GD.Print("Loaded demo_world.tscn as map");
+			}
 		}
 		else
 		{
@@ -132,7 +132,7 @@ public partial class GameWorld : Node2D
 			bg.Size = _worldSize;
 			bg.ZIndex = -10;
 			AddChild(bg);
-			GD.PrintErr("Failed to load tilemap-basic.png, using fallback background");
+			GD.PrintErr("Failed to load scenes/demo_world.tscn, using fallback background");
 		}
 	}
 
@@ -159,15 +159,6 @@ public partial class GameWorld : Node2D
 	{
 		if (_gameEngine == null) return;
 
-		var npcPositions = new Dictionary<string, Vector2>
-		{
-			{ "katy", new Vector2(200, 200) },
-			{ "john", new Vector2(600, 200) },
-			{ "rebecca", new Vector2(1000, 200) },
-			{ "marcus", new Vector2(400, 500) },
-			{ "sofia", new Vector2(800, 500) }
-		};
-
 		var npcColors = new Dictionary<string, Color>
 		{
 			{ "katy", Colors.DeepPink },
@@ -183,11 +174,19 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npc.Id;
 			entity.NpcName = npc.Name;
 			entity.NpcColor = npcColors.GetValueOrDefault(npc.Id, Colors.Blue);
-			entity.Position = npcPositions.GetValueOrDefault(npc.Id, new Vector2(600, 400));
+			entity.Position = GetRandomSpawnPosition();
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npc.Id] = entity;
 		}
+	}
+
+	private Vector2 GetRandomSpawnPosition()
+	{
+		// Margin of 100 to avoid edges
+		float x = _random.Next(100, (int)_worldSize.X - 100);
+		float y = _random.Next(100, (int)_worldSize.Y - 100);
+		return new Vector2(x, y);
 	}
 
 	private void SpawnAllPlayers()
@@ -199,18 +198,38 @@ public partial class GameWorld : Node2D
 		}
 		_playerControllers.Clear();
 
-		var startPositions = new Vector2[]
-		{
-			new Vector2(100, 700),
-			new Vector2(600, 700),
-			new Vector2(1100, 700)
-		};
-
 		int idx = 0;
+		// Check if we have authoritative positions from server
+		var playerStates = _localGameState?["player_states"] as JObject;
+
 		foreach (var kvp in _networkManager.Players)
 		{
 			var player = new PlayerController();
-			player.Position = startPositions[idx % startPositions.Length];
+			
+			// Position Logic
+			if (Multiplayer.IsServer())
+			{
+				// Server decides random position
+				player.Position = GetRandomSpawnPosition();
+			}
+			else
+			{
+				// Client tries to use server position
+				if (playerStates != null && playerStates.TryGetValue(kvp.Key.ToString(), out var stateToken))
+				{
+					float x = stateToken["x"]?.Value<float>() ?? 0;
+					float y = stateToken["y"]?.Value<float>() ?? 0;
+					player.Position = new Vector2(x, y);
+					GD.Print($"Spawned player {kvp.Key} from server state at {player.Position}");
+				}
+				else
+				{
+					// Fallback (e.g. state not yet arrived or first frame)
+					player.Position = GetRandomSpawnPosition();
+					GD.Print($"Spawned player {kvp.Key} locally at {player.Position} (Fallback)");
+				}
+			}
+
 			player.PlayerIndex = (idx % 3) + 1; // 1, 2, or 3 for sprite selection
 			player.SetRole(kvp.Value.Role);
 			player.SetPlayerId(kvp.Key); // Set the network player ID
@@ -220,14 +239,14 @@ public partial class GameWorld : Node2D
 			player.SetLocalPlayer(isLocal);
 			
 			// Connect to position change signal for local player only
-			// (Remote players get updated via RPC, not signal)
 			if (isLocal)
 			{
 				player.PositionChanged += OnPlayerPositionChanged;
 			}
 			
-			GD.Print($"Spawning player {kvp.Key} as {kvp.Value.Role}, sprite={player.PlayerIndex}, isLocal={isLocal}");
-			
+			// Critical for top-down movement: Disable gravity logic (Duplicate safe init)
+			// player.MotionMode = CharacterBody2D.MotionModeEnum.Floating; // Handled in PlayerController._Ready
+
 			AddChild(player);
 			_playerControllers[kvp.Key] = player;
 			idx++;
@@ -341,6 +360,18 @@ public partial class GameWorld : Node2D
 		}
 		status["all_actions"] = allActions;
 
+		// Player Positions (Sync for late joiners and initial spawn)
+		var playerStates = new JObject();
+		foreach (var kvp in _playerControllers)
+		{
+			playerStates[kvp.Key.ToString()] = new JObject
+			{
+				{ "x", kvp.Value.Position.X },
+				{ "y", kvp.Value.Position.Y }
+			};
+		}
+		status["player_states"] = playerStates;
+
 		return status.ToString();
 	}
 
@@ -367,15 +398,6 @@ public partial class GameWorld : Node2D
 
 	private void SpawnNPCsFromState()
 	{
-		var npcPositions = new Dictionary<string, Vector2>
-		{
-			{ "katy", new Vector2(200, 200) },
-			{ "john", new Vector2(600, 200) },
-			{ "rebecca", new Vector2(1000, 200) },
-			{ "marcus", new Vector2(400, 500) },
-			{ "sofia", new Vector2(800, 500) }
-		};
-
 		var npcColors = new Dictionary<string, Color>
 		{
 			{ "katy", Colors.DeepPink },
@@ -396,7 +418,14 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npcId;
 			entity.NpcName = npcId.Substring(0, 1).ToUpper() + npcId.Substring(1); // Capitalize
 			entity.NpcColor = npcColors.GetValueOrDefault(npcId, Colors.Blue);
-			entity.Position = npcPositions.GetValueOrDefault(npcId, new Vector2(600, 400));
+			
+			// Use deterministic position based on ID so all clients agree
+			int seed = npcId.GetHashCode();
+			var rnd = new Random(seed);
+			float x = rnd.Next(100, (int)_worldSize.X - 100);
+			float y = rnd.Next(100, (int)_worldSize.Y - 100);
+			entity.Position = new Vector2(x, y);
+
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npcId] = entity;

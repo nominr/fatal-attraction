@@ -1,0 +1,49 @@
+[gd_scene load_steps=8 format=4 uid="uid://bn5p2aixoegs7"]
+
+[ext_resource type="Texture2D" uid="uid://cdyp57iq18xf1" path="res://assets/tilemap-basic.png" id="1_tccpi"]
+[ext_resource type="PackedScene" uid="uid://b5s7wl50w33ut" path="res://scenes/prophet.tscn" id="2_tdn6g"]
+[ext_resource type="PackedScene" uid="uid://08lv6bu04cqp" path="res://scenes/admirer.tscn" id="3_da435"]
+[ext_resource type="PackedScene" uid="uid://cdfyi7ia0i03t" path="res://scenes/producer.tscn" id="4_1464v"]
+[ext_resource type="PackedScene" uid="uid://2earbuoeo03p" path="res://scenes/npc.tscn" id="5_tdn6g"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4qpdp"]
+texture = ExtResource("1_tccpi")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+3:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_n31jq"]
+tile_size = Vector2i(32, 32)
+sources/0 = SubResource("TileSetAtlasSource_4qpdp")
+
+[node name="DemoWorld" type="Node2D"]
+
+[node name="TileMap" type="TileMap" parent="."]
+tile_set = SubResource("TileSet_n31jq")
+format = 2
+
+[node name="BasicRoom" type="TileMapLayer" parent="TileMap"]
+use_parent_material = true
+tile_map_data = PackedByteArray("AAD//wAAAAABAAAAAAAAAAAAAAABAAAAAAABAAAAAAABAAAAAAACAAAAAAABAAAAAAD+/wAAAAABAAAAAAD//wEAAAABAAAAAAAAAAEAAAABAAAAAAABAAEAAAABAAAAAAACAAEAAAABAAAAAAD+/wEAAAABAAAAAAD+////AAACAAAAAAD/////AAACAAAAAAAAAP//AAADAAAAAAABAP//AAACAAAAAAACAP//AAACAAAAAAAAAAIAAAABAAAAAAADAP//AAAAAAMAAAADAAAAAAAAAAMAAAADAAEAAAAAAAMAAAACAP7/AAABAAMAAAABAP7/AAABAAMAAAAAAP7/AAABAAMAAAD///7/AAABAAMAAAD+//7/AAABAAMAAAABAAIAAAAAAAMAAAA=")
+tile_set = SubResource("TileSet_n31jq")
+
+[node name="Prophet" parent="." instance=ExtResource("2_tdn6g")]
+visible = false
+
+[node name="Admirer" parent="." instance=ExtResource("3_da435")]
+visible = false
+
+[node name="Producer" parent="." instance=ExtResource("4_1464v")]
+visible = false
+
+[node name="NPC" parent="." instance=ExtResource("5_tdn6g")]

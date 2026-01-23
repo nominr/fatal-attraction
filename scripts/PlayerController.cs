@@ -23,7 +23,8 @@ public partial class PlayerController : CharacterBody2D
 	public int PlayerIndex { get; set; } = 1; // 1, 2, or 3 for sprite selection
 
 	// Visual elements
-	private Sprite2D _sprite;
+	private Node2D _roleVisuals;
+	private Camera2D _camera;
 	private Label _nameLabel;
 	private Label _roleLabel;
 
@@ -35,28 +36,15 @@ public partial class PlayerController : CharacterBody2D
 
 	public override void _Ready()
 	{
-		SetupVisuals();
+		// Critical for top-down movement: Disable gravity logic
+		MotionMode = MotionModeEnum.Floating;
 		
-		// Add to players group so NPCs can detect us
+		SetupVisuals();
 		AddToGroup("players");
 	}
 
 	private void SetupVisuals()
 	{
-		// Create collision shape
-		var collisionShape = new CollisionShape2D();
-		var shape = new CircleShape2D();
-		shape.Radius = 16; // 32x32 sprite / 2
-		collisionShape.Shape = shape;
-		AddChild(collisionShape);
-
-		// Player sprite - will be loaded when role is set
-		_sprite = new Sprite2D();
-		AddChild(_sprite);
-		
-		// Load sprite based on role (will be called again when role is set)
-		LoadSpriteForRole(PlayerRole);
-
 		// Role label below player
 		_roleLabel = new Label();
 		_roleLabel.Text = PlayerRole;
@@ -64,93 +52,96 @@ public partial class PlayerController : CharacterBody2D
 		_roleLabel.Position = new Vector2(-40, 20);
 		_roleLabel.CustomMinimumSize = new Vector2(80, 20);
 		AddChild(_roleLabel);
+
+		// Load visual scene for role
+		LoadRoleScene(PlayerRole);
 	}
 
-	private void LoadSpriteForRole(string role)
+	private void LoadRoleScene(string role)
 	{
-		if (_sprite == null) return;
-		
-		// Map role to sprite number: Admirer=1, Prophet=2, Producer=3
-		int spriteNum = role.ToLower() switch
+		// Remove existing visuals
+		if (_roleVisuals != null)
 		{
-			"admirer" => 1,
-			"prophet" => 2,
-			"producer" => 3,
-			_ => 1 // default to sprite 1
-		};
-		
-		// Use correct path from assets folder
-		string spritePath = $"res://assets/sprite-000{spriteNum}.png";
-		var texture = GD.Load<Texture2D>(spritePath);
-		
-		if (texture != null)
+			_roleVisuals.QueueFree();
+			_roleVisuals = null;
+		}
+
+		string scenePath = $"res://scenes/{role.ToLower()}.tscn";
+		var scene = GD.Load<PackedScene>(scenePath);
+
+		if (scene != null)
 		{
-			_sprite.Texture = texture;
-			GD.Print($"Loaded player sprite for {role}: {spritePath}");
+			_roleVisuals = scene.Instantiate() as Node2D;
+			if (_roleVisuals != null)
+			{
+				AddChild(_roleVisuals);
+				GD.Print($"Loaded player scene for {role}: {scenePath}");
+
+				// Find Camera2D
+				_camera = _roleVisuals.GetNodeOrNull<Camera2D>("Camera2D") ?? FindNodeByType<Camera2D>(_roleVisuals);
+				if (_camera != null)
+				{
+					_camera.Enabled = _isLocalPlayer;
+				}
+				else
+				{
+					GD.Print($"Warning: No Camera2D found in {role} scene");
+				}
+			}
 		}
 		else
 		{
-			GD.PrintErr($"Failed to load sprite: {spritePath}");
-			// Fallback to generated texture
+			GD.PrintErr($"Failed to load scene: {scenePath}");
+			// Fallback: Create simple sprite
+			_roleVisuals = new Sprite2D();
 			var fallbackTexture = new GradientTexture2D();
 			fallbackTexture.Width = 32;
 			fallbackTexture.Height = 32;
-			_sprite.Texture = fallbackTexture;
+			((Sprite2D)_roleVisuals).Texture = fallbackTexture;
+			AddChild(_roleVisuals);
 		}
 	}
 
-	/// <summary>
-	/// Set whether this is the local player (controlled by this client)
-	/// </summary>
+	private T FindNodeByType<T>(Node root) where T : Node
+	{
+		if (root is T t) return t;
+		foreach (Node child in root.GetChildren())
+		{
+			var found = FindNodeByType<T>(child);
+			if (found != null) return found;
+		}
+		return null;
+	}
+
 	public void SetLocalPlayer(bool isLocal)
 	{
 		_isLocalPlayer = isLocal;
-		GD.Print($"SetLocalPlayer called: isLocal={isLocal}, _sprite exists={_sprite != null}");
+		GD.Print($"SetLocalPlayer called: isLocal={isLocal}");
 		
-		if (_sprite != null)
+		if (_camera != null)
 		{
-			if (isLocal)
-			{
-				// Add visual indicator that this is the local player
-				_sprite.Modulate = Colors.White;
-			}
-			else
-			{
-				// Other players are slightly dimmed
-				_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, 1f);
-			}
+			_camera.Enabled = isLocal;
+		}
+		
+		// Optional: Hide label for self or emphasize
+		if (_roleVisuals != null)
+		{
+			_roleVisuals.Modulate = isLocal ? Colors.White : new Color(0.8f, 0.8f, 0.8f, 1f);
 		}
 	}
 
-	/// <summary>
-	/// Update the player's visual based on role
-	/// </summary>
 	public void SetRole(string role)
 	{
 		PlayerRole = role;
-		GD.Print($"SetRole called: role={role}");
-		
-		if (_roleLabel != null)
-		{
-			_roleLabel.Text = role;
-		}
-
-		// Load the correct sprite for this role
-		LoadSpriteForRole(role);
+		if (_roleLabel != null) _roleLabel.Text = role;
+		LoadRoleScene(role);
 	}
 
-	/// <summary>
-	/// Set the player color
-	/// </summary>
 	public void SetColor(Color color)
 	{
 		PlayerColor = color;
-		if (_sprite?.Texture is GradientTexture2D gradientTexture)
-		{
-			var gradient = gradientTexture.Gradient;
-			gradient.SetColor(0, color);
-			gradient.SetColor(1, color.Darkened(0.4f));
-		}
+		// If scene uses modulation or specific parts, handle here.
+		// For now, minimal impact as scenes are pre-made.
 	}
 
 	/// <summary>
@@ -182,13 +173,25 @@ public partial class PlayerController : CharacterBody2D
 
 		// Handle input
 		if (Input.IsActionPressed("ui_right") || Input.IsKeyPressed(Key.D))
+		{
 			velocity.X += 1;
+			GD.Print("Right Input Detected");
+		}
 		if (Input.IsActionPressed("ui_left") || Input.IsKeyPressed(Key.A))
+		{
 			velocity.X -= 1;
+			GD.Print("Left Input Detected");
+		}
 		if (Input.IsActionPressed("ui_down") || Input.IsKeyPressed(Key.S))
+		{
 			velocity.Y += 1;
+			GD.Print("Down Input Detected");
+		}
 		if (Input.IsActionPressed("ui_up") || Input.IsKeyPressed(Key.W))
+		{
 			velocity.Y -= 1;
+			GD.Print("Up Input Detected");
+		}
 
 		if (velocity.Length() > 0)
 		{

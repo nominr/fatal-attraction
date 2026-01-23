@@ -1,0 +1,30 @@
+[gd_scene load_steps=4 format=3 uid="uid://08lv6bu04cqp"]
+
+[ext_resource type="Texture2D" uid="uid://dvqs6x4ej8h1p" path="res://assets/admirer-sprite.png" id="1_2avrr"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_33be7"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_2avrr")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ll1pc"]
+size = Vector2(7, 27)
+
+[node name="Admirer" type="CharacterBody2D"]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(1, -15)
+sprite_frames = SubResource("SpriteFrames_33be7")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(1, -14)
+shape = SubResource("RectangleShape2D_ll1pc")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(5, 5)

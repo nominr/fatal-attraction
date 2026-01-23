@@ -1,0 +1,169 @@
+[gd_scene load_steps=2 format=3 uid="uid://wdj6lrimopur"]
+
+[ext_resource type="Script" path="res://scripts/MainMenu.cs" id="1_main"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.12, 0.16, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 30
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/MainPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.3, 0.4, 1)
+theme_override_font_sizes/font_size = 64
+text = "Fatal Attraction"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.75, 1)
+theme_override_font_sizes/font_size = 18
+text = "Multiplayer Party Game"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/MainPanel"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+
+[node name="ButtonsContainer" type="VBoxContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 15
+alignment = 1
+
+[node name="HostButton" type="Button" parent="CenterContainer/MainPanel/ButtonsContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Host Game"
+
+[node name="JoinSection" type="VBoxContainer" parent="CenterContainer/MainPanel/ButtonsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="JoinLabel" type="Label" parent="CenterContainer/MainPanel/ButtonsContainer/JoinSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.75, 1)
+text = "— OR JOIN A GAME —"
+horizontal_alignment = 1
+
+[node name="IpContainer" type="HBoxContainer" parent="CenterContainer/MainPanel/ButtonsContainer/JoinSection"]
+layout_mode = 2
+alignment = 1
+
+[node name="IpInput" type="LineEdit" parent="CenterContainer/MainPanel/ButtonsContainer/JoinSection/IpContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+placeholder_text = "Enter Host IP..."
+alignment = 1
+
+[node name="JoinButton" type="Button" parent="CenterContainer/MainPanel/ButtonsContainer/JoinSection/IpContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Join"
+
+[node name="Spacer2" type="Control" parent="CenterContainer/MainPanel"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/MainPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.8, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="RoleSelectionPanel" type="PanelContainer" parent="CenterContainer/MainPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/RoleSelectionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 10
+
+[node name="RoleLabel" type="Label" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/Margin"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Select Your Role"
+horizontal_alignment = 1
+
+[node name="RoleButtons" type="VBoxContainer" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MarginBottom" type="MarginContainer" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/RoleButtons"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="AdmirerButton" type="Button" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/RoleButtons/MarginBottom"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Admirer"
+
+[node name="MarginBottom2" type="MarginContainer" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/RoleButtons"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 20
+
+[node name="ProphetButton" type="Button" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/RoleButtons/MarginBottom2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Prophet"
+
+[node name="MarginBottom3" type="MarginContainer" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/RoleButtons"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="ProducerButton" type="Button" parent="CenterContainer/MainPanel/RoleSelectionPanel/VBox/RoleButtons/MarginBottom3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 45)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Producer"

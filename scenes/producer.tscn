@@ -1,0 +1,31 @@
+[gd_scene load_steps=4 format=3 uid="uid://cdfyi7ia0i03t"]
+
+[ext_resource type="Texture2D" uid="uid://dtu1ph8hd0423" path="res://assets/producer-sprite.png" id="1_uskee"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_jgk0q"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_uskee")
+}],
+"loop": true,
+"name": &"mock",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ui73o"]
+size = Vector2(7, 27)
+
+[node name="Producer" type="CharacterBody2D"]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(1, -15)
+sprite_frames = SubResource("SpriteFrames_jgk0q")
+animation = &"mock"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0.5, -14.5)
+shape = SubResource("RectangleShape2D_ui73o")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(5, 5)

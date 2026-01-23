@@ -46,21 +46,53 @@ public partial class NPCEntity : Area2D
 
 	private void SetupVisuals()
 	{
-		// Main NPC sprite (simple colored circle for now)
-		_sprite = new Sprite2D();
-		// Create a simple placeholder texture
-		var texture = new GradientTexture2D();
-		texture.Width = 64;
-		texture.Height = 64;
-		texture.Fill = GradientTexture2D.FillEnum.Radial;
-		texture.FillFrom = new Vector2(0.5f, 0.5f);
-		texture.FillTo = new Vector2(1f, 0.5f);
-		var gradient = new Gradient();
-		gradient.SetColor(0, NpcColor);
-		gradient.SetColor(1, NpcColor.Darkened(0.3f));
-		texture.Gradient = gradient;
-		_sprite.Texture = texture;
-		AddChild(_sprite);
+		// Load the NPC scene
+		var scene = GD.Load<PackedScene>("res://scenes/npc.tscn");
+		if (scene != null)
+		{
+			var visualNode = scene.Instantiate();
+			AddChild(visualNode);
+			
+			// Try to find the sprite to randomize it
+			// Assuming the scene has a Sprite2D or the root is a Sprite2D
+			_sprite = visualNode as Sprite2D ?? visualNode.GetNodeOrNull<Sprite2D>("Sprite2D") ?? visualNode.GetNodeOrNull<Sprite2D>("Sprite");
+			
+			if (_sprite != null)
+			{
+				// Randomize sprite (sprite-0001 to sprite-0010)
+				// Use hashing of ID to ensure deterministic but random-looking sprite per NPC
+				// or just Random if we don't care about persistence across re-connects (though hashing is better)
+				int seed = NpcId.GetHashCode();
+				var rnd = new Random(seed);
+				int spriteNum = rnd.Next(1, 11); // 1 to 10
+				
+				string spritePath = $"res://assets/sprite-{spriteNum:D4}.png";
+				var texture = GD.Load<Texture2D>(spritePath);
+				if (texture != null)
+				{
+					_sprite.Texture = texture;
+				}
+				else
+				{
+					GD.PrintErr($"Failed to load NPC sprite: {spritePath}");
+				}
+			}
+		}
+		else
+		{
+			// Fallback if scene missing
+			_sprite = new Sprite2D();
+			var texture = new GradientTexture2D();
+			texture.Width = 64;
+			texture.Height = 64;
+			texture.Fill = GradientTexture2D.FillEnum.Radial;
+			var gradient = new Gradient();
+			gradient.SetColor(0, NpcColor);
+			gradient.SetColor(1, NpcColor.Darkened(0.3f));
+			texture.Gradient = gradient;
+			_sprite.Texture = texture;
+			AddChild(_sprite);
+		}
 
 		// Name label above the NPC
 		_nameLabel = new Label();
