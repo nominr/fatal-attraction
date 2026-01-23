@@ -276,6 +276,33 @@
               ]
             },
             {
+              "id": "unconvert_katy_producer",
+              "text": "Unconvert Katy",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "Success! Katy is unconverted."
+                },
+                {
+                  "npc": "katy",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Katy."
+                }
+              ]
+            },
+            {
               "id": "prank_katy",
               "text": "Prank Katy",
               "requires": {
@@ -683,24 +710,6 @@
               ]
             },
             {
-              "id": "manipulate",
-              "text": "Manipulate Rebecca",
-              "requires": {
-                "role": "prophet",
-                "npcStatus": "converted"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You manipulated Rebecca into causing drama! Chaos increased significantly!"
-                }
-              ]
-            },
-            {
               "id": "unconvert_rebecca_admirer",
               "text": "Unconvert Rebecca",
               "requires": {
@@ -710,6 +719,33 @@
               "resolution": {
                 "type": "chance",
                 "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Rebecca!"
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Rebecca."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_rebecca",
+              "text": "Unconvert Rebecca",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
               },
               "effects_on_success": [
                 {
@@ -1018,24 +1054,6 @@
               "effects_on_failure": [
                 {
                   "notification": "Failed to unconvert Sofia."
-                }
-              ]
-            },
-            {
-              "id": "manipulate_sofia",
-              "text": "Manipulate Sofia",
-              "requires": {
-                "role": "prophet",
-                "npcStatus": "converted"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 2,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You manipulated Sofia into spreading rumors! Chaos increased significantly!"
                 }
               ]
             },

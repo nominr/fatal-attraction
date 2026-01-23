@@ -821,32 +821,45 @@ namespace FatalAttraction.Engine
 	{
 		var player = GameState.GetPlayerState(playerRole);
 		var winConfig = GameState.Config["gameRules"]["winConditions"][playerRole.ToString().ToLower()];
-		var requirement = winConfig["requirement"];
-
+		
+		// Check both primary and secondary goals
+		foreach (var goalType in new[] { "primary", "secondary" })
+		{
+			var goalConfig = winConfig[goalType];
+			if (goalConfig == null) continue;
+			
+			var requirement = goalConfig["requirement"];
 			if (CheckCondition(player, requirement))
 			{
-				var goal = winConfig["goal"]?.Value<string>() ?? "Goal achieved";
-				
-				if (playerRole == Role.Prophet)
-				{
-					return "The Rite of Revelation has started";
-				}
-				
+				var goal = goalConfig["goal"]?.Value<string>() ?? "Goal achieved";
+				if (playerRole == Role.Prophet) return "The Rite of Revelation has started";
 				return $"{playerRole} wins! ({goal})";
 			}
+		}
 
 		return null;
 	}
 
 		private bool CheckCondition(PlayerState player, JToken requirement)
 		{
+			bool conditionChecked = false; // Ensure we checked AT LEAST one thing
+
 			var meterName = requirement["meter"]?.Value<string>();
 			if (!string.IsNullOrEmpty(meterName))
 			{
+				conditionChecked = true;
 				var minValue = requirement["minValue"]?.Value<double>();
 				var meter = player.GetMeter(meterName);
-				if (meter != null && minValue.HasValue)
+				
+				if (meter == null) 
 				{
+					// Console.WriteLine($"[CheckWin] Meter '{meterName}' not found for {player.Role}. FAILING.");
+					return false;
+				}
+
+				if (minValue.HasValue)
+				{
+					// Console.WriteLine($"[CheckWin] {meterName}: {meter.Value} < {minValue.Value}?");
 					if (meter.Value < minValue.Value) return false;
 				}
 			}
@@ -854,8 +867,49 @@ namespace FatalAttraction.Engine
 			var convertedCountReq = requirement["npcsConverted"]?.Value<int>();
 			if (convertedCountReq.HasValue)
 			{
+				conditionChecked = true;
 				int currentConverted = GameState.NPCs.Values.Count(n => n.Converted);
+				// Console.WriteLine($"[CheckWin] Converted: {currentConverted} < {convertedCountReq.Value}?");
 				if (currentConverted < convertedCountReq.Value) return false;
+			}
+			
+			var npcsKilledReq = requirement["npcsKilled"]?.Value<int>();
+			if (npcsKilledReq.HasValue)
+			{
+				conditionChecked = true;
+				int currentKilled = GameState.NPCs.Values.Count(n => !n.Alive);
+				// Console.WriteLine($"[CheckWin] Killed: {currentKilled} < {npcsKilledReq.Value}?");
+				if (currentKilled < npcsKilledReq.Value) return false;
+			}
+
+			// Special check for Marriage Requirement ("npcStatus": "nonConverted")
+			// This usually implies checking the "target" of the goal (Love Interest)
+			var statusReq = requirement["npcStatus"]?.Value<string>();
+			if (!string.IsNullOrEmpty(statusReq))
+			{
+				conditionChecked = true;
+				// Find Love Interest (assuming this requirement is for Admirer's Marriage)
+				var loveInterest = GameState.NPCs.Values.FirstOrDefault(n => n.IsLoveInterest);
+				if (loveInterest == null) return false; // Should not happen
+
+				if (statusReq == "nonConverted" && loveInterest.Converted) return false;
+				if (statusReq == "converted" && !loveInterest.Converted) return false;
+			}
+			
+			var admirerReportedReq = requirement["admirerReported"]?.Value<bool>();
+			if (admirerReportedReq.HasValue)
+			{
+				conditionChecked = true;
+				// Only pass if we explicitly caught them (Winner set to Producer via catch mechanism)
+				if (GameState.Winner != "Producer") return false;
+			}
+
+			// Fail-Closed: If we didn't check anything, assume the config key is typo'd or logic is missing.
+			// Do NOT return true by default.
+			if (!conditionChecked)
+			{
+				// Console.WriteLine("[CheckWin] No known conditions found in requirement block. FAILING.");
+				return false;
 			}
 
 			return true;

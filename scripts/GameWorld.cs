@@ -553,6 +553,19 @@ public partial class GameWorld : Node2D
 		}
 		status["all_actions"] = allActions;
 
+		// Sync Network Players (Critical for UI Role Identity)
+		var netPlayers = new JObject();
+		foreach (var kvp in _networkManager.Players)
+		{
+			netPlayers[kvp.Key.ToString()] = new JObject
+			{
+				{ "id", kvp.Value.Id },
+				{ "name", kvp.Value.Name },
+				{ "role", kvp.Value.Role }
+			};
+		}
+		status["network_players"] = netPlayers;
+
 		return status.ToString();
 	}
 
@@ -561,6 +574,38 @@ public partial class GameWorld : Node2D
 	{
 		_localGameState = JObject.Parse(json);
 		
+		// sync network players from server state (Fix for missing roles)
+		var netPlayers = _localGameState["network_players"] as JObject;
+		if (netPlayers != null)
+		{
+			foreach (var prop in netPlayers.Properties())
+			{
+				long pid = long.Parse(prop.Name);
+				string role = prop.Value["role"]?.Value<string>();
+				string name = prop.Value["name"]?.Value<string>();
+				
+				// Force update NetworkManager if missing/mismatched
+				if (!_networkManager.Players.ContainsKey(pid))
+				{
+					_networkManager.Players[pid] = new NetworkManager.PlayerInfo 
+					{ 
+						Id = (int)pid, 
+						Name = name, 
+						Role = role 
+					};
+				}
+				else
+				{
+					var info = _networkManager.Players[pid];
+					if (info.Role != role)
+					{
+						info.Role = role;
+						_networkManager.Players[pid] = info;
+					}
+				}
+			}
+		}
+
 		// Spawn NPCs if not spawned yet (clients)
 		if (_npcEntities.Count == 0)
 		{
@@ -575,6 +620,7 @@ public partial class GameWorld : Node2D
 		
 		UpdateUI();
 		UpdateNPCVisuals();
+
 	}
 
 	private void SpawnNPCsFromState()
