@@ -35,9 +35,12 @@ public partial class GameWorld : Node2D
 	// UI Components
 	private InteractionPanel _interactionPanel;
 	private CanvasLayer _uiLayer;
+	private GoalsMenu _goalsMenu;
+	private Button _goalsButton;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
+	private bool _goalsShownAtStart = false;
 	
 	private Label _timerLabel;
 	private Label _roleLabel;
@@ -152,6 +155,9 @@ public partial class GameWorld : Node2D
 
 		// Producer UI Elements
 		SetupProducerUI();
+		
+		// Goals Menu System
+		SetupGoalsMenu();
 	}
 
 	private void SetupProducerUI()
@@ -221,6 +227,90 @@ public partial class GameWorld : Node2D
 		_uiLayer.AddChild(fPanel);
 	}
 
+	private void SetupGoalsMenu()
+	{
+		// Goals Menu Panel
+		_goalsMenu = new GoalsMenu();
+		_goalsMenu.MenuClosed += OnGoalsMenuClosed;
+		_uiLayer.AddChild(_goalsMenu);
+
+		// Goals Button (upper right corner)
+		_goalsButton = new Button();
+		_goalsButton.Text = "📋 GOALS";
+		_goalsButton.Position = new Vector2(1050, 20); // Upper right for 1200x800 world
+		_goalsButton.CustomMinimumSize = new Vector2(120, 40);
+		_goalsButton.Pressed += OnGoalsButtonPressed;
+		_uiLayer.AddChild(_goalsButton);
+	}
+
+	private void OnGoalsButtonPressed()
+	{
+		if (_goalsMenu != null && !string.IsNullOrEmpty(_myRole))
+		{
+			// Toggle: if visible, hide it; if hidden, show it
+			if (_goalsMenu.Visible)
+			{
+				_goalsMenu.Hide();
+			}
+			 else
+			{
+				// Update with latest info
+				string loveInterest = "";
+				string targets = "";
+				
+				// Get love interest and targets from GameEngine state
+				if (_gameEngine != null)
+				{
+					var loveInterestList = new List<string>();
+					var targetsList = new List<string>();
+					
+					foreach (var npc in _gameEngine.GameState.NPCs.Values)
+					{
+						if (npc.IsLoveInterest)
+							loveInterestList.Add(npc.Name);
+						if (npc.IsTarget)
+							targetsList.Add(npc.Name);
+					}
+					
+					loveInterest = string.Join(", ", loveInterestList);
+					targets = string.Join(", ", targetsList);
+				}
+				else if (_localGameState != null)
+				{
+					// Client-side: try to get from cached state
+					var loveInterestList = new List<string>();
+					var targetsList = new List<string>();
+					
+					var npcs = _localGameState["npcs"] as JObject;
+					if (npcs != null)
+					{
+						foreach (var prop in npcs.Properties())
+						{
+							bool isLoveInterest = prop.Value["role"]?.Value<string>() == "love_interest";
+							bool isTarget = prop.Value["isTarget"]?.Value<bool>() ?? false;
+							
+							if (isLoveInterest)
+								loveInterestList.Add(Capitalize(prop.Name));
+							if (isTarget)
+								targetsList.Add(Capitalize(prop.Name));
+						}
+					}
+					
+					loveInterest = string.Join(", ", loveInterestList);
+					targets = string.Join(", ", targetsList);
+				}
+				
+				_goalsMenu.SetRole(_myRole, loveInterest, targets);
+				_goalsMenu.ShowMenu();
+			}
+		}
+	}
+
+	private void OnGoalsMenuClosed()
+	{
+		// Optional: Handle any logic when goals menu is closed
+	}
+
 	private void TogglePanel(string name)
 	{
 		var node = _uiLayer.GetNodeOrNull<Control>(name);
@@ -285,7 +375,12 @@ public partial class GameWorld : Node2D
 			{ "john", new Vector2(1050, 150) },     // Top-right corner
 			{ "rebecca", new Vector2(600, 400) },   // Center of map
 			{ "marcus", new Vector2(150, 650) },    // Bottom-left corner
-			{ "sofia", new Vector2(1050, 650) }     // Bottom-right corner
+			{ "sofia", new Vector2(1050, 650) },    // Bottom-right corner
+			{ "amir", new Vector2(300, 200) },
+			{ "bella", new Vector2(900, 200) },
+			{ "chris", new Vector2(300, 600) },
+			{ "diana", new Vector2(900, 600) },
+			{ "eli", new Vector2(600, 200) }
 		};
 
 		var npcColors = new Dictionary<string, Color>
@@ -294,7 +389,12 @@ public partial class GameWorld : Node2D
 			{ "john", Colors.DodgerBlue },
 			{ "rebecca", Colors.Orange },
 			{ "marcus", Colors.LimeGreen },
-			{ "sofia", Colors.Orchid }
+			{ "sofia", Colors.Orchid },
+			{ "amir", Colors.Gold },
+			{ "bella", Colors.MediumPurple },
+			{ "chris", Colors.Teal },
+			{ "diana", Colors.Salmon },
+			{ "eli", Colors.SlateBlue }
 		};
 
 		foreach (var npc in _gameEngine.GameState.NPCs.Values)
@@ -621,6 +721,69 @@ public partial class GameWorld : Node2D
 		UpdateUI();
 		UpdateNPCVisuals();
 
+		// Show goals menu at game start (first time game state is received)
+		if (!_goalsShownAtStart && !string.IsNullOrEmpty(_myRole))
+		{
+			_goalsShownAtStart = true;
+			// Delay slightly to ensure UI is ready
+			CallDeferred(MethodName.ShowGoalsMenuAtStart);
+		}
+	}
+
+	private void ShowGoalsMenuAtStart()
+	{
+		if (_goalsMenu != null && !string.IsNullOrEmpty(_myRole))
+		{
+			// Get love interest and targets info
+			string loveInterest = "";
+			string targets = "";
+			
+			// Server: read directly from GameEngine
+			if (_gameEngine != null)
+			{
+				var loveInterestList = new List<string>();
+				var targetsList = new List<string>();
+				
+				foreach (var npc in _gameEngine.GameState.NPCs.Values)
+				{
+					if (npc.IsLoveInterest)
+						loveInterestList.Add(npc.Name);
+					if (npc.IsTarget)
+						targetsList.Add(npc.Name);
+				}
+				
+				loveInterest = string.Join(", ", loveInterestList);
+				targets = string.Join(", ", targetsList);
+			}
+			// Client: read from local cached state
+			else if (_localGameState != null)
+			{
+				var npcs = _localGameState["npcs"] as JObject;
+				if (npcs != null)
+				{
+					var loveInterestList = new List<string>();
+					var targetsList = new List<string>();
+					
+					foreach (var prop in npcs.Properties())
+					{
+						// Check role field for love_interest
+						bool isLoveInterest = prop.Value["role"]?.Value<string>() == "love_interest";
+						bool isTarget = prop.Value["isTarget"]?.Value<bool>() ?? false;
+						
+						if (isLoveInterest)
+							loveInterestList.Add(Capitalize(prop.Name));
+						if (isTarget)
+							targetsList.Add(Capitalize(prop.Name));
+					}
+					
+					loveInterest = string.Join(", ", loveInterestList);
+					targets = string.Join(", ", targetsList);
+				}
+			}
+			
+			_goalsMenu.SetRole(_myRole, loveInterest, targets);
+			_goalsMenu.ShowMenu();
+		}
 	}
 
 	private void SpawnNPCsFromState()
@@ -632,7 +795,12 @@ public partial class GameWorld : Node2D
 			{ "john", new Vector2(1050, 150) },     // Top-right corner
 			{ "rebecca", new Vector2(600, 400) },   // Center of map
 			{ "marcus", new Vector2(150, 650) },    // Bottom-left corner
-			{ "sofia", new Vector2(1050, 650) }     // Bottom-right corner
+			{ "sofia", new Vector2(1050, 650) },    // Bottom-right corner
+			{ "amir", new Vector2(300, 200) },
+			{ "bella", new Vector2(900, 200) },
+			{ "chris", new Vector2(300, 600) },
+			{ "diana", new Vector2(900, 600) },
+			{ "eli", new Vector2(600, 200) }
 		};
 
 		var npcColors = new Dictionary<string, Color>
@@ -641,7 +809,12 @@ public partial class GameWorld : Node2D
 			{ "john", Colors.DodgerBlue },
 			{ "rebecca", Colors.Orange },
 			{ "marcus", Colors.LimeGreen },
-			{ "sofia", Colors.Orchid }
+			{ "sofia", Colors.Orchid },
+			{ "amir", Colors.Gold },
+			{ "bella", Colors.MediumPurple },
+			{ "chris", Colors.Teal },
+			{ "diana", Colors.Salmon },
+			{ "eli", Colors.SlateBlue }
 		};
 
 		var activeNpcs = _localGameState?["active_npcs"];

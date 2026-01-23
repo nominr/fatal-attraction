@@ -166,7 +166,12 @@ public partial class NPCEntity : Area2D
 			{ "john", 2 },
 			{ "rebecca", 3 },
 			{ "marcus", 4 },
-			{ "sofia", 5 }
+			{ "sofia", 5 },
+			{ "amir", 6 },
+			{ "bella", 7 },
+			{ "chris", 8 },
+			{ "diana", 9 },
+			{ "eli", 10 }
 		};
 
 

@@ -647,16 +647,14 @@ namespace FatalAttraction.Engine
 
 				success = _random.NextDouble() < chance;
 
-				if (success)
-				{
-					_gameState.Winner = "Admirer";
-					_gameState.AddNotification("ADMIRER WINS! Love has conquered all!");
-				}
-				else
+				if (!success)
 				{
 					_gameState.AddNotification($"Marriage rejected! (Chance was {chance:P0})");
 					return (false, "Marriage proposal rejected. Try increasing Love.");
 				}
+				
+				// Success - let the effects be applied and win condition will be checked
+				_gameState.AddNotification("Marriage successful! Love has conquered all!");
 			}
 			else
 			{
@@ -894,6 +892,18 @@ namespace FatalAttraction.Engine
 
 				if (statusReq == "nonConverted" && loveInterest.Converted) return false;
 				if (statusReq == "converted" && !loveInterest.Converted) return false;
+			}
+			
+			// Check if Love Interest is married (for Admirer win)
+			var npcMarriedReq = requirement["npcMarried"]?.Value<bool>();
+			if (npcMarriedReq.HasValue)
+			{
+				conditionChecked = true;
+				var loveInterest = GameState.NPCs.Values.FirstOrDefault(n => n.IsLoveInterest);
+				if (loveInterest == null) return false;
+				
+				if (npcMarriedReq.Value && !loveInterest.Married) return false;
+				if (!npcMarriedReq.Value && loveInterest.Married) return false;
 			}
 			
 			var admirerReportedReq = requirement["admirerReported"]?.Value<bool>();
