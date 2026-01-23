@@ -172,34 +172,19 @@ public partial class GameWorld : Node2D
 
 	private void SetupProducerUI()
 	{
-		// Marriage Button
-		var marryBtn = new Button();
-		marryBtn.Name = "MarryButton";
-		marryBtn.Text = "Marry NPCs (+1 Ratings)";
-		marryBtn.Position = new Vector2(20, 640);
-		marryBtn.Visible = false;
-		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
-		_uiLayer.AddChild(marryBtn);
-
-		// Editorial Focus Button
-		var focusBtn = new Button();
-		focusBtn.Name = "FocusButton";
-		focusBtn.Text = "Set Editorial Focus";
-		focusBtn.Position = new Vector2(20, 680);
-		focusBtn.Visible = false;
-		focusBtn.Pressed += () => TogglePanel("FocusPanel");
-		_uiLayer.AddChild(focusBtn);
-
-		// Marriage Panel (Hidden)
+		// Marriage Section (Visible)
 		var mPanel = new PanelContainer();
 		mPanel.Name = "MarriagePanel";
-		mPanel.Position = new Vector2(200, 200);
+		mPanel.Position = new Vector2(20, 150);
+		mPanel.CustomMinimumSize = new Vector2(250, 200);
 		mPanel.Visible = false;
 		var mVBox = new VBoxContainer();
 		mVBox.Name = "Container";
+		mVBox.AddThemeConstantOverride("separation", 5);
 		mPanel.AddChild(mVBox);
 		var mLabel = new Label();
 		mLabel.Text = "Select 2 NPCs to Marry:";
+		mLabel.AddThemeFontSizeOverride("font_size", 14);
 		mVBox.AddChild(mLabel);
 		// NPCs populated dynamically
 		var mConfirm = new Button();
@@ -208,29 +193,72 @@ public partial class GameWorld : Node2D
 		mVBox.AddChild(mConfirm);
 		_uiLayer.AddChild(mPanel);
 
+		// Marriage Toggle Button
+		var marryBtn = new Button();
+		marryBtn.Name = "MarryButton";
+		marryBtn.Text = "Marry NPCs (+1 Ratings)";
+		marryBtn.Position = new Vector2(20, 480);
+		marryBtn.Visible = false;
+		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
+		_uiLayer.AddChild(marryBtn);
+
+		// Editorial Attention Section (Visible)
+		var ePanel = new PanelContainer();
+		ePanel.Name = "EditorialAttentionPanel";
+		ePanel.Position = new Vector2(950, 120);
+		ePanel.CustomMinimumSize = new Vector2(180, 150);
+		ePanel.Visible = false;
+		var eVBox = new VBoxContainer();
+		eVBox.Name = "EditorialContainer";
+		eVBox.AddThemeConstantOverride("separation", 5);
+		ePanel.AddChild(eVBox);
+		var eLabel = new Label();
+		eLabel.Text = "Editorial Attention";
+		eLabel.AddThemeFontSizeOverride("font_size", 14);
+		eVBox.AddChild(eLabel);
+		var eInfo = new Label();
+		eInfo.Name = "EditorialInfo";
+		eInfo.Text = "Focus: None";
+		eInfo.AutowrapMode = TextServer.AutowrapMode.Word;
+		eVBox.AddChild(eInfo);
+		var eBtn = new Button();
+		eBtn.Text = "Set Focus";
+		eBtn.Pressed += () => TogglePanel("FocusPanel");
+		eVBox.AddChild(eBtn);
+		_uiLayer.AddChild(ePanel);
+
 		// Focus Panel (Hidden)
 		var fPanel = new PanelContainer();
 		fPanel.Name = "FocusPanel";
-		fPanel.Position = new Vector2(200, 200);
+		fPanel.Position = new Vector2(500, 300);
 		fPanel.Visible = false;
 		var fVBox = new VBoxContainer();
+		fVBox.AddThemeConstantOverride("separation", 10);
 		fPanel.AddChild(fVBox);
 		var fLabel = new Label();
-		fLabel.Text = "Select Editorial Focus Quadrant:";
+		fLabel.Text = "Select Editorial Focus:";
+		fLabel.AddThemeFontSizeOverride("font_size", 14);
 		fVBox.AddChild(fLabel);
 		var fGrid = new GridContainer();
 		fGrid.Columns = 2; // 2x2
 		fVBox.AddChild(fGrid);
 		
-		for (int i = 0; i < 4; i++)
+		string[] focusOptions = { "Sudden Deaths", "Romantic Escalations", "Chaos Spikes", "Public Areas" };
+		string[] focusIds = { "sudden_deaths", "romantic_escalations", "chaos_spikes", "public_areas" };
+		
+		for (int i = 0; i < focusOptions.Length; i++)
 		{
 			var qBtn = new Button();
-			qBtn.Text = $"Quadrant {i}"; // Could map to TL/TR...
-			qBtn.CustomMinimumSize = new Vector2(100, 100);
-			int qIdx = i; // Capture closure
+			qBtn.Text = focusOptions[i];
+			qBtn.CustomMinimumSize = new Vector2(120, 80);
+			int qIdx = i;
+			string focusId = focusIds[i];
 			qBtn.Pressed += () => {
-				OnActionSelected("producer_global", $"set_focus_{qIdx}");
+				OnActionSelected("producer_global", $"set_editorial_focus_{focusId}");
 				fPanel.Visible = false;
+				// Update editorial attention display
+				var editorialInfo = _uiLayer.GetNodeOrNull<Label>("EditorialAttentionPanel/EditorialContainer/EditorialInfo");
+				if (editorialInfo != null) editorialInfo.Text = $"Focus: {focusOptions[qIdx]}";
 			};
 			fGrid.AddChild(qBtn);
 		}
@@ -890,10 +918,10 @@ public partial class GameWorld : Node2D
 
 		// PRODUCER ACTIONS VISIBILITY
 		var marryBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-		var focusBtn = _uiLayer.GetNodeOrNull<Button>("FocusButton");
+		var editorialPanel = _uiLayer.GetNodeOrNull<Control>("EditorialAttentionPanel");
 		bool isProducer = (_myRole?.ToLower() == "producer");
 		if (marryBtn != null) marryBtn.Visible = isProducer;
-		if (focusBtn != null) focusBtn.Visible = isProducer;
+		if (editorialPanel != null) editorialPanel.Visible = isProducer;
 
 		if (isProducer)
 		{
