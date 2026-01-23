@@ -19,7 +19,7 @@ public partial class GameWorld : Node2D
 	// Game Logic (server only)
 	private GameEngine _gameEngine;
 	private bool _gameActive = false;
-	private double _timeRemaining = 300.0;
+	private double _timeRemaining = 180.0;
 
 	// Local State Cache
 	private JObject _localGameState;
@@ -119,6 +119,110 @@ public partial class GameWorld : Node2D
 		// Ideally we verify role in UpdateUI.
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
+
+		// Producer UI Elements
+		SetupProducerUI();
+	}
+
+	private void SetupProducerUI()
+	{
+		// Marriage Button
+		var marryBtn = new Button();
+		marryBtn.Name = "MarryButton";
+		marryBtn.Text = "Marry NPCs (+1 Ratings)";
+		marryBtn.Position = new Vector2(20, 640);
+		marryBtn.Visible = false;
+		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
+		_uiLayer.AddChild(marryBtn);
+
+		// Editorial Focus Button
+		var focusBtn = new Button();
+		focusBtn.Name = "FocusButton";
+		focusBtn.Text = "Set Editorial Focus";
+		focusBtn.Position = new Vector2(20, 680);
+		focusBtn.Visible = false;
+		focusBtn.Pressed += () => TogglePanel("FocusPanel");
+		_uiLayer.AddChild(focusBtn);
+
+		// Marriage Panel (Hidden)
+		var mPanel = new PanelContainer();
+		mPanel.Name = "MarriagePanel";
+		mPanel.Position = new Vector2(200, 200);
+		mPanel.Visible = false;
+		var mVBox = new VBoxContainer();
+		mVBox.Name = "Container";
+		mPanel.AddChild(mVBox);
+		var mLabel = new Label();
+		mLabel.Text = "Select 2 NPCs to Marry:";
+		mVBox.AddChild(mLabel);
+		// NPCs populated dynamically
+		var mConfirm = new Button();
+		mConfirm.Text = "CONFIRM MARRIAGE";
+		mConfirm.Pressed += OnMarryConfirm;
+		mVBox.AddChild(mConfirm);
+		_uiLayer.AddChild(mPanel);
+
+		// Focus Panel (Hidden)
+		var fPanel = new PanelContainer();
+		fPanel.Name = "FocusPanel";
+		fPanel.Position = new Vector2(200, 200);
+		fPanel.Visible = false;
+		var fVBox = new VBoxContainer();
+		fPanel.AddChild(fVBox);
+		var fLabel = new Label();
+		fLabel.Text = "Select Editorial Focus Quadrant:";
+		fVBox.AddChild(fLabel);
+		var fGrid = new GridContainer();
+		fGrid.Columns = 2; // 2x2
+		fVBox.AddChild(fGrid);
+		
+		for (int i = 0; i < 4; i++)
+		{
+			var qBtn = new Button();
+			qBtn.Text = $"Quadrant {i}"; // Could map to TL/TR...
+			qBtn.CustomMinimumSize = new Vector2(100, 100);
+			int qIdx = i; // Capture closure
+			qBtn.Pressed += () => {
+				OnActionSelected("producer_global", $"set_focus_{qIdx}");
+				fPanel.Visible = false;
+			};
+			fGrid.AddChild(qBtn);
+		}
+		_uiLayer.AddChild(fPanel);
+	}
+
+	private void TogglePanel(string name)
+	{
+		var node = _uiLayer.GetNodeOrNull<Control>(name);
+		if (node != null) node.Visible = !node.Visible;
+	}
+
+	private void OnMarryConfirm()
+	{
+		var panel = _uiLayer.GetNodeOrNull("MarriagePanel/Container");
+		if (panel == null) return;
+
+		List<string> selected = new();
+		foreach (var node in panel.GetChildren())
+		{
+			if (node is CheckButton cb && cb.ButtonPressed)
+			{
+				selected.Add(cb.Name); // Name holds NPC ID
+			}
+		}
+
+		if (selected.Count == 2)
+		{
+			OnActionSelected("producer_global", $"marry_{selected[0]}_{selected[1]}");
+			_uiLayer.GetNode<Control>("MarriagePanel").Visible = false;
+			// Reset checks?
+			foreach (var node in panel.GetChildren()) if (node is CheckButton cb) cb.ButtonPressed = false;
+		}
+		else
+		{
+			// Show error? For now print
+			GD.Print("Must select exactly 2 NPCs");
+		}
 	}
 
 	private void SetupBackground()
@@ -314,6 +418,24 @@ public partial class GameWorld : Node2D
 			}
 			
 			// Update Game Engine (Traps, etc.)
+			// Update NPC Quadrants in Game Engine (for Editorial Focus)
+			foreach (var kvp in _npcEntities)
+			{
+				var npcEntity = kvp.Value;
+				var npcData = _gameEngine.GameState.GetNPC(kvp.Key);
+				if (npcData != null)
+				{
+					// Quadrants: 0:TL, 1:TR, 2:BL, 3:BR
+					float midX = _worldSize.X / 2;
+					float midY = _worldSize.Y / 2;
+					int q = 0;
+					if (npcEntity.Position.X >= midX) q += 1;
+					if (npcEntity.Position.Y >= midY) q += 2;
+					
+					npcData.Quadrant = q;
+				}
+			}
+
 			_gameEngine.Update(delta);
 			
 			_timeRemaining -= delta;
@@ -321,7 +443,11 @@ public partial class GameWorld : Node2D
 			{
 				_timeRemaining = 0;
 				_gameActive = false;
-				_gameEngine.GameState.AddNotification("GAME OVER - TIME UP!");
+				
+				// Producer Wins on Time Out
+				_gameEngine.GameState.Winner = "Producer";
+				_gameEngine.GameState.AddNotification("GAME OVER - TIME UP! Producer Wins (Schedule Kept)!");
+				
 				BroadcastGameState();
 			}
 		}
@@ -466,13 +592,46 @@ public partial class GameWorld : Node2D
 		_roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 
 		// Update Trap Button Visibility
+		// Update Trap Button Visibility
 		if (_uiLayer.GetNodeOrNull<Button>("TrapButton") is Button trapBtn)
 		{
 			bool isProphet = (_myRole?.ToLower() == "prophet");
 			trapBtn.Visible = isProphet;
-			
-			
-			// Prank Buttons Removed as per user request
+		}
+
+		// PRODUCER ACTIONS VISIBILITY
+		var marryBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+		var focusBtn = _uiLayer.GetNodeOrNull<Button>("FocusButton");
+		bool isProducer = (_myRole?.ToLower() == "producer");
+		if (marryBtn != null) marryBtn.Visible = isProducer;
+		if (focusBtn != null) focusBtn.Visible = isProducer;
+
+		if (isProducer)
+		{
+			// Update Marriage Panel List if needed
+			var mPanelBox = _uiLayer.GetNodeOrNull<VBoxContainer>("MarriagePanel/Container");
+			if (mPanelBox != null)
+			{
+				var activeNpcs = _localGameState["active_npcs"]?.ToObject<List<string>>() ?? new();
+				// Simple check: if checkbox count != npc count, rebuild
+				int checkBoxCount = mPanelBox.GetChildren().OfType<CheckButton>().Count();
+				if (checkBoxCount != activeNpcs.Count)
+				{
+					// Remove old checks
+					foreach (var child in mPanelBox.GetChildren().OfType<CheckButton>().ToList()) child.QueueFree();
+					
+					// Add new checks (Insert before Confirm button)
+					int idx = 1; // After Label
+					foreach (var npcId in activeNpcs)
+					{
+						var cb = new CheckButton();
+						cb.Name = npcId; // Store ID in Name
+						cb.Text = Capitalize(npcId);
+						mPanelBox.AddChild(cb);
+						mPanelBox.MoveChild(cb, idx++);
+					}
+				}
+			}
 		}
 
 

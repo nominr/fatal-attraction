@@ -64,6 +64,8 @@ namespace FatalAttraction.Engine
 		public bool Married { get; set; } = false;
 		public bool IsLoveInterest { get; set; } = false;
 		public bool IsTarget { get; set; } = false;
+		public bool PrankActive { get; set; } = false;
+		public int Quadrant { get; set; } = -1; // 0:TL, 1:TR, 2:BL, 3:BR
 
 		public NPC(string id, string name, bool isLoveInterest = false, bool isTarget = false)
 		{
@@ -348,6 +350,14 @@ namespace FatalAttraction.Engine
 				var marriageCheck = requires["npcMarriageable"]?.Value<bool>();
 				if (marriageCheck == true && npc.Married)
 					return false;
+
+				// Prank Active check
+				var prankCheck = requires["npcPrankActive"]?.Value<bool>();
+				if (prankCheck.HasValue)
+				{
+					if (prankCheck.Value == true && !npc.PrankActive) return false;
+					if (prankCheck.Value == false && npc.PrankActive) return false;
+				}
 			}
 
 			// Special check for Admirer's marry action - ALWAYS available if single
@@ -387,6 +397,63 @@ namespace FatalAttraction.Engine
 				}
 				return (false, "Unknown global action");
 			}
+			
+			// Producer Global Actions
+			if (npcId == "producer_global")
+			{
+				if (playerRole != Role.Producer) return (false, "Only Producer can perform these actions.");
+
+				if (optionId.StartsWith("marry_"))
+				{
+					// Expected format: marry_npc1_npc2
+					var parts = optionId.Split('_');
+					if (parts.Length == 3)
+					{
+						string n1 = parts[1];
+						string n2 = parts[2];
+						var npc1 = _gameState.GetNPC(n1);
+						var npc2 = _gameState.GetNPC(n2);
+						
+						if (npc1 != null && npc2 != null)
+						{
+							// Validation
+							if (npc1.Married || npc2.Married) return (false, "One or both are already married");
+							if (npc1 == npc2) return (false, "Cannot marry self");
+							if (npc1.IsLoveInterest || npc2.IsLoveInterest) return (false, "Cannot marry the Admirer's Love Interest!");
+
+							npc1.Married = true;
+							npc2.Married = true;
+							
+							// Ratings +1
+							var pState = _gameState.GetPlayerState(Role.Producer);
+							pState.GetMeter("ratings")?.Add(1);
+							
+							_gameState.AddNotification($"Producer married {Capitalize(n1)} and {Capitalize(n2)}! (+Rating)");
+							return (true, null);
+						}
+					}
+					return (false, "Invalid marriage target(s)");
+				}
+				
+				if (optionId.StartsWith("set_focus_"))
+				{
+					// Expected: set_focus_0 (quadrant index)
+					var parts = optionId.Split('_');
+					if (parts.Length == 3 && int.TryParse(parts[2], out int qIdx))
+					{
+						// Validate 0-3
+						if (qIdx >= 0 && qIdx <= 3)
+						{
+							_gameState.EditorialFocus = qIdx.ToString();
+							_gameState.AddNotification($"Producer set Editorial Focus to Quadrant {qIdx}!");
+							return (true, null);
+						}
+					}
+					return (false, "Invalid focus quadrant");
+				}
+				
+				return (false, "Unknown producer action");
+			}
 
 			var npcConfig = _gameState.Config["npcs"]?[npcId];
 			if (npcConfig == null)
@@ -399,6 +466,21 @@ namespace FatalAttraction.Engine
 			// Check if NPC is dead first
 			if (!npc.Alive && optionId != "leave")
 				return (false, $"{npc.Name} is no longer available");
+
+			// CHECK FOR EDITORIAL FOCUS CATCH (Admirer Kill)
+			if (playerRole == Role.Admirer && optionId.StartsWith("kill_"))
+			{
+				if (!string.IsNullOrEmpty(_gameState.EditorialFocus) && int.TryParse(_gameState.EditorialFocus, out int focusQ))
+				{
+					if (npc.Quadrant == focusQ)
+					{
+						// ADMIRER CAUGHT!
+						_gameState.Winner = Role.Producer.ToString();
+						_gameState.AddNotification($"Producer's Editorial Focus caught the Admirer red-handed in Quadrant {focusQ}!");
+						return (true, "Admirer was caught by the Producer!");
+					}
+				}
+			}
 
 			// 3. Prophet RPS Resolution (Step 1 Trigger - Virtual Action)
 			if (optionId.StartsWith("start_convert_"))
@@ -652,6 +734,8 @@ namespace FatalAttraction.Engine
 						npc.Alive = value.Value<bool>();
 					else if (field == "married")
 						npc.Married = value.Value<bool>();
+					else if (field == "prankActive")
+						npc.PrankActive = value.Value<bool>();
 				}
 			}
 		}
@@ -809,6 +893,15 @@ namespace FatalAttraction.Engine
 						chaosMeter?.Add(1);
 					}
 					GameState.Traps.RemoveAt(i);
+					
+					// Trap Affects Random NPC
+					var livingNpcs = GameState.NPCs.Values.Where(n => n.Alive).ToList();
+					if (livingNpcs.Count > 0)
+					{
+						var victim = livingNpcs[_random.Next(livingNpcs.Count)];
+						victim.PrankActive = true;
+						GameState.AddNotification($"{victim.Name} was caught in the trap and is now messy!");
+					}
 					
 					// Check Win Condition for Prophet (Trap Trigger)
 					string winMsg = CheckWinCondition(role);
