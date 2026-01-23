@@ -48,6 +48,9 @@ public partial class NPCEntity : Area2D
 	// Map bounds (should match GameWorld._worldSize with some margin)
 	private Vector2 _mapMin = new Vector2(100, 100);
 	private Vector2 _mapMax = new Vector2(1100, 700);
+	
+	// Alive status (dead NPCs don't wander)
+	private bool _isAlive = true;
 
 	public override void _Ready()
 	{
@@ -70,6 +73,9 @@ public partial class NPCEntity : Area2D
 
 	private void UpdateWandering(double delta)
 	{
+		// Dead NPCs don't wander
+		if (!_isAlive) return;
+		
 		switch (_wanderState)
 		{
 			case WanderState.Pausing:
@@ -322,6 +328,7 @@ public partial class NPCEntity : Area2D
 	/// </summary>
 	public void UpdateState(bool alive, bool converted, bool married)
 	{
+		_isAlive = alive;
 		_deadOverlay.Visible = !alive;
 		_convertedIndicator.Visible = converted;
 		_marriedIndicator.Visible = married;
