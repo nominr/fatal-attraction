@@ -97,9 +97,8 @@ public partial class GoalsMenu : PanelContainer
 			case "admirer":
 				goalsContent = "[center][font_size=24][b]ADMIRER[/b][/font_size][/center]\n\n";
 				goalsContent += "[font_size=18][b]Goals:[/b][/font_size]\n";
-				goalsContent += "• Max love meter with love interest\n";
-				goalsContent += "• Kill three targets\n";
-				goalsContent += "• Marry love interest\n\n";
+				goalsContent += "• Marry love interest\n";
+				goalsContent += "• Kill three targets\n\n";
 				
 				goalsContent += "[font_size=18][b]Love Interest:[/b][/font_size]\n";
 				if (!string.IsNullOrEmpty(_loveInterest))
