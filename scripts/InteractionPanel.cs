@@ -18,6 +18,7 @@ public partial class InteractionPanel : PanelContainer
 	// UI Elements
 	private Label _npcNameLabel;
 	private Label _npcDescLabel;
+	private ColorRect _portraitRect;
 	private VBoxContainer _actionsContainer;
 	private Button _closeButton;
 
@@ -33,7 +34,7 @@ public partial class InteractionPanel : PanelContainer
 	private void SetupUI()
 	{
 		// Panel styling
-		CustomMinimumSize = new Vector2(400, 300);
+		CustomMinimumSize = new Vector2(600, 300);
 
 		var marginContainer = new MarginContainer();
 		marginContainer.AddThemeConstantOverride("margin_left", 20);
@@ -42,35 +43,62 @@ public partial class InteractionPanel : PanelContainer
 		marginContainer.AddThemeConstantOverride("margin_bottom", 20);
 		AddChild(marginContainer);
 
-		var mainVBox = new VBoxContainer();
-		mainVBox.AddThemeConstantOverride("separation", 15);
-		marginContainer.AddChild(mainVBox);
+		// Main HBox: Portrait on left, Dialogue on right (Stardew Valley style)
+		var mainHBox = new HBoxContainer();
+		mainHBox.AddThemeConstantOverride("separation", 20);
+		marginContainer.AddChild(mainHBox);
 
-		// Header with NPC name
+		// LEFT SIDE: Portrait Area
+		var portraitVBox = new VBoxContainer();
+		portraitVBox.AddThemeConstantOverride("separation", 10);
+		portraitVBox.CustomMinimumSize = new Vector2(120, 0);
+		mainHBox.AddChild(portraitVBox);
+
+		// Portrait placeholder (colored circle for now)
+		var portraitPanel = new PanelContainer();
+		portraitPanel.CustomMinimumSize = new Vector2(100, 100);
+		portraitVBox.AddChild(portraitPanel);
+		
+		var portraitRect = new ColorRect();
+		portraitRect.CustomMinimumSize = new Vector2(100, 100);
+		portraitRect.Color = Colors.Gray; // Will be set per NPC
+		portraitPanel.AddChild(portraitRect);
+		_portraitRect = portraitRect;
+
+		// NPC name below portrait
 		_npcNameLabel = new Label();
 		_npcNameLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_npcNameLabel.AddThemeFontSizeOverride("font_size", 24);
-		mainVBox.AddChild(_npcNameLabel);
+		_npcNameLabel.AddThemeFontSizeOverride("font_size", 18);
+		portraitVBox.AddChild(_npcNameLabel);
 
-		// NPC description
+		// RIGHT SIDE: Dialogue and Actions
+		var dialogueVBox = new VBoxContainer();
+		dialogueVBox.AddThemeConstantOverride("separation", 15);
+		dialogueVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		mainHBox.AddChild(dialogueVBox);
+
+		// NPC dialogue text (description message)
 		_npcDescLabel = new Label();
-		_npcDescLabel.HorizontalAlignment = HorizontalAlignment.Center;
 		_npcDescLabel.AutowrapMode = TextServer.AutowrapMode.Word;
-		mainVBox.AddChild(_npcDescLabel);
+		_npcDescLabel.CustomMinimumSize = new Vector2(0, 80);
+		_npcDescLabel.AddThemeFontSizeOverride("font_size", 16);
+		dialogueVBox.AddChild(_npcDescLabel);
 
 		// Separator
 		var separator = new HSeparator();
-		mainVBox.AddChild(separator);
+		dialogueVBox.AddChild(separator);
 
 		// Actions label
 		var actionsLabel = new Label();
-		actionsLabel.Text = "Available Actions:";
-		mainVBox.AddChild(actionsLabel);
+		actionsLabel.Text = "What will you do?";
+		actionsLabel.AddThemeFontSizeOverride("font_size", 14);
+		dialogueVBox.AddChild(actionsLabel);
 
-		// Scroll container for actions (in case there are many)
+		// Scroll container for actions
 		var scrollContainer = new ScrollContainer();
-		scrollContainer.CustomMinimumSize = new Vector2(0, 150);
-		mainVBox.AddChild(scrollContainer);
+		scrollContainer.CustomMinimumSize = new Vector2(0, 100);
+		scrollContainer.SizeFlagsVertical = SizeFlags.ExpandFill;
+		dialogueVBox.AddChild(scrollContainer);
 
 		_actionsContainer = new VBoxContainer();
 		_actionsContainer.AddThemeConstantOverride("separation", 8);
@@ -78,9 +106,9 @@ public partial class InteractionPanel : PanelContainer
 
 		// Close button
 		_closeButton = new Button();
-		_closeButton.Text = "Close";
+		_closeButton.Text = "Close (ESC)";
 		_closeButton.Pressed += OnClosePressed;
-		mainVBox.AddChild(_closeButton);
+		dialogueVBox.AddChild(_closeButton);
 	}
 
 	/// <summary>
@@ -91,6 +119,17 @@ public partial class InteractionPanel : PanelContainer
 		_currentNpcId = npcId;
 		_npcNameLabel.Text = npcName;
 		_npcDescLabel.Text = npcDescription;
+
+		// Set portrait color based on NPC ID (for visual variety)
+		_portraitRect.Color = npcId.ToLower() switch
+		{
+			"katy" => Colors.DeepPink,
+			"john" => Colors.DodgerBlue,
+			"rebecca" => Colors.Orange,
+			"marcus" => Colors.LimeGreen,
+			"sofia" => Colors.Orchid,
+			_ => Colors.Gray
+		};
 
 		// Clear previous actions
 		foreach (Node child in _actionsContainer.GetChildren())

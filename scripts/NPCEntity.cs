@@ -54,25 +54,27 @@ public partial class NPCEntity : Area2D
 		// Name label above the NPC
 		_nameLabel = new Label();
 		_nameLabel.Text = NpcName;
+		_nameLabel.Position = new Vector2(-50, -90); // Above the sprite
 		_nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_nameLabel.Position = new Vector2(-50, -50);
-		_nameLabel.CustomMinimumSize = new Vector2(100, 20);
+		_nameLabel.AddThemeColorOverride("font_color", Colors.Black);
+		_nameLabel.AddThemeFontSizeOverride("font_size", 14);
 		AddChild(_nameLabel);
+		
+		// Interact hint below NPC
+		_interactHint = new Label();
+		_interactHint.Text = "Click to interact";
+		_interactHint.Position = new Vector2(-60, 70); // Below the sprite
+		_interactHint.HorizontalAlignment = HorizontalAlignment.Center;
+		_interactHint.AddThemeColorOverride("font_color", Colors.Black);
+		_interactHint.AddThemeFontSizeOverride("font_size", 12);
+		_interactHint.Visible = false;
+		AddChild(_interactHint);
 
 		// Status indicators (hidden by default)
 		_convertedIndicator = CreateStatusIndicator(Colors.Purple, new Vector2(20, -20));
 		_deadOverlay = CreateStatusIndicator(Colors.Black.Lerp(Colors.Transparent, 0.3f), Vector2.Zero);
 		_deadOverlay.Scale = new Vector2(1.2f, 1.2f);
 		_marriedIndicator = CreateStatusIndicator(Colors.Pink, new Vector2(-20, -20));
-
-		// Interaction hint
-		_interactHint = new Label();
-		_interactHint.Text = "[Click to Interact]";
-		_interactHint.HorizontalAlignment = HorizontalAlignment.Center;
-		_interactHint.Position = new Vector2(-60, 40);
-		_interactHint.CustomMinimumSize = new Vector2(120, 20);
-		_interactHint.Visible = false;
-		AddChild(_interactHint);
 	}
 
 	private void LoadSpriteForNPC()
@@ -176,10 +178,18 @@ public partial class NPCEntity : Area2D
 
 	private void OnInputEvent(Node viewport, InputEvent @event, long shapeIdx)
 	{
-		// Kept for specific physics interaction if working
+		// Check proximity before allowing interaction
 		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
 		{
-			TryInteract();
+			if (_playerInRange)
+			{
+				GD.Print($"Click interaction with {NpcId}");
+				EmitSignal(SignalName.NPCClicked, NpcId);
+			}
+			else
+			{
+				GD.Print($"Too far to interact with {NpcName}");
+			}
 		}
 	}
 
@@ -189,9 +199,10 @@ public partial class NPCEntity : Area2D
 		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
 		{
 			float dist = GetGlobalMousePosition().DistanceTo(GlobalPosition);
-			if (dist < 80) // Visual click radius
+			// Check both visual distance AND proximity flag
+			if (dist < 80 && _playerInRange)
 			{
-				GD.Print($"Fallback click detected! Dist: {dist}, InRange: {_playerInRange}. Emitting signal anyway.");
+				GD.Print($"Fallback click detected! Dist: {dist}, InRange: {_playerInRange}");
 				EmitSignal(SignalName.NPCClicked, NpcId);
 				GetViewport().SetInputAsHandled();
 			}
@@ -219,16 +230,12 @@ public partial class NPCEntity : Area2D
 			GD.Print($"Body entered {NpcName}: {body.Name}");
 			_playerInRange = true;
 			
-			// Auto-interact if it's the local player
+			// Just show hint when player enters range, don't auto-interact
+			// Player must click to interact
 			if (body is PlayerController player && player.IsLocalPlayer)
 			{
-				GD.Print($"Local player entered {NpcName} range. Auto-interacting.");
-				EmitSignal(SignalName.NPCClicked, NpcId);
-			}
-			else
-			{
-				// Keep hint for remote players (optional, or just logic consistency)
 				_interactHint.Visible = true;
+				GD.Print($"Local player entered {NpcName} range, showing hint");
 			}
 		}
 	}

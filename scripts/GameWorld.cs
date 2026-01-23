@@ -33,6 +33,9 @@ public partial class GameWorld : Node2D
 	// UI Components
 	private InteractionPanel _interactionPanel;
 	private CanvasLayer _uiLayer;
+	
+	// Interaction tracking
+	private string _currentInteractingNpcId = null;
 	private Label _timerLabel;
 	private Label _roleLabel;
 	private VBoxContainer _metersContainer;
@@ -130,6 +133,7 @@ public partial class GameWorld : Node2D
 		// Interaction Panel
 		_interactionPanel = new InteractionPanel();
 		_interactionPanel.ActionSelected += OnActionSelected;
+		_interactionPanel.PanelClosed += OnInteractionPanelClosed;
 		_uiLayer.AddChild(_interactionPanel);
 	}
 
@@ -272,6 +276,9 @@ public partial class GameWorld : Node2D
 			?? "An NPC awaits your action.";
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
+		
+		// Store current interacting NPC ID
+		_currentInteractingNpcId = npcId;
 		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
 
@@ -279,6 +286,12 @@ public partial class GameWorld : Node2D
 	{
 		// Send to server
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
+	}
+	
+	private void OnInteractionPanelClosed()
+	{
+		_currentInteractingNpcId = null;
+		GD.Print("Interaction panel closed, cleared current NPC");
 	}
 
 	public override void _Process(double delta)
@@ -307,6 +320,26 @@ public partial class GameWorld : Node2D
 				_gameActive = false;
 				_gameEngine.GameState.AddNotification("GAME OVER - TIME UP!");
 				BroadcastGameState();
+			}
+		}
+	}
+	
+	public override void _PhysicsProcess(double delta)
+	{
+		// If interaction panel is visible, check if player is still in range of NPC
+		if (_interactionPanel != null && _interactionPanel.Visible && _currentInteractingNpcId != null)
+		{
+			var npc = _npcEntities.GetValueOrDefault(_currentInteractingNpcId);
+			if (npc != null && _localPlayer != null)
+			{
+				float distance = _localPlayer.Position.DistanceTo(npc.Position);
+				// Close menu if player is too far (150 = interaction range + buffer)
+				if (distance > 150)
+				{
+					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
+					_interactionPanel.Hide();
+					_currentInteractingNpcId = null;
+				}
 			}
 		}
 	}
