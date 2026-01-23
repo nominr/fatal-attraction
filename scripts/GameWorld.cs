@@ -48,7 +48,33 @@ public partial class GameWorld : Node2D
 		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
 		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
 		SetupUI();
-		SetupBackground();
+		// TileMap is now defined in GameWorld.tscn scene file
+		
+		// Debug: Check if TileMapLayer loaded from scene and scale it
+		var tileMapLayer = GetNodeOrNull("TileMapLayer");
+		if (tileMapLayer != null)
+		{
+			GD.Print($"TileMapLayer found in scene! Type: {tileMapLayer.GetType().Name}");
+			
+			// Scale the tilemap to fill the viewport
+			// The tilemap uses 32x32 tiles, and we want it to fill 1200x800 world
+			// Assuming the tile layout is roughly 37.5 tiles wide x 25 tiles tall
+			// We can scale it up by a factor to make it visible
+			if (tileMapLayer is Node2D tileMapNode)
+			{
+				// Scale tilemap to match character sprite scale (4x)
+				tileMapNode.Scale = new Vector2(4.0f, 4.0f);
+				// Center the tilemap - offset it to align with viewport center
+				// The tilemap data uses negative coordinates, so we need to offset it
+				tileMapNode.Position = new Vector2(600, 200); // Center of 1200x800 world
+				tileMapNode.ZIndex = -10; // Ensure it's behind everything
+				GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
+			}
+		}
+		else
+		{
+			GD.PrintErr("TileMapLayer NOT found in scene!");
+		}
 
 		if (Multiplayer.IsServer())
 		{
@@ -105,38 +131,6 @@ public partial class GameWorld : Node2D
 		_interactionPanel = new InteractionPanel();
 		_interactionPanel.ActionSelected += OnActionSelected;
 		_uiLayer.AddChild(_interactionPanel);
-	}
-
-	private void SetupBackground()
-	{
-		// Load the mock map as background
-		var mapTexture = GD.Load<Texture2D>("res://assets/tilemap-basic.png");
-		
-		if (mapTexture != null)
-		{
-			var mapSprite = new Sprite2D();
-			mapSprite.Texture = mapTexture;
-			mapSprite.Centered = false; // Position from top-left
-			mapSprite.ZIndex = -10;
-			
-			// Scale to fill the world
-			float scaleX = _worldSize.X / mapTexture.GetWidth();
-			float scaleY = _worldSize.Y / mapTexture.GetHeight();
-			mapSprite.Scale = new Vector2(scaleX, scaleY);
-			
-			AddChild(mapSprite);
-			GD.Print($"Background map loaded: {mapTexture.GetWidth()}x{mapTexture.GetHeight()}, scaled to {_worldSize}");
-		}
-		else
-		{
-			// Fallback to simple colored background
-			var bg = new ColorRect();
-			bg.Color = new Color(0.15f, 0.15f, 0.2f, 1f);
-			bg.Size = _worldSize;
-			bg.ZIndex = -10;
-			AddChild(bg);
-			GD.PrintErr("Failed to load tilemap-basic.png, using fallback background");
-		}
 	}
 
 	private void InitializeServer()

@@ -75,26 +75,27 @@ public partial class PlayerController : CharacterBody2D
 		AddChild(_roleLabel);
 	}
 
+
 	private void LoadSpriteForRole(string role)
 	{
 		if (_sprite == null) return;
 		
-		// Map role to sprite number: Admirer=1, Prophet=2, Producer=3
-		int spriteNum = role.ToLower() switch
+		// Map role to role-specific sprite file
+		string spritePath = role.ToLower() switch
 		{
-			"admirer" => 1,
-			"prophet" => 2,
-			"producer" => 3,
-			_ => 1 // default to sprite 1
+			"admirer" => "res://assets/admirer-sprite.png",
+			"prophet" => "res://assets/prophet-sprite.png",
+			"producer" => "res://assets/producer-sprite.png",
+			_ => "res://assets/admirer-sprite.png" // default to admirer
 		};
 		
-		// Use correct path from assets folder
-		string spritePath = $"res://assets/sprite-000{spriteNum}.png";
 		var texture = GD.Load<Texture2D>(spritePath);
 		
 		if (texture != null)
 		{
 			_sprite.Texture = texture;
+			// Scale sprite to match tile height (4x for better visibility)
+			_sprite.Scale = new Vector2(4.0f, 4.0f);
 			GD.Print($"Loaded player sprite for {role}: {spritePath}");
 		}
 		else
@@ -105,8 +106,10 @@ public partial class PlayerController : CharacterBody2D
 			fallbackTexture.Width = 32;
 			fallbackTexture.Height = 32;
 			_sprite.Texture = fallbackTexture;
+			_sprite.Scale = new Vector2(4.0f, 4.0f);
 		}
 	}
+
 
 	/// <summary>
 	/// Set whether this is the local player (controlled by this client)

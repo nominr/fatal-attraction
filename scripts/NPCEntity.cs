@@ -46,20 +46,9 @@ public partial class NPCEntity : Area2D
 
 	private void SetupVisuals()
 	{
-		// Main NPC sprite (simple colored circle for now)
+		// Main NPC sprite - load from file based on NPC ID
 		_sprite = new Sprite2D();
-		// Create a simple placeholder texture
-		var texture = new GradientTexture2D();
-		texture.Width = 64;
-		texture.Height = 64;
-		texture.Fill = GradientTexture2D.FillEnum.Radial;
-		texture.FillFrom = new Vector2(0.5f, 0.5f);
-		texture.FillTo = new Vector2(1f, 0.5f);
-		var gradient = new Gradient();
-		gradient.SetColor(0, NpcColor);
-		gradient.SetColor(1, NpcColor.Darkened(0.3f));
-		texture.Gradient = gradient;
-		_sprite.Texture = texture;
+		LoadSpriteForNPC();
 		AddChild(_sprite);
 
 		// Name label above the NPC
@@ -84,6 +73,55 @@ public partial class NPCEntity : Area2D
 		_interactHint.CustomMinimumSize = new Vector2(120, 20);
 		_interactHint.Visible = false;
 		AddChild(_interactHint);
+	}
+
+	private void LoadSpriteForNPC()
+	{
+		// Map NPC IDs to sprite numbers (1-10)
+		var npcSpriteMap = new System.Collections.Generic.Dictionary<string, int>
+		{
+			{ "katy", 1 },
+			{ "john", 2 },
+			{ "rebecca", 3 },
+			{ "marcus", 4 },
+			{ "sofia", 5 }
+		};
+
+
+		int spriteNum = 1; // default
+		if (!npcSpriteMap.TryGetValue(NpcId.ToLower(), out spriteNum))
+		{
+			spriteNum = 1; // Use sprite 1 as fallback for unknown NPCs
+		}
+		string spritePath = $"res://assets/sprite-{spriteNum:D4}.png";
+
+		
+		var texture = GD.Load<Texture2D>(spritePath);
+		
+		if (texture != null)
+		{
+			_sprite.Texture = texture;
+			// Scale sprite to match tile height (4x for better visibility)
+			_sprite.Scale = new Vector2(4.0f, 4.0f);
+			GD.Print($"Loaded NPC sprite for {NpcId}: {spritePath}");
+		}
+		else
+		{
+			GD.PrintErr($"Failed to load NPC sprite: {spritePath}, using fallback");
+			// Fallback to gradient texture
+			var fallbackTexture = new GradientTexture2D();
+			fallbackTexture.Width = 64;
+			fallbackTexture.Height = 64;
+			fallbackTexture.Fill = GradientTexture2D.FillEnum.Radial;
+			fallbackTexture.FillFrom = new Vector2(0.5f, 0.5f);
+			fallbackTexture.FillTo = new Vector2(1f, 0.5f);
+			var gradient = new Gradient();
+			gradient.SetColor(0, NpcColor);
+			gradient.SetColor(1, NpcColor.Darkened(0.3f));
+			fallbackTexture.Gradient = gradient;
+			_sprite.Texture = fallbackTexture;
+			_sprite.Scale = new Vector2(4.0f, 4.0f);
+		}
 	}
 
 	private Sprite2D CreateStatusIndicator(Color color, Vector2 offset)
