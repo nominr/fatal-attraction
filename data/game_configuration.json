@@ -289,6 +289,39 @@
                 },
                 {
                   "notification": "You pranked Katy! Chaos increased."
+                },
+                {
+                  "npc": "katy",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_katy",
+              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "katy",
+                  "field": "prankActive",
+                  "value": false
                 }
               ]
             },
@@ -410,7 +443,7 @@
               ]
             },
             {
-              "id": "prank",
+              "id": "prank_john",
               "text": "Prank John (Prophet, +1 chaos)",
               "requires": {
                 "role": "prophet"
@@ -423,23 +456,39 @@
                 },
                 {
                   "notification": "You pranked John! Chaos increased."
+                },
+                {
+                  "npc": "john",
+                  "field": "prankActive",
+                  "value": true
                 }
               ]
             },
             {
-              "id": "trap",
-              "text": "Set trap near John (Prophet, +1 chaos)",
+              "id": "cleanup_john",
+              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
               "requires": {
-                "role": "prophet"
+                "role": "producer",
+                "npcPrankActive": true
               },
               "effects": [
                 {
                   "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
                   "delta": 1,
                   "clampMax": 10
                 },
                 {
-                  "notification": "You set a trap! Chaos increased."
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "john",
+                  "field": "prankActive",
+                  "value": false
                 }
               ]
             },
@@ -498,30 +547,11 @@
               ]
             },
             {
-              "id": "cleanup_john",
-              "text": "Clean up situation (Producer, -1 chaos)",
+              "id": "interview_john",
+              "text": "Interview John (Producer, +1 ratings)",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "notification": "You cleaned up! Chaos decreased."
-                }
-              ]
-            },
-            {
-              "id": "marry_john",
-              "text": "Marry (Producer, +1 ratings)",
-              "requires": {
-                "role": "producer",
-                "npcMarriageable": true
-              },
-              "marry_initiate": true,
               "effects": [
                 {
                   "meter": "ratings",
@@ -529,7 +559,7 @@
                   "clampMax": 10
                 },
                 {
-                  "notification": "You set up an NPC marriage! Ratings increased."
+                  "notification": "You interviewed John! Ratings increased."
                 }
               ]
             },
@@ -616,6 +646,39 @@
                 },
                 {
                   "notification": "You pranked Rebecca! Chaos increased."
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_rebecca",
+              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "prankActive",
+                  "value": false
                 }
               ]
             },
@@ -629,7 +692,7 @@
               "effects": [
                 {
                   "meter": "chaos",
-                  "delta": 2,
+                  "delta": 1,
                   "clampMax": 10
                 },
                 {
@@ -661,47 +724,6 @@
               "effects_on_failure": [
                 {
                   "notification": "Failed to unconvert Rebecca."
-                }
-              ]
-            },
-            {
-              "id": "cleanup",
-              "text": "Clean up (Producer, -1 chaos, +1 ratings)",
-              "requires": {
-                "role": "producer"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the situation! Chaos decreased, Ratings increased."
-                }
-              ]
-            },
-            {
-              "id": "marry_rebecca",
-              "text": "Marry (Producer, +1 ratings)",
-              "requires": {
-                "role": "producer",
-                "npcMarriageable": true
-              },
-              "marry_initiate": true,
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You set up an NPC marriage! Ratings increased."
                 }
               ]
             },
@@ -841,25 +863,39 @@
                 },
                 {
                   "notification": "You pranked Marcus! Chaos increased."
+                },
+                {
+                  "npc": "marcus",
+                  "field": "prankActive",
+                  "value": true
                 }
               ]
             },
             {
-              "id": "marry_marcus",
-              "text": "Marry (Producer, +1 ratings)",
+              "id": "cleanup_marcus",
+              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
               "requires": {
                 "role": "producer",
-                "npcMarriageable": true
+                "npcPrankActive": true
               },
-              "marry_initiate": true,
               "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
                 {
                   "meter": "ratings",
                   "delta": 1,
                   "clampMax": 10
                 },
                 {
-                  "notification": "You set up an NPC marriage! Ratings increased."
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "marcus",
+                  "field": "prankActive",
+                  "value": false
                 }
               ]
             },
@@ -1004,21 +1040,52 @@
               ]
             },
             {
-              "id": "marry_sofia",
-              "text": "Marry (Producer, +2 ratings)",
+              "id": "prank_sofia",
+              "text": "Prank Sofia (Prophet, +1 chaos)",
               "requires": {
-                "role": "producer",
-                "npcMarriageable": true
+                "role": "prophet"
               },
-              "marry_initiate": true,
               "effects": [
                 {
-                  "meter": "ratings",
-                  "delta": 2,
+                  "meter": "chaos",
+                  "delta": 1,
                   "clampMax": 10
                 },
                 {
-                  "notification": "You set up an NPC marriage! Ratings increased significantly!"
+                  "notification": "You pranked Sofia! Chaos increased."
+                },
+                {
+                  "npc": "sofia",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_sofia",
+              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "sofia",
+                  "field": "prankActive",
+                  "value": false
                 }
               ]
             },
@@ -1076,7 +1143,7 @@
           "requirement": {
             "meter": "chaos",
             "minValue": 10,
-            "npcsConverted": 2
+            "npcsConverted": 4
           }
         },
         "secondary": {

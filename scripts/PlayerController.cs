@@ -72,11 +72,13 @@ public partial class PlayerController : CharacterBody2D
 		_camera.Enabled = false; // Will be enabled when SetLocalPlayer is called
 		AddChild(_camera);
 
-		// Role label below player
+		// Role label below player (black color)
 		_roleLabel = new Label();
 		_roleLabel.Text = PlayerRole;
 		_roleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_roleLabel.Position = new Vector2(-40, 20);
+		_roleLabel.Position = new Vector2(-40, 70); // Below sprite
+		_roleLabel.AddThemeColorOverride("font_color", Colors.Black);
+		_roleLabel.AddThemeFontSizeOverride("font_size", 12);
 		_roleLabel.CustomMinimumSize = new Vector2(80, 20);
 		AddChild(_roleLabel);
 	}
