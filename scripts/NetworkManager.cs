@@ -108,7 +108,6 @@ public partial class NetworkManager : Node
 	private void OnConnectedToServer()
 	{
 		var id = Multiplayer.GetUniqueId();
-		GD.Print($"Connected to server with ID: {id}");
 		
 		// Register ourselves
 		Rpc(MethodName.RegisterPlayer, PlayerName);
@@ -117,7 +116,6 @@ public partial class NetworkManager : Node
 
 	private void OnConnectionFailed()
 	{
-		GD.Print("Connection failed.");
 		EmitSignal(SignalName.ConnectionFailed);
 	}
 
@@ -136,8 +134,6 @@ public partial class NetworkManager : Node
 		// For locally-called RPCs (like host registering itself), sender ID is 0
 		// Use the actual unique ID in that case
 		long id = senderId == 0 ? Multiplayer.GetUniqueId() : senderId;
-		
-		GD.Print($"Registering player {name} (senderId={senderId}, actualId={id})");
 		
 		var info = new PlayerInfo { Name = name, Id = (int)id, Role = "Observer" };
 		Players[id] = info;
@@ -210,7 +206,6 @@ public partial class NetworkManager : Node
 			var info = Players[playerId];
 			info.Role = role;
 			Players[playerId] = info;
-			GD.Print($"Player {playerId} assigned role {role}");
 			EmitSignal(SignalName.PlayerConnected, playerId, info.Name);
 		}
 	}
@@ -222,7 +217,6 @@ public partial class NetworkManager : Node
 		var info = new PlayerInfo { Name = name, Id = (int)playerId, Role = Players.ContainsKey(playerId) ? Players[playerId].Role : "Observer" };
 		Players[playerId] = info;
 		EmitSignal(SignalName.PlayerConnected, playerId, name);
-		GD.Print($"Synced player join: {playerId} ({name})");
 	}
 
 	// Broadcast: server informs clients a player left
@@ -233,7 +227,6 @@ public partial class NetworkManager : Node
 		{
 			Players.Remove(playerId);
 			EmitSignal(SignalName.PlayerDisconnected, playerId);
-			GD.Print($"Synced player left: {playerId}");
 		}
 	}
 }

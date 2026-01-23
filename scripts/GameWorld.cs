@@ -47,18 +47,15 @@ public partial class GameWorld : Node2D
 		// Listen for network player events to keep controllers in sync
 		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
 		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
-		GD.Print($"[GameWorld] _Ready called on peer {Multiplayer.GetUniqueId()}, IsServer={Multiplayer.IsServer()}");
 		SetupUI();
 		SetupBackground();
 
 		if (Multiplayer.IsServer())
 		{
-			GD.Print($"[GameWorld] Initializing as SERVER");
 			InitializeServer();
 		}
 		else
 		{
-			GD.Print($"[GameWorld] Initializing as CLIENT");
 			InitializeClient();
 		}
 	}
@@ -157,7 +154,6 @@ public partial class GameWorld : Node2D
 
 	private void InitializeClient()
 	{
-		GD.Print($"[GameWorld] Client requesting game state from server");
 		// Request state from server - players will be spawned when state arrives
 		RpcId(1, MethodName.RequestGameState);
 	}
@@ -380,7 +376,6 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
 	private void UpdateGameState(string json)
 	{
-		GD.Print($"[GameWorld] UpdateGameState called on peer {Multiplayer.GetUniqueId()}, players before: {_playerControllers.Count}");
 		_localGameState = JObject.Parse(json);
 		
 		// Spawn NPCs if not spawned yet (clients)

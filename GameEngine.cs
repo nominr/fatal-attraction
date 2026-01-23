@@ -160,6 +160,9 @@ namespace FatalAttraction.Engine
 		}
 
 		public PlayerState GetPlayerState(Role role)
+		{
+			return Players.ContainsKey(role) ? Players[role] : null;
+		}
 
 		public NPC GetNPC(string npcId)
 		{
@@ -306,7 +309,7 @@ namespace FatalAttraction.Engine
 						// So we must filter here.
 						
 						// We need a deterministic seed so valid options don't jitter?
-						int seed = npcId.GetHashCode() + GameState.CurrentTurn;
+					int seed = npcId.GetHashCode() + _gameState.CurrentTurn;
 						var rng = new Random(seed);
 						var successfulMove = moves[rng.Next(moves.Length)]; // This turn, this move wins?
 						
@@ -442,7 +445,7 @@ namespace FatalAttraction.Engine
 				else if (chaos >= 3) difficulty = "normal";
 
 				// Deterministic Win Move
-				int seed = npcId.GetHashCode() + GameState.CurrentTurn;
+			int seed = npcId.GetHashCode() + _gameState.CurrentTurn;
 				var rng = new Random(seed);
 				string[] moves = { "rock", "paper", "scissors" };
 				string winningMove = moves[rng.Next(moves.Length)]; 
@@ -469,13 +472,13 @@ namespace FatalAttraction.Engine
 				string result = success ? "WON" : "LOST";
 				_gameState.AddNotification($"{playerRole} played {playerMove} and {result} against {npc.Name}!");
 			}
-			else if (isAdmirerMarry)
+			else if (playerRole == Role.Admirer && optionId.Contains("marry"))
 			{
-				// Admirer Logic...
-				// Logic continues...
-				if (targets.Any(t => t.Alive))
+				// Admirer marriage logic
+				var targets = npcConfig["targets"] as JArray;
+				if (targets != null && targets.Any(t => t["alive"]?.Value<bool>() ?? true))
 				{
-					return (false, "You cannot marry while rivals (Targets) are still alive!");
+					return (false, "You cannot marry while rivals are still alive!");
 				}
 
 				// 2. Probability Math: (8 * score + 5) / 100
@@ -525,7 +528,7 @@ namespace FatalAttraction.Engine
 				ApplyEffect(effect, playerRole, npcId, success);
 			}
 
-			if (!success && !isAdmirerMarry) // Admirer fail is already handled
+if (!success && !(playerRole == Role.Admirer && optionId.Contains("marry")))
 				return (false, "Action failed (chance roll)");
 
 			return (true, null);
@@ -622,88 +625,81 @@ namespace FatalAttraction.Engine
 
 		public void StartTurn(Role playerRole)
 		{
-			var player = GameState.GetPlayerState(playerRole);
-			GameState.AddNotification($"\n--- TURN {GameState.CurrentTurn} START ---");
-			GameState.AddNotification($"[{playerRole}]");
+		var player = GameState.GetPlayerState(playerRole);
+		GameState.AddNotification($"\n--- TURN {GameState.CurrentTurn} START ---");
+		GameState.AddNotification($"[{playerRole}]");
 
-			foreach (var meter in player.Meters.Values)
+		foreach (var meter in player.Meters.Values)
+		{
+			GameState.AddNotification($"  {meter.Name.ToUpper()}: {meter.Value}/{meter.MaxValue}");
+		}
+	}
+
+	public void EndTurn()
+	{
+		GameState.AddNotification($"--- TURN {GameState.CurrentTurn} END ---\n");
+		GameState.AdvanceTurn();
+	}
+
+	public string CheckWinCondition(Role playerRole)
+	{
+		var player = GameState.GetPlayerState(playerRole);
+		var winConfig = GameState.Config["gameRules"]["winConditions"][playerRole.ToString().ToLower()];
+		var requirement = winConfig["requirement"];
+
+		if (CheckCondition(player, requirement))
+		{
+			var goal = winConfig["goal"].Value<string>();
+			return $"{playerRole} wins! ({goal})";
+		}
+
+		return null;
+	}
+
+	private bool CheckCondition(PlayerState player, JToken requirement)
+	{
+		var meterName = requirement["meter"]?.Value<string>();
+		if (!string.IsNullOrEmpty(meterName))
+		{
+			var minValue = requirement["minValue"]?.Value<double>();
+			var meter = player.GetMeter(meterName);
+			if (meter != null && minValue.HasValue && meter.Value >= minValue.Value)
+				return true;
+		}
+
+		return false;
+	}
+
+	public List<string> GetNotifications()
+	{
+		return GameState.GetAndClearNotifications();
+	}
+
+	public void Update(double deltaSeconds)
+	{
+		for (int i = GameState.Traps.Count - 1; i >= 0; i--)
+		{
+			var trap = GameState.Traps[i];
+			trap.TimeAlive += deltaSeconds;
+
+			double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
+
+			if (_random.NextDouble() < (p * deltaSeconds))
 			{
-				GameState.AddNotification($"  {meter.Name.ToUpper()}: {meter.Value}/{meter.MaxValue}");
-			}
-		}
-
-		public void EndTurn()
-		{
-			GameState.AddNotification($"--- TURN {GameState.CurrentTurn} END ---\n");
-			GameState.AdvanceTurn();
-		}
-
-		public string CheckWinCondition(Role playerRole)
-		{
-			var player = GameState.GetPlayerState(playerRole);
-			var winConfig = GameState.Config["gameRules"]["winConditions"][playerRole.ToString().ToLower()];
-
-			var primary = winConfig["primary"];
-			var requirement = primary["requirement"];
-
-			if (CheckCondition(player, requirement))
-			{
-				var goal = primary["goal"].Value<string>();
-				return $"{playerRole} wins! ({goal})";
-			}
-
-			return null;
-		}
-
-		private bool CheckCondition(PlayerState player, JToken requirement)
-		{
-			var meterName = requirement["meter"]?.Value<string>();
-			if (!string.IsNullOrEmpty(meterName))
-			{
-				var minValue = requirement["minValue"]?.Value<double>();
-				var meter = player.GetMeter(meterName);
-				if (meter != null && minValue.HasValue && meter.Value >= minValue.Value)
-					return true;
-			}
-
-			return false;
-		}
-
-		public List<string> GetNotifications()
-		{
-			return GameState.GetAndClearNotifications();
-		}
-
-		public void Update(double deltaSeconds)
-		{
-			for (int i = GameState.Traps.Count - 1; i >= 0; i--)
-			{
-				var trap = GameState.Traps[i];
-				trap.TimeAlive += deltaSeconds;
-
-				// P(x) = 0.5 * e^(-2x)
-				// We treat this as "Probability of triggering right now".
-				// To approximate continuous check, we allow the check to run periodically.
-				// For simulation, we'll check against p * delta.
-				double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
-
-				if (_random.NextDouble() < (p * deltaSeconds))
+				GameState.AddNotification("A TRAP TRIGGERED! Chaos erupts!");
+				
+				if (Enum.TryParse<Role>(trap.CreatorRole, out var role))
 				{
-					GameState.AddNotification("A TRAP TRIGGERED! Chaos erupts!");
-					
-					// Add Chaos
-					if (Enum.TryParse<Role>(trap.CreatorRole, out var role))
-					{
-						var player = GameState.GetPlayerState(role);
-						var chaosMeter = player?.GetMeter("chaos");
-						chaosMeter?.Add(1);
-					}
-					GameState.Traps.RemoveAt(i);
+					var player = GameState.GetPlayerState(role);
+					var chaosMeter = player?.GetMeter("chaos");
+					chaosMeter?.Add(1);
 				}
+				GameState.Traps.RemoveAt(i);
 			}
 		}
+	}
 
-		public JObject GetGameStatus()
+	public JObject GetGameStatus()
 		{
 			var status = new JObject
 			{

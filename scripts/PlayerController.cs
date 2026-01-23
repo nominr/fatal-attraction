@@ -40,6 +40,14 @@ public partial class PlayerController : CharacterBody2D
 		
 		// Add to players group so NPCs can detect us
 		AddToGroup("players");
+		
+		// Configure collision layers to prevent player-to-player collisions
+		// Layer 1 (bit 0): Players exist here for detection by NPCs
+		// Mask 0: Players don't collide with anything (pass through each other)
+		CollisionLayer = 1; // Bit 0 = layer 1
+		CollisionMask = 0;  // Don't collide with any layers
+		
+		GD.Print($"PlayerController: Set collision layer={CollisionLayer}, mask={CollisionMask}");
 	}
 
 	private void SetupVisuals()
@@ -164,7 +172,6 @@ public partial class PlayerController : CharacterBody2D
 	{
 		_playerId = playerId;
 		_lastSentPosition = Position; // Initialize to current position
-		GD.Print($"PlayerController: Set player ID {playerId} at position {Position}");
 	}
 
 	/// <summary>
@@ -172,12 +179,7 @@ public partial class PlayerController : CharacterBody2D
 	/// </summary>
 	public void UpdateRemotePosition(Vector2 newPosition)
 	{
-		if (_isLocalPlayer)
-		{
-			GD.Print($"[PlayerController] Ignoring UpdateRemotePosition for local player {_playerId}");
-			return; // Don't override local player position
-		}
-		GD.Print($"[PlayerController] Updating remote player {_playerId} position from {Position} to {newPosition}");
+		if (_isLocalPlayer) return; // Don't override local player position
 		Position = newPosition;
 	}
 
@@ -210,7 +212,6 @@ public partial class PlayerController : CharacterBody2D
 		if (Position.DistanceTo(_lastSentPosition) > PositionSyncThreshold)
 		{
 			_lastSentPosition = Position;
-			GD.Print($"[PlayerController] Player {_playerId} emitting PositionChanged signal at {Position}");
 			EmitSignal(SignalName.PositionChanged, _playerId, Position);
 		}
 	}
