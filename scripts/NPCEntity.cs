@@ -34,6 +34,21 @@ public partial class NPCEntity : Area2D
 	private bool _playerInRange = false;
 	private Label _interactHint;
 
+	// Wandering AI
+	private enum WanderState { Moving, Pausing }
+	private WanderState _wanderState = WanderState.Pausing;
+	private Vector2 _targetPosition;
+	private double _pauseTimer = 0.0;
+	private const float MOVE_SPEED = 50.0f; // Pixels per second
+	private const float MIN_PAUSE = 2.0f; // Minimum pause time in seconds
+	private const float MAX_PAUSE = 5.0f; // Maximum pause time in seconds
+	private const float TARGET_REACHED_THRESHOLD = 10.0f; // How close to target to consider "arrived"
+	private static readonly Random _random = new Random();
+	
+	// Map bounds (should match GameWorld._worldSize with some margin)
+	private Vector2 _mapMin = new Vector2(100, 100);
+	private Vector2 _mapMax = new Vector2(1100, 700);
+
 	public override void _Ready()
 	{
 		SetupVisuals();
@@ -42,6 +57,63 @@ public partial class NPCEntity : Area2D
 		
 		// Connect input
 		InputEvent += OnInputEvent;
+		
+		// Start with a random pause before first movement
+		_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
+		_targetPosition = Position;
+	}
+
+	public override void _Process(double delta)
+	{
+		UpdateWandering(delta);
+	}
+
+	private void UpdateWandering(double delta)
+	{
+		switch (_wanderState)
+		{
+			case WanderState.Pausing:
+				_pauseTimer -= delta;
+				if (_pauseTimer <= 0)
+				{
+					// Done pausing, pick a new target and start moving
+					PickNewTarget();
+					_wanderState = WanderState.Moving;
+				}
+				break;
+
+			case WanderState.Moving:
+				// Move towards target
+				Vector2 direction = (_targetPosition - Position).Normalized();
+				float distanceToTarget = Position.DistanceTo(_targetPosition);
+				
+				if (distanceToTarget <= TARGET_REACHED_THRESHOLD)
+				{
+					// Arrived at target, start pausing
+					Position = _targetPosition; // Snap to exact position
+					_wanderState = WanderState.Pausing;
+					_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
+				}
+				else
+				{
+					// Move towards target
+					float moveDistance = MOVE_SPEED * (float)delta;
+					if (moveDistance > distanceToTarget)
+					{
+						moveDistance = distanceToTarget; // Don't overshoot
+					}
+					Position += direction * moveDistance;
+				}
+				break;
+		}
+	}
+
+	private void PickNewTarget()
+	{
+		// Pick a random position within map bounds
+		float x = (float)(_random.NextDouble() * (_mapMax.X - _mapMin.X) + _mapMin.X);
+		float y = (float)(_random.NextDouble() * (_mapMax.Y - _mapMin.Y) + _mapMin.Y);
+		_targetPosition = new Vector2(x, y);
 	}
 
 	private void SetupVisuals()

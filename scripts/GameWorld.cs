@@ -20,6 +20,8 @@ public partial class GameWorld : Node2D
 	private GameEngine _gameEngine;
 	private bool _gameActive = false;
 	private double _timeRemaining = 180.0;
+	private double _broadcastTimer = 0.0;
+	private const double BROADCAST_INTERVAL = 1.0; // Broadcast game state every second
 
 	// Local State Cache
 	private JObject _localGameState;
@@ -276,13 +278,14 @@ public partial class GameWorld : Node2D
 	{
 		if (_gameEngine == null) return;
 
+		// Spread NPCs across different areas/rooms of the map
 		var npcPositions = new Dictionary<string, Vector2>
 		{
-			{ "katy", new Vector2(200, 200) },
-			{ "john", new Vector2(600, 200) },
-			{ "rebecca", new Vector2(1000, 200) },
-			{ "marcus", new Vector2(400, 500) },
-			{ "sofia", new Vector2(800, 500) }
+			{ "katy", new Vector2(150, 150) },      // Top-left corner
+			{ "john", new Vector2(1050, 150) },     // Top-right corner
+			{ "rebecca", new Vector2(600, 400) },   // Center of map
+			{ "marcus", new Vector2(150, 650) },    // Bottom-left corner
+			{ "sofia", new Vector2(1050, 650) }     // Bottom-right corner
 		};
 
 		var npcColors = new Dictionary<string, Color>
@@ -459,6 +462,16 @@ public partial class GameWorld : Node2D
 				
 				BroadcastGameState();
 			}
+			else
+			{
+				// Periodically broadcast game state to keep timer updated on clients
+				_broadcastTimer += delta;
+				if (_broadcastTimer >= BROADCAST_INTERVAL)
+				{
+					_broadcastTimer = 0.0;
+					BroadcastGameState();
+				}
+			}
 		}
 	}
 	
@@ -566,13 +579,14 @@ public partial class GameWorld : Node2D
 
 	private void SpawnNPCsFromState()
 	{
+		// Spread NPCs across different areas/rooms of the map
 		var npcPositions = new Dictionary<string, Vector2>
 		{
-			{ "katy", new Vector2(200, 200) },
-			{ "john", new Vector2(600, 200) },
-			{ "rebecca", new Vector2(1000, 200) },
-			{ "marcus", new Vector2(400, 500) },
-			{ "sofia", new Vector2(800, 500) }
+			{ "katy", new Vector2(150, 150) },      // Top-left corner
+			{ "john", new Vector2(1050, 150) },     // Top-right corner
+			{ "rebecca", new Vector2(600, 400) },   // Center of map
+			{ "marcus", new Vector2(150, 650) },    // Bottom-left corner
+			{ "sofia", new Vector2(1050, 650) }     // Bottom-right corner
 		};
 
 		var npcColors = new Dictionary<string, Color>

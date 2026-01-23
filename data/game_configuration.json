@@ -37,13 +37,13 @@
       },
       "goals": {
         "kill_targets": {
-          "displayName": "Kill targets (non-converts)",
+          "displayName": "Kill targets",
           "constraints": {
             "mustBeNonConvert": true
           }
         },
         "marry_love_interest": {
-          "displayName": "Marry love interest (non-convert)",
+          "displayName": "Marry love interest",
           "constraints": {
             "mustBeNonConvert": true
           }
@@ -214,7 +214,7 @@
           "options": [
             {
               "id": "flirt",
-              "text": "Flirt romantically (Admirer, +2 love)",
+              "text": "Flirt romantically",
               "requires": {
                 "role": "admirer"
               },
@@ -231,7 +231,7 @@
             },
             {
               "id": "marry",
-              "text": "Marry Katy (Requires Rivals Dead, Chance based on Love)",
+              "text": "Marry Katy",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "nonConverted"
@@ -250,7 +250,7 @@
             },
             {
               "id": "unconvert",
-              "text": "Attempt to unconvert (Admirer, 30% chance)",
+              "text": "Attempt to unconvert",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "converted"
@@ -277,7 +277,7 @@
             },
             {
               "id": "prank_katy",
-              "text": "Prank Katy (Prophet, +1 chaos)",
+              "text": "Prank Katy",
               "requires": {
                 "role": "prophet"
               },
@@ -299,7 +299,7 @@
             },
             {
               "id": "cleanup_katy",
-              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "text": "Clean up mess",
               "requires": {
                 "role": "producer",
                 "npcPrankActive": true
@@ -327,7 +327,7 @@
             },
             {
               "id": "convert_katy",
-              "text": "Try to convert (Prophet, RPS)",
+              "text": "Try to convert",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "nonConverted"
@@ -358,7 +358,7 @@
             },
             {
               "id": "interview",
-              "text": "Interview (Producer, +1 ratings)",
+              "text": "Interview",
               "requires": {
                 "role": "producer"
               },
@@ -395,7 +395,7 @@
           "options": [
             {
               "id": "kill",
-              "text": "Kill John (Admirer, TARGET, non-convert only)",
+              "text": "Kill John",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "nonConverted"
@@ -413,7 +413,7 @@
             },
             {
               "id": "convert",
-              "text": "Try to convert John (Prophet, RPS, +1 chaos)",
+              "text": "Try to convert John",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "nonConverted"
@@ -444,7 +444,7 @@
             },
             {
               "id": "prank_john",
-              "text": "Prank John (Prophet, +1 chaos)",
+              "text": "Prank John",
               "requires": {
                 "role": "prophet"
               },
@@ -466,7 +466,7 @@
             },
             {
               "id": "cleanup_john",
-              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "text": "Clean up mess",
               "requires": {
                 "role": "producer",
                 "npcPrankActive": true
@@ -494,7 +494,7 @@
             },
             {
               "id": "unconvert_john_admirer",
-              "text": "Unconvert John (Admirer, 30% chance)",
+              "text": "Unconvert John",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "converted"
@@ -521,7 +521,7 @@
             },
             {
               "id": "unconvert_john",
-              "text": "Unconvert John (Producer, 75% chance)",
+              "text": "Unconvert John",
               "requires": {
                 "role": "producer",
                 "npcStatus": "converted"
@@ -548,7 +548,7 @@
             },
             {
               "id": "interview_john",
-              "text": "Interview John (Producer, +1 ratings)",
+              "text": "Interview John",
               "requires": {
                 "role": "producer"
               },
@@ -585,7 +585,7 @@
           "options": [
             {
               "id": "kill_rebecca",
-              "text": "Kill Rebecca (Admirer, TARGET, non-convert only)",
+              "text": "Kill Rebecca",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "nonConverted"
@@ -603,7 +603,7 @@
             },
             {
               "id": "convert_rebecca",
-              "text": "Try to convert Rebecca (Prophet, RPS, +1 chaos)",
+              "text": "Try to convert Rebecca",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "nonConverted"
@@ -634,7 +634,7 @@
             },
             {
               "id": "prank_rebecca",
-              "text": "Prank Rebecca (Prophet, +1 chaos)",
+              "text": "Prank Rebecca",
               "requires": {
                 "role": "prophet"
               },
@@ -656,7 +656,7 @@
             },
             {
               "id": "cleanup_rebecca",
-              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "text": "Clean up mess",
               "requires": {
                 "role": "producer",
                 "npcPrankActive": true
@@ -684,7 +684,7 @@
             },
             {
               "id": "manipulate",
-              "text": "Manipulate Rebecca (Prophet, +2 chaos)",
+              "text": "Manipulate Rebecca",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "converted"
@@ -702,7 +702,7 @@
             },
             {
               "id": "unconvert_rebecca_admirer",
-              "text": "Unconvert Rebecca (Admirer, 30% chance)",
+              "text": "Unconvert Rebecca",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "converted"
@@ -729,7 +729,7 @@
             },
             {
               "id": "interview_rebecca",
-              "text": "Interview Rebecca (Producer, +1 ratings)",
+              "text": "Interview Rebecca",
               "requires": {
                 "role": "producer"
               },
@@ -766,7 +766,7 @@
           "options": [
             {
               "id": "convert_marcus",
-              "text": "Try to convert Marcus (Prophet, RPS, +1 chaos)",
+              "text": "Try to convert Marcus",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "nonConverted"
@@ -797,7 +797,7 @@
             },
             {
               "id": "unconvert_marcus_admirer",
-              "text": "Unconvert Marcus (Admirer, 30% chance)",
+              "text": "Unconvert Marcus",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "converted"
@@ -824,7 +824,7 @@
             },
             {
               "id": "unconvert_marcus",
-              "text": "Unconvert Marcus (Producer, 75% chance)",
+              "text": "Unconvert Marcus",
               "requires": {
                 "role": "producer",
                 "npcStatus": "converted"
@@ -851,7 +851,7 @@
             },
             {
               "id": "prank_marcus",
-              "text": "Prank Marcus (Prophet, +1 chaos)",
+              "text": "Prank Marcus",
               "requires": {
                 "role": "prophet"
               },
@@ -873,7 +873,7 @@
             },
             {
               "id": "cleanup_marcus",
-              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "text": "Clean up mess",
               "requires": {
                 "role": "producer",
                 "npcPrankActive": true
@@ -901,7 +901,7 @@
             },
             {
               "id": "interview_marcus",
-              "text": "Interview Marcus (Producer, +1 ratings)",
+              "text": "Interview Marcus",
               "requires": {
                 "role": "producer"
               },
@@ -938,7 +938,7 @@
           "options": [
             {
               "id": "convert_sofia",
-              "text": "Try to convert Sofia (Prophet, RPS, +1 chaos)",
+              "text": "Try to convert Sofia",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "nonConverted"
@@ -969,7 +969,7 @@
             },
             {
               "id": "unconvert_sofia_admirer",
-              "text": "Unconvert Sofia (Admirer, 30% chance)",
+              "text": "Unconvert Sofia",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "converted"
@@ -996,7 +996,7 @@
             },
             {
               "id": "unconvert_sofia",
-              "text": "Unconvert Sofia (Producer, 75% chance)",
+              "text": "Unconvert Sofia",
               "requires": {
                 "role": "producer",
                 "npcStatus": "converted"
@@ -1023,7 +1023,7 @@
             },
             {
               "id": "manipulate_sofia",
-              "text": "Manipulate Sofia (Prophet, +2 chaos)",
+              "text": "Manipulate Sofia",
               "requires": {
                 "role": "prophet",
                 "npcStatus": "converted"
@@ -1041,7 +1041,7 @@
             },
             {
               "id": "prank_sofia",
-              "text": "Prank Sofia (Prophet, +1 chaos)",
+              "text": "Prank Sofia",
               "requires": {
                 "role": "prophet"
               },
@@ -1063,7 +1063,7 @@
             },
             {
               "id": "cleanup_sofia",
-              "text": "Clean up mess (Producer, -1 chaos, +1 ratings)",
+              "text": "Clean up mess",
               "requires": {
                 "role": "producer",
                 "npcPrankActive": true
@@ -1091,7 +1091,7 @@
             },
             {
               "id": "interview_sofia",
-              "text": "Interview Sofia (Producer, +1 ratings)",
+              "text": "Interview Sofia",
               "requires": {
                 "role": "producer"
               },
