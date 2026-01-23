@@ -108,6 +108,17 @@ public partial class GameWorld : Node2D
 		_interactionPanel = new InteractionPanel();
 		_interactionPanel.ActionSelected += OnActionSelected;
 		_uiLayer.AddChild(_interactionPanel);
+
+		// Prophet Trap Button
+		var trapButton = new Button();
+		trapButton.Text = "Set Trap (+1 Chaos)";
+		trapButton.Position = new Vector2(20, 600);
+		trapButton.Pressed += () => OnActionSelected("global", "set_trap");
+		_uiLayer.AddChild(trapButton);
+		// Only visible if Prophet (handled in UpdateUI or default hidden?)
+		// Ideally we verify role in UpdateUI.
+		trapButton.Name = "TrapButton";
+		trapButton.Visible = false;
 	}
 
 	private void SetupBackground()
@@ -454,6 +465,66 @@ public partial class GameWorld : Node2D
 		}
 		_roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 
+		// Update Trap Button Visibility
+		if (_uiLayer.GetNodeOrNull<Button>("TrapButton") is Button trapBtn)
+		{
+			bool isProphet = (_myRole?.ToLower() == "prophet");
+			trapBtn.Visible = isProphet;
+			
+			
+			// Prank Buttons Removed as per user request
+		}
+
+
+		// Persistent RPS Conversion UI
+		// myId already defined above
+		string myRoleStr = _myRole?.ToLower() ?? "";
+		
+		var conversions = _localGameState?["active_conversions"] as JObject;
+		var rpsContainer = _uiLayer.GetNodeOrNull<HBoxContainer>("RPSContainer");
+		
+		if (rpsContainer == null)
+		{
+			rpsContainer = new HBoxContainer();
+			rpsContainer.Name = "RPSContainer";
+			rpsContainer.Position = new Vector2(400, 600); // Center-ish
+			_uiLayer.AddChild(rpsContainer);
+		}
+
+		// Clear explicit children if state invalid, but smart update better
+		foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
+		
+		if (conversions != null && conversions.ContainsKey(myRoleStr))
+		{
+			var ctx = conversions[myRoleStr];
+			string npcId = ctx["npcId"]?.Value<string>();
+			string baseActionId = ctx["baseActionId"]?.Value<string>();
+			var visibleOpts = ctx["visibleOptions"]?.ToObject<List<string>>();
+			
+			if (!string.IsNullOrEmpty(npcId) && !string.IsNullOrEmpty(baseActionId) && visibleOpts != null)
+			{
+				rpsContainer.Visible = true;
+				
+				// Show Header
+				var label = new Label();
+				label.Text = $"CONVERT {Capitalize(npcId)}:";
+				rpsContainer.AddChild(label);
+				
+				foreach (var move in visibleOpts)
+				{
+					var btn = new Button();
+					btn.Text = Capitalize(move); // Display "Rock"
+					// Action ID format: baseActionId + "_" + move.ToLower() e.g. "convert_katy_rock"
+					btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
+					rpsContainer.AddChild(btn);
+				}
+			}
+		}
+		else
+		{
+			rpsContainer.Visible = false;
+		}
+
 		// Meters
 		foreach (Node child in _metersContainer.GetChildren())
 			child.QueueFree();
@@ -527,6 +598,8 @@ public partial class GameWorld : Node2D
 			}
 		}
 	}
+
+
 
 	private void UpdateNPCVisuals()
 	{
@@ -707,4 +780,6 @@ public partial class GameWorld : Node2D
 
 		BroadcastGameState();
 	}
+
+	private string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);
 }

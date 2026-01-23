@@ -410,7 +410,7 @@
               ]
             },
             {
-              "id": "prank",
+              "id": "prank_john",
               "text": "Prank John (Prophet, +1 chaos)",
               "requires": {
                 "role": "prophet"
@@ -423,23 +423,6 @@
                 },
                 {
                   "notification": "You pranked John! Chaos increased."
-                }
-              ]
-            },
-            {
-              "id": "trap",
-              "text": "Set trap near John (Prophet, +1 chaos)",
-              "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You set a trap! Chaos increased."
                 }
               ]
             },
@@ -629,7 +612,7 @@
               "effects": [
                 {
                   "meter": "chaos",
-                  "delta": 2,
+                  "delta": 1,
                   "clampMax": 10
                 },
                 {
@@ -1004,6 +987,23 @@
               ]
             },
             {
+              "id": "prank_sofia",
+              "text": "Prank Sofia (Prophet, +1 chaos)",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Sofia! Chaos increased."
+                }
+              ]
+            },
+            {
               "id": "marry_sofia",
               "text": "Marry (Producer, +2 ratings)",
               "requires": {
@@ -1076,7 +1076,7 @@
           "requirement": {
             "meter": "chaos",
             "minValue": 10,
-            "npcsConverted": 2
+            "npcsConverted": 4
           }
         },
         "secondary": {
