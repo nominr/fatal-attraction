@@ -1,3 +1,1484 @@
 Godot Engine v4.5.1.stable.mono.official.f62fdbde1 - https://godotengine.org
 Metal 3.1 - Forward+ - Using Device #0: Apple - Apple M3 (Apple9)
 
+Server started. Waiting for players...
+Connected to server with ID: 1
+Registering player a (senderId=1, actualId=1)
+Synced player join: 1 (a)
+Synced player join: 1 (a)
+Player 1 assigned role Observer
+Player 1 assigned role Admirer
+Player 1 assigned role Admirer
+Server sending StartGame RPC to 0 peers.
+StartGame RPC received from 1 on peer 1
+Lobby: GameStarted signal received. Transitioning scene...
+[GameWorld] _Ready called on peer 1, IsServer=True
+Background map loaded: 128x128, scaled to (1200, 800)
+[GameWorld] Initializing as SERVER
+SetRole called: role=Admirer
+PlayerController: Set player ID 1 at position (100, 700)
+SetLocalPlayer called: isLocal=True, _sprite exists=False
+[GameWorld] Connected PositionChanged signal for local player 1
+[GameWorld] Spawning player 1 as Admirer, sprite=1, isLocal=True, pos=(100, 700)
+Loaded player sprite for Admirer: res://assets/sprite-0001.png
+[GameWorld] UpdateGameState called on peer 1, players before: 1
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 703.3333)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 703.3333), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 706.6666)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 706.6666), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 709.99994)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 709.99994), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 713.33325)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 713.33325), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 716.66656)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 716.66656), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 719.9999)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 719.9999), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 723.3332)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 723.3332), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 726.6665)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 726.6665), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 729.9998)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 729.9998), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 733.3331)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 733.3331), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 736.66644)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 736.66644), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 739.99976)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 739.99976), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 743.33307)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 743.33307), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 746.6664)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 746.6664), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 749.9997)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 749.9997), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 753.333)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 753.333), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 756.6663)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 756.6663), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 759.99963)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 759.99963), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 763.33295)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 763.33295), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 766.66626)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 766.66626), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 769.9996)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 769.9996), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 773.3329)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 773.3329), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 776.6662)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 776.6662), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 779.9995)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 779.9995), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 783.3328)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 783.3328), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 786.66614)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 786.66614), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 783.3328)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 783.3328), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 779.9995)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 779.9995), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 776.6662)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 776.6662), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 773.3329)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 773.3329), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 769.9996)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 769.9996), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 766.66626)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 766.66626), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 763.33295)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 763.33295), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 759.99963)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 759.99963), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 756.6663)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 756.6663), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 753.333)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 753.333), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 749.9997)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 749.9997), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 746.6664)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 746.6664), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 743.33307)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 743.33307), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 739.99976)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 739.99976), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 736.66644)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 736.66644), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 733.3331)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 733.3331), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 729.9998)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 729.9998), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 726.6665)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 726.6665), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 723.3332)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 723.3332), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 719.9999)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 719.9999), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 716.66656)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 716.66656), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 713.33325)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 713.33325), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 709.99994)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 709.99994), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 706.6666)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 706.6666), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 703.3333)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 703.3333), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 700)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 700), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 696.6667)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 696.6667), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 693.3334)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 693.3334), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 690.00006)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 690.00006), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 686.66675)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 686.66675), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 683.33344)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 683.33344), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 680.0001)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 680.0001), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 676.6668)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 676.6668), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 673.3335)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 673.3335), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 670.0002)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 670.0002), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 666.6669)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 666.6669), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 663.33356)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 663.33356), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 660.00024)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 660.00024), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 656.66693)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 656.66693), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 653.3336)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 653.3336), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 650.0003)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 650.0003), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 646.667)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 646.667), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 643.3337)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 643.3337), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 640.00037)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 640.00037), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 636.66705)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 636.66705), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 633.33374)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 633.33374), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 630.0004)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 630.0004), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 626.6671)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 626.6671), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 623.3338)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 623.3338), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (100, 620.0005)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (100, 620.0005), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (102.357025, 617.6435)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (102.357025, 617.6435), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (104.71405, 615.2865)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (104.71405, 615.2865), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (107.071075, 612.9295)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (107.071075, 612.9295), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (109.4281, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (109.4281, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (112.76144, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (112.76144, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (116.09477, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (116.09477, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (119.42811, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (119.42811, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (122.761444, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (122.761444, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (126.09478, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (126.09478, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (129.42812, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (129.42812, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (132.76144, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (132.76144, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (136.09477, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (136.09477, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (139.4281, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (139.4281, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (142.76143, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (142.76143, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (146.09476, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (146.09476, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (149.42809, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (149.42809, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (152.76141, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (152.76141, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (156.09474, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (156.09474, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (159.42807, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (159.42807, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (162.7614, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (162.7614, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (166.09473, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (166.09473, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (169.42805, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (169.42805, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (172.76138, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (172.76138, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (176.09471, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (176.09471, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (179.42804, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (179.42804, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.76137, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.76137, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (186.0947, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (186.0947, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (189.42802, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (189.42802, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (192.76135, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (192.76135, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (196.09468, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (196.09468, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (199.42801, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (199.42801, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (202.76134, 610.5725)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (202.76134, 610.5725), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (205.11836, 608.2155)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (205.11836, 608.2155), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (207.47539, 605.8585)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (207.47539, 605.8585), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (209.83241, 603.5015)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (209.83241, 603.5015), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (212.18944, 601.14453)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (212.18944, 601.14453), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (214.54646, 598.78754)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (214.54646, 598.78754), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 596.43054)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 596.43054), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 593.0972)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 593.0972), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 589.7639)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 589.7639), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 586.4306)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 586.4306), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 583.0973)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 583.0973), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 579.764)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 579.764), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 576.43066)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 576.43066), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 573.09735)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 573.09735), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 569.76404)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 569.76404), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 566.4307)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 566.4307), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 563.0974)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 563.0974), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 559.7641)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 559.7641), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 556.4308)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 556.4308), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 553.0975)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 553.0975), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 549.76416)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 549.76416), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 546.43085)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 546.43085), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 543.09753)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 543.09753), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 539.7642)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 539.7642), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 536.4309)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 536.4309), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 533.0976)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 533.0976), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 529.7643)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 529.7643), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 526.43097)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 526.43097), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 523.09766)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 523.09766), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 519.76434)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 519.76434), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.90349, 516.431)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.90349, 516.431), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (219.26051, 514.07404)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (219.26051, 514.07404), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (221.61754, 511.717)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (221.61754, 511.717), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (223.97456, 509.36)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (223.97456, 509.36), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (226.33159, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (226.33159, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (229.66492, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (229.66492, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (232.99825, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (232.99825, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (236.33157, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (236.33157, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (239.6649, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (239.6649, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (242.99823, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (242.99823, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (246.33156, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (246.33156, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (249.66489, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (249.66489, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (252.99821, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (252.99821, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (256.33154, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (256.33154, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (259.6649, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (259.6649, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (262.99823, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (262.99823, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (266.33157, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (266.33157, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (269.66492, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (269.66492, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+Body entered Marcus: Player_1
+Local player entered Marcus range. Auto-interacting.
+GameWorld received OnNPCClicked for marcus. Current Role: 'Admirer'
+[PlayerController] Player 1 emitting PositionChanged signal at (272.99826, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (272.99826, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (276.3316, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (276.3316, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (279.66495, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (279.66495, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (282.9983, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (282.9983, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (286.33163, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (286.33163, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (289.66498, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (289.66498, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (292.99832, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (292.99832, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (296.33167, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (296.33167, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (299.665, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (299.665, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (302.99835, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (302.99835, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (306.3317, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (306.3317, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (309.66504, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (309.66504, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (312.99838, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (312.99838, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (316.33173, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (316.33173, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (319.66507, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (319.66507, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (322.9984, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (322.9984, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (326.33176, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (326.33176, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (329.6651, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (329.6651, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (332.99844, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (332.99844, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (336.3318, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (336.3318, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (339.66513, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (339.66513, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (342.99847, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (342.99847, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (346.33182, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (346.33182, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (349.66516, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (349.66516, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (352.9985, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (352.9985, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (356.33185, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (356.33185, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (359.6652, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (359.6652, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (362.99854, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (362.99854, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (366.33188, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (366.33188, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (369.66522, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (369.66522, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (372.99857, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (372.99857, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (376.3319, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (376.3319, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (379.66525, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (379.66525, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (382.9986, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (382.9986, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 507.00296)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 507.00296), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 503.66962)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 503.66962), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 500.33627)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 500.33627), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 497.00293)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 497.00293), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 493.6696)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 493.6696), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 490.33624)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 490.33624), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 487.0029)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 487.0029), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 483.66956)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 483.66956), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 480.3362)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 480.3362), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 477.00287)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 477.00287), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 473.66953)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 473.66953), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 470.33618)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 470.33618), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 467.00284)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 467.00284), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 463.6695)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 463.6695), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 460.33615)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 460.33615), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 457.0028)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 457.0028), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 453.66946)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 453.66946), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 450.33612)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 450.33612), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 447.00278)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 447.00278), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 443.66943)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 443.66943), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 440.3361)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 440.3361), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 437.00275)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 437.00275), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 433.6694)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 433.6694), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 430.33606)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 430.33606), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 427.00272)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 427.00272), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (386.33194, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (386.33194, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (382.9986, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (382.9986, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (379.66525, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (379.66525, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (376.3319, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (376.3319, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (372.99857, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (372.99857, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (369.66522, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (369.66522, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (366.33188, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (366.33188, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (362.99854, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (362.99854, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (359.6652, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (359.6652, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (356.33185, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (356.33185, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (352.9985, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (352.9985, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (349.66516, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (349.66516, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (346.33182, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (346.33182, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (342.99847, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (342.99847, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (339.66513, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (339.66513, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (336.3318, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (336.3318, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (332.99844, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (332.99844, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (329.6651, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (329.6651, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (326.33176, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (326.33176, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (322.9984, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (322.9984, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (319.66507, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (319.66507, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (316.33173, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (316.33173, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (312.99838, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (312.99838, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (309.66504, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (309.66504, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (306.3317, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (306.3317, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (302.99835, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (302.99835, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (299.665, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (299.665, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (296.33167, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (296.33167, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (292.99832, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (292.99832, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (289.66498, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (289.66498, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (286.33163, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (286.33163, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (282.9983, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (282.9983, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+Body exited Marcus: Player_1
+[PlayerController] Player 1 emitting PositionChanged signal at (279.66495, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (279.66495, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (276.3316, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (276.3316, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (272.99826, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (272.99826, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (269.66492, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (269.66492, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (266.33157, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (266.33157, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (262.99823, 423.66937)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (262.99823, 423.66937), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (260.6412, 421.31235)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (260.6412, 421.31235), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (258.28418, 418.95532)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (258.28418, 418.95532), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (255.92715, 416.5983)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (255.92715, 416.5983), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (253.57013, 414.24127)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (253.57013, 414.24127), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (251.2131, 411.88425)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (251.2131, 411.88425), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (248.85608, 409.52722)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (248.85608, 409.52722), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (246.49905, 407.1702)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (246.49905, 407.1702), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (244.14203, 404.81317)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (244.14203, 404.81317), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (241.785, 402.45615)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (241.785, 402.45615), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (239.42798, 400.09912)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (239.42798, 400.09912), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (237.07095, 397.7421)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (237.07095, 397.7421), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (234.71393, 395.38507)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (234.71393, 395.38507), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (232.3569, 393.02805)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (232.3569, 393.02805), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (229.99988, 390.67102)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (229.99988, 390.67102), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (227.64285, 388.314)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (227.64285, 388.314), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (225.28583, 385.95697)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (225.28583, 385.95697), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (222.9288, 383.59995)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (222.9288, 383.59995), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (220.57178, 381.24292)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (220.57178, 381.24292), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (218.21475, 378.8859)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (218.21475, 378.8859), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (215.85773, 376.52887)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (215.85773, 376.52887), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (213.5007, 374.17184)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (213.5007, 374.17184), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (211.14368, 371.81482)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (211.14368, 371.81482), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (208.78665, 369.4578)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (208.78665, 369.4578), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (206.42963, 367.10077)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (206.42963, 367.10077), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (204.0726, 364.74374)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (204.0726, 364.74374), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (201.71558, 362.38672)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (201.71558, 362.38672), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (199.35855, 360.0297)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (199.35855, 360.0297), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (197.00153, 357.67267)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (197.00153, 357.67267), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (194.6445, 355.31564)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (194.6445, 355.31564), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (192.28748, 352.95862)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (192.28748, 352.95862), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (189.93045, 350.6016)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (189.93045, 350.6016), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (187.57343, 348.24457)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (187.57343, 348.24457), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (185.2164, 345.88754)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (185.2164, 345.88754), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 343.53052)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 343.53052), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 340.19717)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 340.19717), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 336.86383)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 336.86383), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 333.5305)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 333.5305), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 330.19714)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 330.19714), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+Body entered Katy: Player_1
+Local player entered Katy range. Auto-interacting.
+GameWorld received OnNPCClicked for katy. Current Role: 'Admirer'
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 326.8638)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 326.8638), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (182.85938, 323.53046)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (182.85938, 323.53046), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (185.2164, 321.17343)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (185.2164, 321.17343), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (187.57343, 318.8164)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (187.57343, 318.8164), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (189.93045, 316.45938)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (189.93045, 316.45938), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (192.28748, 314.10236)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (192.28748, 314.10236), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (194.6445, 311.74533)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (194.6445, 311.74533), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (197.00153, 309.3883)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (197.00153, 309.3883), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (199.35855, 307.03128)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (199.35855, 307.03128), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (201.71558, 304.67426)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (201.71558, 304.67426), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (204.0726, 302.31723)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (204.0726, 302.31723), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (206.42963, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (206.42963, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (209.76295, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (209.76295, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (213.09628, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (213.09628, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (216.42961, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (216.42961, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (219.76294, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (219.76294, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (223.09627, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (223.09627, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (226.4296, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (226.4296, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (229.76292, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (229.76292, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (233.09625, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (233.09625, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (236.42958, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (236.42958, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (239.76291, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (239.76291, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (243.09624, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (243.09624, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (246.42957, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (246.42957, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (249.7629, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (249.7629, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (253.09622, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (253.09622, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (256.42957, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (256.42957, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (259.7629, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (259.7629, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (263.09625, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (263.09625, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (266.4296, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (266.4296, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (269.76294, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (269.76294, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (273.09628, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (273.09628, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (269.76294, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (269.76294, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (266.4296, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (266.4296, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (263.09625, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (263.09625, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (259.7629, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (259.7629, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (256.42957, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (256.42957, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (253.09624, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (253.09624, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (249.76291, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (249.76291, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (246.42958, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (246.42958, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (243.09625, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (243.09625, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (239.76292, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (239.76292, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (236.4296, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (236.4296, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (233.09627, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (233.09627, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (229.76294, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (229.76294, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (226.42961, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (226.42961, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (223.09628, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (223.09628, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (219.76295, 299.9602)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (219.76295, 299.9602), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (217.40593, 297.60318)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (217.40593, 297.60318), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (215.0489, 295.24615)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (215.0489, 295.24615), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (212.69188, 292.88913)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (212.69188, 292.88913), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (210.33485, 290.5321)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (210.33485, 290.5321), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (207.97783, 288.17508)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (207.97783, 288.17508), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (205.6208, 285.81805)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (205.6208, 285.81805), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (203.26378, 283.46103)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (203.26378, 283.46103), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (200.90675, 281.104)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (200.90675, 281.104), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (198.54973, 278.74698)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (198.54973, 278.74698), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (196.1927, 276.38995)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (196.1927, 276.38995), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (193.83568, 274.03293)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (193.83568, 274.03293), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 271.6759)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 271.6759), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 268.34256)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 268.34256), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 265.00922)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 265.00922), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 261.67587)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 261.67587), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 258.34253)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 258.34253), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 255.0092)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 255.0092), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 251.67587)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 251.67587), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 248.34254)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 248.34254), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 245.00922)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 245.00922), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 241.67589)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 241.67589), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 238.34256)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 238.34256), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 235.00923)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 235.00923), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 231.6759)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 231.6759), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[PlayerController] Player 1 emitting PositionChanged signal at (191.47865, 228.34258)
+[GameWorld] OnPlayerPositionChanged: Player 1 at (191.47865, 228.34258), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+Body exited Katy: Player_1

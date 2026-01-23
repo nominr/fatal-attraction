@@ -160,6 +160,9 @@ namespace FatalAttraction.Engine
 		}
 
 		public PlayerState GetPlayerState(Role role)
+		{
+			return Players.ContainsKey(role) ? Players[role] : null;
+		}
 
 		public NPC GetNPC(string npcId)
 		{
@@ -306,7 +309,7 @@ namespace FatalAttraction.Engine
 						// So we must filter here.
 						
 						// We need a deterministic seed so valid options don't jitter?
-						int seed = npcId.GetHashCode() + GameState.CurrentTurn;
+						int seed = npcId.GetHashCode() + _gameState.CurrentTurn;
 						var rng = new Random(seed);
 						var successfulMove = moves[rng.Next(moves.Length)]; // This turn, this move wins?
 						
@@ -421,6 +424,7 @@ namespace FatalAttraction.Engine
 			if (!IsOptionAvailable(option, playerRole, npc, player))
 				return (false, $"Action no longer valid for {npc.Name}");
 
+			var isAdmirerMarry = option["marry_admirer_love"]?.Value<bool>() ?? false;
 			bool success = true;
 
 			// 3. Prophet RPS Resolution
@@ -442,7 +446,7 @@ namespace FatalAttraction.Engine
 				else if (chaos >= 3) difficulty = "normal";
 
 				// Deterministic Win Move
-				int seed = npcId.GetHashCode() + GameState.CurrentTurn;
+				int seed = npcId.GetHashCode() + _gameState.CurrentTurn;
 				var rng = new Random(seed);
 				string[] moves = { "rock", "paper", "scissors" };
 				string winningMove = moves[rng.Next(moves.Length)]; 
@@ -472,7 +476,7 @@ namespace FatalAttraction.Engine
 			else if (isAdmirerMarry)
 			{
 				// Admirer Logic...
-				// Logic continues...
+				var targets = _gameState.NPCs.Values.Where(n => n.IsTarget).ToList();
 				if (targets.Any(t => t.Alive))
 				{
 					return (false, "You cannot marry while rivals (Targets) are still alive!");
