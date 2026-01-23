@@ -11,7 +11,7 @@ public partial class PlayerController : CharacterBody2D
 	public delegate void PositionChangedEventHandler(long playerId, Vector2 position);
 
 	[Export]
-	public float Speed { get; set; } = 200.0f;
+	public float Speed { get; set; } = 250.0f;
 
 	[Export]
 	public Color PlayerColor { get; set; } = Colors.Green;
@@ -42,11 +42,11 @@ public partial class PlayerController : CharacterBody2D
 		// Add to players group so NPCs can detect us
 		AddToGroup("players");
 		
-		// Configure collision layers to prevent player-to-player collisions
-		// Layer 1 (bit 0): Players exist here for detection by NPCs
-		// Mask 0: Players don't collide with anything (pass through each other)
-		CollisionLayer = 1; // Bit 0 = layer 1
-		CollisionMask = 0;  // Don't collide with any layers
+		// Configure collision layers
+		// Layer 2 (bit 1): Players
+		// Mask 1 (bit 0): Walls/World
+		CollisionLayer = 2; 
+		CollisionMask = 1; 
 		
 		GD.Print($"PlayerController: Set collision layer={CollisionLayer}, mask={CollisionMask}");
 	}

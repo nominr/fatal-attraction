@@ -163,6 +163,8 @@ public partial class NPCEntity : Area2D
 		// Larger area for detecting when player is in range
 		_interactionArea = new Area2D();
 		_interactionArea.Name = "InteractionArea";
+		// Monitor Layer 2 (Players) and Layer 1 (Default)
+		_interactionArea.CollisionMask = 3;
 		
 		var collisionShape = new CollisionShape2D();
 		var shape = new CircleShape2D();
