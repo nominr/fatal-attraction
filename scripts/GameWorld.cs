@@ -48,6 +48,8 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
+
+
 	private Font _customFont;
 
 	// World bounds
@@ -254,7 +256,7 @@ public partial class GameWorld : Node2D
 		_timerLabel.AddThemeFontOverride("font", _customFont);
 		_timerLabel.AddThemeFontSizeOverride("font_size", 20);
 		hudContainer.AddChild(_timerLabel);
-
+		
 		_roleLabel = new Label();
 		_roleLabel.Text = "Role: Waiting...";
 		_roleLabel.AddThemeFontOverride("font", _customFont);
@@ -419,6 +421,7 @@ public partial class GameWorld : Node2D
 		policeBtn.Modulate = Colors.Red;
 		policeBtn.Visible = false;
 		policeBtn.Pressed += () => OnActionSelected("producer_global", "call_police");
+		policeBtn.AddThemeFontOverride("font", _customFont);
 		cVBox.AddChild(policeBtn);
 
 		_uiLayer.AddChild(cPanel);
@@ -451,6 +454,48 @@ public partial class GameWorld : Node2D
 		eBtn.Pressed += () => TogglePanel("FocusPanel");
 		eVBox.AddChild(eBtn);
 		_uiLayer.AddChild(ePanel);
+
+		// Camera Selection Panel (Hidden)
+		var csPanel = new PanelContainer();
+		csPanel.Name = "CameraSelectPanel";
+		csPanel.Position = new Vector2(500, 300);
+		csPanel.Visible = false;
+		var csVBox = new VBoxContainer();
+		csVBox.AddThemeConstantOverride("separation", 10);
+		csPanel.AddChild(csVBox);
+		var csLabel = new Label();
+		csLabel.Text = "Toggle Cameras (Max 2):";
+		csLabel.AddThemeFontSizeOverride("font_size", 14);
+		csLabel.AddThemeFontOverride("font", _customFont);
+		csVBox.AddChild(csLabel);
+		var csGrid = new GridContainer();
+		csGrid.Columns = 2; // 2x3
+		csVBox.AddChild(csGrid);
+		
+		string[] rooms = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
+		
+		foreach (var rName in rooms)
+		{
+			var rBtn = new Button();
+			rBtn.Text = rName;
+			rBtn.CustomMinimumSize = new Vector2(100, 60);
+			rBtn.ToggleMode = true; 
+			rBtn.AddThemeFontOverride("font", _customFont);
+			string capturedRoom = rName;
+			rBtn.Pressed += () => {
+				OnActionSelected("producer_global", $"toggle_camera_{capturedRoom}");
+			};
+			rBtn.Name = $"Btn_{rName}";
+			csGrid.AddChild(rBtn);
+		}
+		
+		var closeBtn = new Button();
+		closeBtn.Text = "Close";
+		closeBtn.AddThemeFontOverride("font", _customFont);
+		closeBtn.Pressed += () => csPanel.Visible = false;
+		csVBox.AddChild(closeBtn);
+
+		_uiLayer.AddChild(csPanel);
 
 		// Focus Panel (Hidden)
 		var fPanel = new PanelContainer();
@@ -504,6 +549,7 @@ public partial class GameWorld : Node2D
 
 		// Goals Button (upper right corner)
 		var viewportSize = GetViewportRect().Size;
+
 		_goalsButton = new Button();
 		_goalsButton.Text = "📋 GOALS";
 		_goalsButton.AddThemeFontOverride("font", _customFont);
