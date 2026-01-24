@@ -66,6 +66,7 @@ namespace FatalAttraction.Engine
 		public bool IsTarget { get; set; } = false;
 		public bool PrankActive { get; set; } = false;
 		public int Quadrant { get; set; } = -1; // 0:TL, 1:TR, 2:BL, 3:BR
+		public string CurrentRoomId { get; set; } = "Hallways";
 
 		public NPC(string id, string name, bool isLoveInterest = false, bool isTarget = false)
 		{
@@ -103,7 +104,12 @@ namespace FatalAttraction.Engine
 		public Dictionary<string, NPC> NPCs { get; private set; } = new();
 		public List<Trap> Traps { get; private set; } = new();
 		public List<string> Notifications { get; private set; } = new();
+
 		public string EditorialFocus { get; set; }
+		public List<string> ActiveCameraRoomIds { get; private set; } = new();
+		public bool AdmirerCaught { get; set; } = false;
+		public bool AdmirerEliminated { get; set; } = false;
+		public bool MonitoringActive { get; set; } = false; // "Set Focus" essentially activates monitoring
 		public int InteractionSeed { get; set; } = 0;
 		public Dictionary<Role, ConversionContext> ActiveConversions { get; private set; } = new();
 
@@ -452,6 +458,57 @@ namespace FatalAttraction.Engine
 					return (false, "Invalid focus quadrant");
 				}
 				
+				if (optionId.StartsWith("toggle_camera_"))
+				{
+					// Expected: toggle_camera_Room1
+					var parts = optionId.Split('_');
+					if (parts.Length == 3)
+					{
+						string roomId = parts[2];
+						if (_gameState.ActiveCameraRoomIds.Contains(roomId))
+						{
+							_gameState.ActiveCameraRoomIds.Remove(roomId);
+							_gameState.AddNotification($"Producer deactivated camera in {roomId}.");
+						}
+						else
+						{
+							if (_gameState.ActiveCameraRoomIds.Count >= 2)
+							{
+								// Remove oldest
+								string removed = _gameState.ActiveCameraRoomIds[0];
+								_gameState.ActiveCameraRoomIds.RemoveAt(0);
+								_gameState.AddNotification($"Producer camera limit reached. Deactivating {removed}.");
+							}
+							_gameState.ActiveCameraRoomIds.Add(roomId);
+							_gameState.AddNotification($"Producer activated camera in {roomId}.");
+						}
+						return (true, null);
+					}
+					return (false, "Invalid camera room");
+				}
+
+				if (optionId == "call_police")
+				{
+					if (_gameState.AdmirerCaught)
+					{
+				if (optionId == "call_police")
+				{
+					if (_gameState.AdmirerCaught)
+					{
+						// _gameState.Winner = Role.Producer.ToString(); // OLD: Ended game
+						_gameState.AdmirerEliminated = true; // NEW: Just eliminate admirer
+						
+						_gameState.AddNotification("POLICE CALLED! The Admirer has been arrested based on video evidence!");
+						// _gameState.AddNotification("The Producer has saved the show! ADMIRER ELIMINATED.");
+						// Don't clutter notification log too much, UI will handle specific messages
+						return (true, null);
+					}
+					return (false, "You have no evidence to call the police!");
+				}
+					}
+					return (false, "You have no evidence to call the police!");
+				}
+				
 				return (false, "Unknown producer action");
 			}
 
@@ -467,17 +524,27 @@ namespace FatalAttraction.Engine
 			if (!npc.Alive && optionId != "leave")
 				return (false, $"{npc.Name} is no longer available");
 
-			// CHECK FOR EDITORIAL FOCUS CATCH (Admirer Kill)
+
+			// CHECK FOR CAMERA CATCH (Admirer Kill)
 			if (playerRole == Role.Admirer && optionId.StartsWith("kill_"))
 			{
-				if (!string.IsNullOrEmpty(_gameState.EditorialFocus) && int.TryParse(_gameState.EditorialFocus, out int focusQ))
+				Console.WriteLine($"[DEBUG] Kill attempt on {npcId}. NPC Room: '{npc.CurrentRoomId}'. Active Cams: {string.Join(", ", _gameState.ActiveCameraRoomIds)}");
+				
+				if (_gameState.ActiveCameraRoomIds.Count > 0)
 				{
-					if (npc.Quadrant == focusQ)
+					// Check if NPC is in a monitored room
+					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
 					{
 						// ADMIRER CAUGHT!
-						_gameState.Winner = Role.Producer.ToString();
-						_gameState.AddNotification($"Producer's Editorial Focus caught the Admirer red-handed in Quadrant {focusQ}!");
-						return (true, "Admirer was caught by the Producer!");
+						_gameState.AdmirerCaught = true;
+						_gameState.AdmirerEliminated = false; // Just to be sure, though it's set on police call
+						_gameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
+						_gameState.AddNotification($"Producer's Camera captured the crime!");
+						// We do NOT instantly end game, Producer must Call Police.
+					}
+					else
+					{
+						Console.WriteLine($"[DEBUG] Detection Failed. NPC Room '{npc.CurrentRoomId}' not in Active List.");
 					}
 				}
 			}
@@ -780,6 +847,11 @@ namespace FatalAttraction.Engine
 
 		public (bool success, string failReason) PerformAction(string npcId, string actionId, Role playerRole)
 		{
+			if (playerRole == Role.Admirer && GameState.AdmirerEliminated)
+			{
+				return (false, "You have been eliminated and cannot act.");
+			}
+
 			GameState.InteractionSeed++; // Ensure randomness changes after every action
 			var result = InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
 			
@@ -998,7 +1070,10 @@ namespace FatalAttraction.Engine
 				{ "max_turns", GameState.MaxTurns },
 				{ "editorial_focus", GameState.EditorialFocus },
 				{ "game_over", GameState.IsGameOver },
-				{ "winner", GameState.Winner }
+				{ "winner", GameState.Winner },
+				{ "active_camera_room_ids", new JArray(GameState.ActiveCameraRoomIds) },
+				{ "admirer_caught", GameState.AdmirerCaught },
+				{ "admirer_eliminated", GameState.AdmirerEliminated }
 			};
 
 			var playersObj = new JObject();

@@ -88,6 +88,10 @@ public partial class NPCEntity : CharacterBody2D
 	// Alive status (dead NPCs don't wander)
 	private bool _isAlive = true;
 
+	// Client-side interpolation
+	private Vector2 _clientTargetPosition;
+	private bool _hasReceivedFirstSync = false;
+
 	public override void _Ready()
 	{
 		// Initialize room and corridor definitions
@@ -95,7 +99,7 @@ public partial class NPCEntity : CharacterBody2D
 		{
 			new Room(50, 1000, 175, 400),       // Room 0
 			new Room(-300, 2700, 930, 950),     // Room 1
-			new Room(2500, 2850, 1450, 1450),   // Room 2
+			new Room(2500, 2850, 1450, 1750),   // Room 2 (Fixed height)
 			new Room(580, 2030, 1450, 1740),    // Room 3
 			new Room(1600, 2300, 160, 440)      // Room 4
 		};
@@ -141,6 +145,19 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
+		// CLIENTS DO NOT RUN AI - they are synced by server
+		if (!Multiplayer.IsServer())
+		{
+			if (_hasReceivedFirstSync)
+			{
+				// Interpolate towards target
+				// Use a factor that depends on delta to be frame-rate independent
+				// A factor of 10.0f * delta gives quick but smooth catch-up
+				Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
+			}
+			return;
+		}
+
 		// Dead NPCs don't wander
 		if (!_isAlive) return;
 		
@@ -540,6 +557,20 @@ public partial class NPCEntity : CharacterBody2D
 			var gradient = gradientTexture.Gradient;
 			gradient.SetColor(0, color);
 			gradient.SetColor(1, color.Darkened(0.3f));
+		}
+	}
+
+	/// <summary>
+	/// Called by GameWorld on clients to update target position for interpolation
+	/// </summary>
+	public void SyncPosition(Vector2 pos)
+	{
+		_clientTargetPosition = pos;
+		if (!_hasReceivedFirstSync)
+		{
+			// Snap strictly on first update to avoid flying in from (0,0)
+			Position = pos;
+			_hasReceivedFirstSync = true;
 		}
 	}
 }

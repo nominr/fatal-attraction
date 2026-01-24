@@ -21,6 +21,7 @@ public partial class Lobby : Control
 	private Button _producerButton;
 	private bool _isHosting = false;
 	private bool _isConnected = false;
+	private string _autoJoinRole = null;
 
 	public override void _Ready()
 	{
@@ -80,6 +81,34 @@ public partial class Lobby : Control
 		var ipLabel = new Label { Text = ipText };
 		GetNode("Panel/VBoxContainer").AddChild(ipLabel);
 		GetNode("Panel/VBoxContainer").MoveChild(ipLabel, 0);
+
+		// Process Command Line Arguments for Auto-Start
+		CallDeferred(MethodName.ProcessCommandLineArgs);
+	}
+
+	private void ProcessCommandLineArgs()
+	{
+		var args = OS.GetCmdlineArgs();
+		for (int i = 0; i < args.Length; i++)
+		{
+			if (args[i] == "--host" && i + 1 < args.Length)
+			{
+				string role = args[i + 1];
+				_nameInput.Text = "Host";
+				OnHostPressed();
+				OnRoleButtonPressed(role);
+				GD.Print($"[Auto] Hosting as {role}");
+			}
+			else if (args[i] == "--join" && i + 1 < args.Length)
+			{
+				string role = args[i + 1];
+				_nameInput.Text = $"Player_{role}";
+				_ipInput.Text = "127.0.0.1";
+				_autoJoinRole = role;
+				OnJoinPressed();
+				GD.Print($"[Auto] Joining as {role}");
+			}
+		}
 	}
 
 	private void OnHostPressed()
@@ -235,21 +264,26 @@ public partial class Lobby : Control
 		_networkManager.SendRoleRequest(role);
 	}
 
+
 	private void OnConnectionSucceeded()
 	{
 		_statusLabel.Text = "Connected! Please select a role.";
 		_isConnected = true;
 		
-		// Now show role options for the joining player
+		// NOW show role options
 		var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
 		roleButtonsContainer.Visible = true;
 		var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
 		roleLabel.Visible = true;
 		
-		// Update available roles based on current players
 		UpdateAvailableRoles();
-		
-		// Don't send role yet - wait for player to select one via OnRoleSelected
+
+		// Auto-select role if requested via command line
+		if (!string.IsNullOrEmpty(_autoJoinRole))
+		{
+			OnRoleButtonPressed(_autoJoinRole);
+			_autoJoinRole = null; // Clear it
+		}
 	}
 
 	private void OnGameStarted()

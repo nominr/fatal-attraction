@@ -21,15 +21,16 @@ public partial class GameWorld : Node2D
 	private bool _gameActive = false;
 	private double _timeRemaining = 180.0;
 	private double _broadcastTimer = 0.0;
-	private const double BROADCAST_INTERVAL = 1.0; // Broadcast game state every second
+	private const double BROADCAST_INTERVAL = 0.1; // Broadcast game state every 0.1s (10Hz) for smoother movement
 
 	// Local State Cache
 	private JObject _localGameState;
-	private string _myRole;
+	private string _myRole = "";
+	private string _lastRPSKey = ""; // Track RPS state to avoid constant rebuilds
 
 	// Spawned entities
 	private Dictionary<string, NPCEntity> _npcEntities = new();
-	private Dictionary<long, PlayerController> _playerControllers = new();
+	private Dictionary<long, PlayerController> _playerControllers = new(); // remote player puppets
 	private PlayerController _localPlayer;
 	
 	// UI Components
@@ -58,6 +59,12 @@ public partial class GameWorld : Node2D
 		// Listen for network player events to keep controllers in sync
 		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
 		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
+		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
+		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
+		
+		// Connect Room Signals
+		ConnectRoomSignals();
+		
 		SetupUI();
 		// TileMap is now defined in GameWorld.tscn scene file
 		
@@ -97,6 +104,133 @@ public partial class GameWorld : Node2D
 		}
 	}
 
+	private void ConnectRoomSignals()
+	{
+		string[] roomNames = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
+		foreach (var rName in roomNames)
+		{
+			var area = GetNodeOrNull<Area2D>(rName);
+			if (area != null)
+			{
+				bool shapesUpdated = false;
+
+				// FIX: Hallways Area2D in scene doesn't match NPC coordinates.
+				if (rName == "Hallways")
+				{
+					// Clear existing incorrect shapes
+					foreach (Node child in area.GetChildren())
+					{
+						if (child is CollisionShape2D) child.QueueFree();
+					}
+
+					// Define Corridors (MinX, MaxX, MinY, MaxY)
+					var corridors = new[]
+					{
+						new Vector4(1564, 1612, 547, 900),   // C0
+						new Vector4(156, 204, 547, 900),     // C1
+						new Vector4(924, 972, 1056, 1370),   // C2
+						new Vector4(2716, 2764, 1056, 1370)  // C3
+					};
+
+					foreach (var c in corridors)
+					{
+						float width = c.Y - c.X;
+						float height = c.W - c.Z;
+						float centerX = c.X + width / 2;
+						float centerY = c.Z + height / 2;
+
+						var shape = new CollisionShape2D();
+						var rect = new RectangleShape2D();
+						rect.Size = new Vector2(width, height);
+						shape.Shape = rect;
+						// Convert global coordinate to local coordinate relative to the Area2D
+						shape.Position = new Vector2(centerX, centerY) - area.Position;
+						area.AddChild(shape);
+					}
+					shapesUpdated = true;
+				}
+				else if (rName.StartsWith("Room"))
+				{
+					// FIX: Rooms also need to match NPCEntity coordinates EXACTLY
+					if (int.TryParse(rName.Substring(4), out int roomNum))
+					{
+						int roomIndex = roomNum - 1;
+						// Definitions from NPCEntity.cs (Must match!)
+						var roomDefs = new[]
+						{
+							new Vector4(50, 1000, 175, 400),       // Room 1 (Idx 0)
+							new Vector4(-300, 2700, 930, 950),     // Room 2 (Idx 1)
+							new Vector4(2500, 2850, 1450, 1750),   // Room 3 (Idx 2) - Fixed height
+							new Vector4(580, 2030, 1450, 1740),    // Room 4 (Idx 3)
+							new Vector4(1600, 2300, 160, 440)      // Room 5 (Idx 4)
+						};
+
+						if (roomIndex >= 0 && roomIndex < roomDefs.Length)
+						{
+							// Clear existing
+							foreach (Node child in area.GetChildren())
+							{
+								if (child is CollisionShape2D) child.QueueFree();
+							}
+
+							var def = roomDefs[roomIndex];
+							float width = def.Y - def.X;
+							float height = def.W - def.Z;
+							float centerX = def.X + width / 2;
+							float centerY = def.Z + height / 2;
+
+							var shape = new CollisionShape2D();
+							var rect = new RectangleShape2D();
+							rect.Size = new Vector2(width, height);
+							shape.Shape = rect;
+							// Convert global coordinate to local coordinate relative to the Area2D
+							shape.Position = new Vector2(centerX, centerY) - area.Position;
+							area.AddChild(shape);
+							// GD.Print($"[GameWorld] Fixed Shape for {rName}: {rect.Size} at {shape.Position}");
+							shapesUpdated = true;
+						}
+					}
+				}
+
+				if (shapesUpdated)
+				{
+					GD.Print($"[GameWorld] Updated collision shapes for {rName}");
+				}
+
+				// We need to capture the room name variable for the lambda
+				string capturedRoomName = rName;
+				
+				// Ensure Area monitors the NPC layer (Layer 3/Value 4 based on NPCEntity.cs)
+				// NPCEntity uses CollisionLayer = 4. 
+				// We'll set Mask to include 4 (plus 1 for players etc just in case).
+				area.CollisionMask = 0xFF; // Monitor first 8 layers
+				area.Monitorable = false; // Room areas don't need to be detected by others
+				area.Monitoring = true;
+				
+				area.BodyEntered += (body) => OnBodyEnteredRoom(body, capturedRoomName);
+			}
+			else
+			{
+				GD.PrintErr($"Room Area not found: {rName}");
+			}
+		}
+	}
+
+	private void OnBodyEnteredRoom(Node body, string roomId)
+	{
+		// GD.Print($"[GameWorld] Body {body.Name} entered {roomId}");
+		if (Multiplayer.IsServer() && body is NPCEntity npcEntity)
+		{
+			// Update GameEngine NPC location
+			var npc = _gameEngine.GameState.GetNPC(npcEntity.NpcId);
+			if (npc != null)
+			{
+				npc.CurrentRoomId = roomId;
+				GD.Print($"[GameWorld] Server updated NPC {npc.Name} (ID: {npcEntity.NpcId}) location to: {roomId}");
+			}
+		}
+	}
+
 	private void SetupUI()
 	{
 		_uiLayer = new CanvasLayer();
@@ -119,7 +253,40 @@ public partial class GameWorld : Node2D
 		_roleLabel = new Label();
 		_roleLabel.Text = "Role: Waiting...";
 		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
+		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
 		hudContainer.AddChild(_roleLabel);
+
+		// Eliminated Status Label (Top Center - for non-Admirers)
+		var elimLabel = new Label();
+		elimLabel.Name = "EliminatedLabel";
+		elimLabel.Text = "ADMIRER ELIMINATED"; 
+		elimLabel.AddThemeFontSizeOverride("font_size", 24);
+		elimLabel.AddThemeColorOverride("font_color", Colors.White);
+		// elimLabel.AddThemeColorOverride("font_outline_color", Colors.Black); // Outline for contrast
+		// elimLabel.AddThemeConstantOverride("outline_size", 4);
+		elimLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		elimLabel.Visible = false;
+		// Position Manually at top center
+		elimLabel.AnchorsPreset = (int)Control.LayoutPreset.TopWide;
+		_uiLayer.AddChild(elimLabel);
+
+		// Game Over Overlay (For eliminated player)
+		var overlay = new PanelContainer();
+		overlay.Name = "GameOverOverlay";
+		overlay.AnchorsPreset = (int)Control.LayoutPreset.FullRect;
+		overlay.Visible = false;
+		var style = new StyleBoxFlat();
+		style.BgColor = new Color(0, 0, 0, 0.8f);
+		overlay.AddThemeStyleboxOverride("panel", style);
+		var center = new CenterContainer();
+		overlay.AddChild(center);
+		var overLabel = new Label();
+		overLabel.Text = "YOU HAVE BEEN ELIMINATED\n(Wait for next game)";
+		overLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		overLabel.AddThemeFontSizeOverride("font_size", 32);
+		overLabel.AddThemeColorOverride("font_color", Colors.Red);
+		center.AddChild(overLabel);
+		_uiLayer.AddChild(overlay);
 
 		_convertedLabel = new Label();
 		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
@@ -206,67 +373,86 @@ public partial class GameWorld : Node2D
 		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
 		_uiLayer.AddChild(marryBtn);
 
-		// Editorial Attention Section (Visible)
-		var ePanel = new PanelContainer();
-		ePanel.Name = "EditorialAttentionPanel";
-		ePanel.Position = new Vector2(950, 120);
-		ePanel.CustomMinimumSize = new Vector2(180, 150);
-		ePanel.Visible = false;
-		var eVBox = new VBoxContainer();
-		eVBox.Name = "EditorialContainer";
-		eVBox.AddThemeConstantOverride("separation", 5);
-		ePanel.AddChild(eVBox);
-		var eLabel = new Label();
-		eLabel.Text = "Editorial Attention";
-		eLabel.AddThemeFontSizeOverride("font_size", 14);
-		eVBox.AddChild(eLabel);
-		var eInfo = new Label();
-		eInfo.Name = "EditorialInfo";
-		eInfo.Text = "Focus: None";
-		eInfo.AutowrapMode = TextServer.AutowrapMode.Word;
-		eVBox.AddChild(eInfo);
-		var eBtn = new Button();
-		eBtn.Text = "Set Focus";
-		eBtn.Pressed += () => TogglePanel("FocusPanel");
-		eVBox.AddChild(eBtn);
-		_uiLayer.AddChild(ePanel);
+		_uiLayer.AddChild(marryBtn);
 
-		// Focus Panel (Hidden)
-		var fPanel = new PanelContainer();
-		fPanel.Name = "FocusPanel";
-		fPanel.Position = new Vector2(500, 300);
-		fPanel.Visible = false;
-		var fVBox = new VBoxContainer();
-		fVBox.AddThemeConstantOverride("separation", 10);
-		fPanel.AddChild(fVBox);
-		var fLabel = new Label();
-		fLabel.Text = "Select Editorial Focus:";
-		fLabel.AddThemeFontSizeOverride("font_size", 14);
-		fVBox.AddChild(fLabel);
-		var fGrid = new GridContainer();
-		fGrid.Columns = 2; // 2x2
-		fVBox.AddChild(fGrid);
+		// Security Cameras Section (Visible)
+		var cPanel = new PanelContainer();
+		cPanel.Name = "CameraPanel";
+		cPanel.Position = new Vector2(950, 120);
+		cPanel.CustomMinimumSize = new Vector2(220, 200);
+		cPanel.Visible = false;
+		var cVBox = new VBoxContainer();
+		cVBox.Name = "CameraContainer";
+		cVBox.AddThemeConstantOverride("separation", 5);
+		cPanel.AddChild(cVBox);
+		var cLabel = new Label();
+		cLabel.Text = "Security Cameras";
+		cLabel.AddThemeFontSizeOverride("font_size", 14);
+		cVBox.AddChild(cLabel);
 		
-		string[] focusOptions = { "Sudden Deaths", "Romantic Escalations", "Chaos Spikes", "Public Areas" };
-		string[] focusIds = { "sudden_deaths", "romantic_escalations", "chaos_spikes", "public_areas" };
+		var cInfo = new Label();
+		cInfo.Name = "CameraInfo";
+		cInfo.Text = "Active: None";
+		cInfo.AutowrapMode = TextServer.AutowrapMode.Word;
+		cVBox.AddChild(cInfo);
 		
-		for (int i = 0; i < focusOptions.Length; i++)
+		var cBtn = new Button();
+		cBtn.Text = "Manage Cameras";
+		cBtn.Pressed += () => TogglePanel("CameraSelectPanel");
+		cVBox.AddChild(cBtn);
+
+		// Call Police Button (Initially Hidden)
+		var policeBtn = new Button();
+		policeBtn.Name = "CallPoliceButton";
+		policeBtn.Text = "CALL POLICE!";
+		policeBtn.Modulate = Colors.Red;
+		policeBtn.Visible = false;
+		policeBtn.Pressed += () => OnActionSelected("producer_global", "call_police");
+		cVBox.AddChild(policeBtn);
+
+		_uiLayer.AddChild(cPanel);
+
+		// Camera Selection Panel (Hidden)
+		var csPanel = new PanelContainer();
+		csPanel.Name = "CameraSelectPanel";
+		csPanel.Position = new Vector2(500, 300);
+		csPanel.Visible = false;
+		var csVBox = new VBoxContainer();
+		csVBox.AddThemeConstantOverride("separation", 10);
+		csPanel.AddChild(csVBox);
+		var csLabel = new Label();
+		csLabel.Text = "Toggle Cameras (Max 2):";
+		csLabel.AddThemeFontSizeOverride("font_size", 14);
+		csVBox.AddChild(csLabel);
+		var csGrid = new GridContainer();
+		csGrid.Columns = 2; // 2x3
+		csVBox.AddChild(csGrid);
+		
+		string[] rooms = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
+		
+		foreach (var rName in rooms)
 		{
-			var qBtn = new Button();
-			qBtn.Text = focusOptions[i];
-			qBtn.CustomMinimumSize = new Vector2(120, 80);
-			int qIdx = i;
-			string focusId = focusIds[i];
-			qBtn.Pressed += () => {
-				OnActionSelected("producer_global", $"set_editorial_focus_{focusId}");
-				fPanel.Visible = false;
-				// Update editorial attention display
-				var editorialInfo = _uiLayer.GetNodeOrNull<Label>("EditorialAttentionPanel/EditorialContainer/EditorialInfo");
-				if (editorialInfo != null) editorialInfo.Text = $"Focus: {focusOptions[qIdx]}";
+			var rBtn = new Button();
+			rBtn.Text = rName;
+			rBtn.CustomMinimumSize = new Vector2(100, 60);
+			rBtn.ToggleMode = true; // Use toggle to show state? 
+			// Actually state updates from server, so just click to toggle logic
+			string capturedRoom = rName;
+			rBtn.Pressed += () => {
+				OnActionSelected("producer_global", $"toggle_camera_{capturedRoom}");
+				// Verify feedback via notification or state update
 			};
-			fGrid.AddChild(qBtn);
+			// Store ref to update visuals later? We'll rebuild or find by name
+			rBtn.Name = $"Btn_{rName}";
+			csGrid.AddChild(rBtn);
 		}
-		_uiLayer.AddChild(fPanel);
+		
+		var closeBtn = new Button();
+		closeBtn.Text = "Close";
+		closeBtn.Pressed += () => csPanel.Visible = false;
+		csVBox.AddChild(closeBtn);
+
+		_uiLayer.AddChild(csPanel);
 	}
 
 	private void SetupGoalsMenu()
@@ -681,12 +867,21 @@ public partial class GameWorld : Node2D
 		var npcStates = new JObject();
 		foreach (var npc in _gameEngine.GameState.NPCs.Values)
 		{
-			npcStates[npc.Id] = new JObject
+			var stateObj = new JObject
 			{
 				{ "alive", npc.Alive },
 				{ "converted", npc.Converted },
 				{ "married", npc.Married }
 			};
+			
+			// Include Position (SERVER AUTHORITY)
+			if (_npcEntities.TryGetValue(npc.Id, out var entity))
+			{
+				stateObj["pos_x"] = entity.Position.X;
+				stateObj["pos_y"] = entity.Position.Y;
+			}
+			
+			npcStates[npc.Id] = stateObj;
 		}
 		status["npc_states"] = npcStates;
 
@@ -866,7 +1061,23 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npcId;
 			entity.NpcName = npcId.Substring(0, 1).ToUpper() + npcId.Substring(1); // Capitalize
 			entity.NpcColor = npcColors.GetValueOrDefault(npcId, Colors.Blue);
-			entity.Position = GetRandomNPCSpawnPosition();
+			
+			// Try to get initial position from state
+			Vector2 initPos = GetRandomNPCSpawnPosition();
+			var npcStates = _localGameState["npc_states"] as JObject;
+			if (npcStates != null && npcStates[npcId] != null)
+			{
+				float? px = npcStates[npcId]["pos_x"]?.Value<float>();
+				float? py = npcStates[npcId]["pos_y"]?.Value<float>();
+				if (px.HasValue && py.HasValue)
+				{
+					initPos = new Vector2(px.Value, py.Value);
+				}
+			}
+			entity.Position = initPos;
+			// Initial sync for interpolation
+			entity.SyncPosition(initPos);
+
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npcId] = entity;
@@ -913,12 +1124,63 @@ public partial class GameWorld : Node2D
 			_convertedLabel.Visible = isProphet;
 		}
 
+
 		// PRODUCER ACTIONS VISIBILITY
 		var marryBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-		var editorialPanel = _uiLayer.GetNodeOrNull<Control>("EditorialAttentionPanel");
+		var cameraPanel = _uiLayer.GetNodeOrNull<Control>("CameraPanel");
 		bool isProducer = (_myRole?.ToLower() == "producer");
 		if (marryBtn != null) marryBtn.Visible = isProducer;
-		if (editorialPanel != null) editorialPanel.Visible = isProducer;
+		if (cameraPanel != null) cameraPanel.Visible = isProducer;
+		
+		if (isProducer && cameraPanel != null)
+		{
+			// Update Active Cameras Text
+			var activeCameras = _localGameState?["active_camera_room_ids"]?.ToObject<List<string>>() ?? new List<string>();
+			var infoLabel = cameraPanel.GetNodeOrNull<Label>("CameraContainer/CameraInfo");
+			if (infoLabel != null)
+			{
+				infoLabel.Text = activeCameras.Count > 0 
+					? $"Active: {string.Join(", ", activeCameras)}"
+					: "Active: None";
+			}
+			
+			// Update Call Police Button
+			var policeBtn = cameraPanel.GetNodeOrNull<Button>("CameraContainer/CallPoliceButton");
+			bool admirerCaught = _localGameState?["admirer_caught"]?.Value<bool>() ?? false;
+			if (policeBtn != null)
+			{
+				policeBtn.Visible = admirerCaught;
+			}
+			
+			// Update Camera Select Panel Buttons (if open)
+			var csPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
+			if (csPanel != null && csPanel.Visible)
+			{
+				var grid = csPanel.GetNodeOrNull<Container>("CameraContainer/GridContainer"); // Check structure in SetupUI
+				// Structure in SetupUI was: Panel -> VBox -> GridContainer. 
+				// My previous edit: csPanel -> csVBox -> csGrid.
+				// Let's rely on finding by name I gave buttons: "Btn_Room1"
+				
+				// Finds recursively? No. Need to traverse.
+				// Or I can just check Active list against button names if I iterate children.
+				// Let's assume standard structure or finding by unique names.
+				
+				foreach (var camRoom in new[] { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" })
+				{
+					// Locate button. Since I didn't give unique path, I'll search closely
+					// It's inside csPanel -> VBox -> Grid.
+					// Let's try FindChild
+					var btn = csPanel.FindChild($"Btn_{camRoom}", true, false) as Button;
+					if (btn != null)
+					{
+						// Check if active
+						bool isActive = activeCameras.Contains(camRoom);
+						btn.Modulate = isActive ? Colors.Green : Colors.White; // Visual feedback
+						btn.ButtonPressed = isActive; // Since I set ToggleMode = true
+					}
+				}
+			}
+		}
 
 		if (isProducer)
 		{
@@ -965,8 +1227,7 @@ public partial class GameWorld : Node2D
 		}
 
 		// Clear explicit children if state invalid, but smart update better
-		foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
-		
+		string currentRPSKey = ""; 
 		if (conversions != null && conversions.ContainsKey(myRoleStr))
 		{
 			var ctx = conversions[myRoleStr];
@@ -976,28 +1237,54 @@ public partial class GameWorld : Node2D
 			
 			if (!string.IsNullOrEmpty(npcId) && !string.IsNullOrEmpty(baseActionId) && visibleOpts != null)
 			{
-				rpsContainer.Visible = true;
+				currentRPSKey = $"{npcId}_{string.Join("-", visibleOpts)}";
 				
-				// Show Header
-				var label = new Label();
-				label.Text = $"CONVERT {Capitalize(npcId)}:";
-				rpsContainer.AddChild(label);
-				
-				foreach (var move in visibleOpts)
+				// Only rebuild if changed
+				if (currentRPSKey != _lastRPSKey)
 				{
-					var btn = new Button();
-					btn.Text = Capitalize(move); // Display "Rock"
-					// Action ID format: baseActionId + "_" + move.ToLower() e.g. "convert_katy_rock"
-					btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
-					rpsContainer.AddChild(btn);
+					// Rebuild
+					foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
+					
+					rpsContainer.Visible = true;
+					
+					// Show Header
+					var label = new Label();
+					label.Text = $"CONVERT {Capitalize(npcId)}:";
+					rpsContainer.AddChild(label);
+					
+					foreach (var move in visibleOpts)
+					{
+						var btn = new Button();
+						btn.Text = Capitalize(move); // Display "Rock"
+						// Action ID format: baseActionId + "_" + move.ToLower() e.g. "convert_katy_rock"
+						btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
+						rpsContainer.AddChild(btn);
+					}
+					
+					_lastRPSKey = currentRPSKey;
+				}
+			}
+			else
+			{
+				currentRPSKey = "empty";
+				if (currentRPSKey != _lastRPSKey)
+				{
+					foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
+					rpsContainer.Visible = false;
+					_lastRPSKey = currentRPSKey;
 				}
 			}
 		}
 		else
 		{
-			rpsContainer.Visible = false;
+			currentRPSKey = "empty";
+			if (currentRPSKey != _lastRPSKey)
+			{
+				foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
+				rpsContainer.Visible = false;
+				_lastRPSKey = currentRPSKey;
+			}
 		}
-
 		// Meters
 		foreach (Node child in _metersContainer.GetChildren())
 			child.QueueFree();
@@ -1070,6 +1357,49 @@ public partial class GameWorld : Node2D
 				_uiLayer.AddChild(label);
 			}
 		}
+
+
+		// Admirer Elimination Check
+		bool admirerEliminated = _localGameState["admirer_eliminated"]?.Value<bool>() ?? false;
+		var elimLabel = _uiLayer.GetNodeOrNull<Label>("EliminatedLabel");
+		var gameOverOverlay = _uiLayer.GetNodeOrNull<Control>("GameOverOverlay");
+
+		if (admirerEliminated)
+		{
+			bool isAdmirer = (_myRole?.ToLower() == "admirer");
+			
+			if (isAdmirer)
+			{
+				// I AM ELIMINATED
+				if (gameOverOverlay != null) 
+				{
+					gameOverOverlay.Visible = true;
+					// Ensure it blocks mouse if possible? PanelContainer usually monitors mouse.
+				}
+				if (_localPlayer != null)
+				{
+					_localPlayer.InputEnabled = false;
+					_localPlayer.Velocity = Vector2.Zero;
+				}
+				if (elimLabel != null) elimLabel.Visible = false; // Don't show top label
+			}
+			else
+			{
+				// Someone else eliminated
+				if (elimLabel != null) 
+				{
+					elimLabel.Visible = true;
+					elimLabel.Text = "ADMIRER HAS BEEN ELIMINATED"; // Requirements: "white text on top... producer lost (sic: admirer lost)"
+				}
+				if (gameOverOverlay != null) gameOverOverlay.Visible = false;
+			}
+		}
+		else if (!isGameOver) // Only hide if game isn't over otherwise
+		{
+			// Reset if new game
+			if (elimLabel != null) elimLabel.Visible = false;
+			if (gameOverOverlay != null) gameOverOverlay.Visible = false;
+		}
 	}
 
 
@@ -1087,6 +1417,19 @@ public partial class GameWorld : Node2D
 				bool alive = state["alive"]?.Value<bool>() ?? true;
 				bool converted = state["converted"]?.Value<bool>() ?? false;
 				bool married = state["married"]?.Value<bool>() ?? false;
+				
+				// Sync Position (If client)
+				if (!Multiplayer.IsServer())
+				{
+					float? px = state["pos_x"]?.Value<float>();
+					float? py = state["pos_y"]?.Value<float>();
+					if (px.HasValue && py.HasValue)
+					{
+						// Smooth interpolation via SyncPosition
+						kvp.Value.SyncPosition(new Vector2(px.Value, py.Value));
+					}
+				}
+
 				kvp.Value.UpdateState(alive, converted, married);
 			}
 		}
