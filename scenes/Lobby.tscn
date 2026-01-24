@@ -59,16 +59,29 @@ text = "Host"
 layout_mode = 2
 text = "Join"
 
-[node name="RoleOption" type="OptionButton" parent="Panel/VBoxContainer"]
+[node name="CancelButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
 layout_mode = 2
-selected = 0
-item_count = 3
-popup/item_0/text = "Admirer"
-popup/item_0/id = 0
-popup/item_1/text = "Prophet"
-popup/item_1/id = 1
-popup/item_2/text = "Producer"
-popup/item_2/id = 2
+text = "Cancel"
+
+[node name="RoleLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+text = "Select Your Role:"
+
+[node name="RoleButtonsContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AdmirerButton" type="Button" parent="Panel/VBoxContainer/RoleButtonsContainer"]
+layout_mode = 2
+text = "Admirer"
+
+[node name="ProphetButton" type="Button" parent="Panel/VBoxContainer/RoleButtonsContainer"]
+layout_mode = 2
+text = "Prophet"
+
+[node name="ProducerButton" type="Button" parent="Panel/VBoxContainer/RoleButtonsContainer"]
+layout_mode = 2
+text = "Producer"
 
 [node name="StatusLabel" type="Label" parent="Panel/VBoxContainer"]
 layout_mode = 2
