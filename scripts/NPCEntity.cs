@@ -2,10 +2,10 @@ using Godot;
 using System;
 
 /// <summary>
-/// Node2D-based NPC entity that players can approach and interact with.
-/// Handles visual representation and click detection for NPC interactions.
+/// CharacterBody2D-based NPC entity that players can approach and interact with.
+/// Handles visual representation, click detection, and collision with world geometry.
 /// </summary>
-public partial class NPCEntity : Area2D
+public partial class NPCEntity : CharacterBody2D
 {
 	[Signal]
 	public delegate void NPCClickedEventHandler(string npcId);
@@ -61,6 +61,14 @@ public partial class NPCEntity : Area2D
 		// Connect input
 		InputEvent += OnInputEvent;
 		
+		// Configure collision layers
+		// Layer 2 (bit 1): NPCs (like Players)
+		// Mask 1 (bit 0): Walls/World
+		CollisionLayer = 2;
+		CollisionMask = 1;
+		
+		GD.Print($"NPCEntity: Set collision layer={CollisionLayer}, mask={CollisionMask}");
+		
 		// Start with a random pause before first movement
 		_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
 		_targetPosition = Position;
@@ -97,18 +105,15 @@ public partial class NPCEntity : Area2D
 				{
 					// Arrived at target, start pausing
 					Position = _targetPosition; // Snap to exact position
+					Velocity = Vector2.Zero;
 					_wanderState = WanderState.Pausing;
 					_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
 				}
 				else
 				{
-					// Move towards target
-					float moveDistance = MOVE_SPEED * (float)delta;
-					if (moveDistance > distanceToTarget)
-					{
-						moveDistance = distanceToTarget; // Don't overshoot
-					}
-					Position += direction * moveDistance;
+					// Set velocity towards target
+					Velocity = direction * MOVE_SPEED;
+					MoveAndCollide(Velocity * (float)delta);
 				}
 				break;
 		}
@@ -233,10 +238,10 @@ public partial class NPCEntity : Area2D
 
 	private void SetupCollision()
 	{
-		// Make the NPC clickable
+		// Create collision shape matching player controller (80x128 rectangle)
 		_collisionShape = new CollisionShape2D();
-		var shape = new CircleShape2D();
-		shape.Radius = 32;
+		var shape = new RectangleShape2D();
+		shape.Size = new Vector2(80, 128);
 		_collisionShape.Shape = shape;
 		AddChild(_collisionShape);
 		
@@ -248,8 +253,8 @@ public partial class NPCEntity : Area2D
 		// Larger area for detecting when player is in range
 		_interactionArea = new Area2D();
 		_interactionArea.Name = "InteractionArea";
-		// Monitor Layer 2 (Players) and Layer 1 (Default)
-		_interactionArea.CollisionMask = 3;
+		// Monitor Layer 2 (NPCs/Players)
+		_interactionArea.CollisionMask = 2;
 		
 		var collisionShape = new CollisionShape2D();
 		var shape = new CircleShape2D();
