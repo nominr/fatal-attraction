@@ -324,7 +324,7 @@ public partial class NPCEntity : CharacterBody2D
 		_nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
 		_nameLabel.AddThemeColorOverride("font_color", Colors.Black);
 		_nameLabel.AddThemeFontOverride("font", _customFont);
-		_nameLabel.AddThemeFontSizeOverride("font_size", 14);
+		_nameLabel.AddThemeFontSizeOverride("font_size", 28);
 		_nameLabel.CustomMinimumSize = new Vector2(100, 20);
 		AddChild(_nameLabel);
 
@@ -341,7 +341,7 @@ public partial class NPCEntity : CharacterBody2D
 		_interactHint.HorizontalAlignment = HorizontalAlignment.Center;
 		_interactHint.AddThemeColorOverride("font_color", Colors.Black);
 		_interactHint.AddThemeFontOverride("font", _customFont);
-		_interactHint.AddThemeFontSizeOverride("font_size", 12);
+		_interactHint.AddThemeFontSizeOverride("font_size", 24);
 		_interactHint.CustomMinimumSize = new Vector2(120, 20);
 		_interactHint.Visible = false;
 		AddChild(_interactHint);
