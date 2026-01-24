@@ -54,10 +54,16 @@ public partial class PlayerController : CharacterBody2D
 	private void SetupVisuals()
 	{
 		// Create collision shape
+		// Create collision shape
 		var collisionShape = new CollisionShape2D();
-		var shape = new CircleShape2D();
-		shape.Radius = 16; // 32x32 sprite / 2
+		var shape = new RectangleShape2D();
+		
+		// Sprite is scaled 4x (approx 128px height)
+		// Set collision to match height (128) and reduced width (80) for playability
+		shape.Size = new Vector2(80, 128); 
 		collisionShape.Shape = shape;
+		// Position centered (0,0) matches sprite center
+		
 		AddChild(collisionShape);
 
 		// Player sprite - will be loaded when role is set
