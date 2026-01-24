@@ -102,6 +102,10 @@ public partial class GameWorld : Node2D
 		_uiLayer = new CanvasLayer();
 		AddChild(_uiLayer);
 
+		// Add Coordinate Display
+		// var coordinateDisplay = new CoordinateDisplay();
+		// AddChild(coordinateDisplay);
+
 		// HUD Container
 		var hudContainer = new VBoxContainer();
 		hudContainer.Position = new Vector2(20, 20);
@@ -405,24 +409,32 @@ public partial class GameWorld : Node2D
 		RpcId(1, MethodName.RequestGameState);
 	}
 
+	private Vector2 GetRandomNPCSpawnPosition()
+	{
+		// Define spawn ranges (rectangular zones)
+		var spawnRanges = new List<(float minX, float maxX, float minY, float maxY)>
+		{
+			(50, 1000, 175, 400),      // Range 1
+			(-300, 2700, 930, 950),    // Range 2
+			(2500, 2850, 1450, 1450),  // Range 3 (single Y value)
+			(580, 2030, 1450, 1740),   // Range 4
+			(1600, 2300, 160, 440)     // Range 5
+		};
+
+		var random = new Random();
+		// Pick a random spawn range
+		var range = spawnRanges[random.Next(spawnRanges.Count)];
+
+		// Generate random position within the selected range
+		float x = (float)(random.NextDouble() * (range.maxX - range.minX) + range.minX);
+		float y = (float)(random.NextDouble() * (range.maxY - range.minY) + range.minY);
+
+		return new Vector2(x, y);
+	}
+
 	private void SpawnNPCs()
 	{
 		if (_gameEngine == null) return;
-
-		// Spread NPCs across different areas/rooms of the map
-		var npcPositions = new Dictionary<string, Vector2>
-		{
-			{ "katy", new Vector2(150, 150) },      // Top-left corner
-			{ "john", new Vector2(1050, 150) },     // Top-right corner
-			{ "rebecca", new Vector2(600, 400) },   // Center of map
-			{ "marcus", new Vector2(150, 650) },    // Bottom-left corner
-			{ "sofia", new Vector2(1050, 650) },    // Bottom-right corner
-			{ "amir", new Vector2(300, 200) },
-			{ "bella", new Vector2(900, 200) },
-			{ "chris", new Vector2(300, 600) },
-			{ "diana", new Vector2(900, 600) },
-			{ "eli", new Vector2(600, 200) }
-		};
 
 		var npcColors = new Dictionary<string, Color>
 		{
@@ -444,7 +456,7 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npc.Id;
 			entity.NpcName = npc.Name;
 			entity.NpcColor = npcColors.GetValueOrDefault(npc.Id, Colors.Blue);
-			entity.Position = npcPositions.GetValueOrDefault(npc.Id, new Vector2(600, 400));
+			entity.Position = GetRandomNPCSpawnPosition();
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npc.Id] = entity;
@@ -829,21 +841,6 @@ public partial class GameWorld : Node2D
 
 	private void SpawnNPCsFromState()
 	{
-		// Spread NPCs across different areas/rooms of the map
-		var npcPositions = new Dictionary<string, Vector2>
-		{
-			{ "katy", new Vector2(150, 150) },      // Top-left corner
-			{ "john", new Vector2(1050, 150) },     // Top-right corner
-			{ "rebecca", new Vector2(600, 400) },   // Center of map
-			{ "marcus", new Vector2(150, 650) },    // Bottom-left corner
-			{ "sofia", new Vector2(1050, 650) },    // Bottom-right corner
-			{ "amir", new Vector2(300, 200) },
-			{ "bella", new Vector2(900, 200) },
-			{ "chris", new Vector2(300, 600) },
-			{ "diana", new Vector2(900, 600) },
-			{ "eli", new Vector2(600, 200) }
-		};
-
 		var npcColors = new Dictionary<string, Color>
 		{
 			{ "katy", Colors.DeepPink },
@@ -869,7 +866,7 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npcId;
 			entity.NpcName = npcId.Substring(0, 1).ToUpper() + npcId.Substring(1); // Capitalize
 			entity.NpcColor = npcColors.GetValueOrDefault(npcId, Colors.Blue);
-			entity.Position = npcPositions.GetValueOrDefault(npcId, new Vector2(600, 400));
+			entity.Position = GetRandomNPCSpawnPosition();
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npcId] = entity;

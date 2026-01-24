@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// CharacterBody2D-based NPC entity that players can approach and interact with.
@@ -34,26 +35,79 @@ public partial class NPCEntity : CharacterBody2D
 	private bool _playerInRange = false;
 	private Label _interactHint;
 
+	// Room and corridor definitions
+	private struct Room
+	{
+		public float minX, maxX, minY, maxY;
+		public Room(float minX, float maxX, float minY, float maxY)
+		{
+			this.minX = minX;
+			this.maxX = maxX;
+			this.minY = minY;
+			this.maxY = maxY;
+		}
+	}
+
+	private struct Corridor
+	{
+		public float minX, maxX, minY, maxY;
+		public Corridor(float minX, float maxX, float minY, float maxY)
+		{
+			this.minX = minX;
+			this.maxX = maxX;
+			this.minY = minY;
+			this.maxY = maxY;
+		}
+	}
+
+	private List<Room> _rooms;
+	private List<Corridor> _corridors;
+	private int _currentRoomIndex = 0; // Track which room NPC is in
+
 	// Wandering AI
 	private enum WanderState { Moving, Pausing }
 	private WanderState _wanderState = WanderState.Pausing;
 	private Vector2 _targetPosition;
 	private double _pauseTimer = 0.0;
-	private const float MOVE_SPEED = 50.0f; // Pixels per second
-	private const float MIN_PAUSE = 2.0f; // Minimum pause time in seconds
-	private const float MAX_PAUSE = 5.0f; // Maximum pause time in seconds
+	private const float MOVE_SPEED = 150.0f; // Pixels per second (increased from 50)
+	private const float MIN_PAUSE = 0.5f; // Minimum pause time in seconds (decreased from 2.0)
+	private const float MAX_PAUSE = 2.0f; // Maximum pause time in seconds (decreased from 5.0)
 	private const float TARGET_REACHED_THRESHOLD = 10.0f; // How close to target to consider "arrived"
 	private static readonly Random _random = new Random();
+
+	// Stuck detection
+	private Vector2 _lastPosition = Vector2.Zero;
+	private double _stuckTimer = 0.0;
+	private const float STUCK_DISTANCE_THRESHOLD = 3.0f; // pixels
+	private const float STUCK_TIME_THRESHOLD = 0.8f; // seconds
 	
-	// Map bounds (should match GameWorld._worldSize with some margin)
-	private Vector2 _mapMin = new Vector2(100, 100);
-	private Vector2 _mapMax = new Vector2(1100, 700);
+	// Map bounds (encompass all NPC spawn zones globally)
+	private Vector2 _mapMin = new Vector2(-300, 160);
+	private Vector2 _mapMax = new Vector2(2850, 1740);
 	
 	// Alive status (dead NPCs don't wander)
 	private bool _isAlive = true;
 
 	public override void _Ready()
 	{
+		// Initialize room and corridor definitions
+		_rooms = new List<Room>
+		{
+			new Room(50, 1000, 175, 400),       // Room 0
+			new Room(-300, 2700, 930, 950),     // Room 1
+			new Room(2500, 2850, 1450, 1450),   // Room 2
+			new Room(580, 2030, 1450, 1740),    // Room 3
+			new Room(1600, 2300, 160, 440)      // Room 4
+		};
+
+		_corridors = new List<Corridor>
+		{
+			new Corridor(1564, 1612, 547, 900),   // Corridor 0
+			new Corridor(156, 204, 547, 900),     // Corridor 1
+			new Corridor(924, 972, 1056, 1370),   // Corridor 2
+			new Corridor(2716, 2764, 1056, 1370)  // Corridor 3
+		};
+
 		SetupVisuals();
 		SetupCollision();
 		SetupInteractionArea();
@@ -62,14 +116,20 @@ public partial class NPCEntity : CharacterBody2D
 		InputEvent += OnInputEvent;
 		
 		// Configure collision layers
-		// Layer 2 (bit 1): NPCs (like Players)
-		// Mask 1 (bit 0): Walls/World
-		CollisionLayer = 2;
+		// Layer 4 (bit 2): NPCs (separate from players)
+		// Mask 1 (bit 0): Walls/World only — NPCs pass through each other and players
+		CollisionLayer = 4;
 		CollisionMask = 1;
 		
 		GD.Print($"NPCEntity: Set collision layer={CollisionLayer}, mask={CollisionMask}");
 		
-		// Start with a random pause before first movement
+		// Determine starting room
+		_currentRoomIndex = GetRoomAtPosition(Position);
+
+		// Init last position for stuck detection
+		_lastPosition = Position;
+		
+		// Start with a random pause before first movement for all NPCs
 		_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
 		_targetPosition = Position;
 	}
@@ -84,6 +144,8 @@ public partial class NPCEntity : CharacterBody2D
 		// Dead NPCs don't wander
 		if (!_isAlive) return;
 		
+		// No special hallway handling; all NPCs use corridor/room rules
+		
 		switch (_wanderState)
 		{
 			case WanderState.Pausing:
@@ -97,23 +159,81 @@ public partial class NPCEntity : CharacterBody2D
 				break;
 
 			case WanderState.Moving:
-				// Move towards target
+				// Corridor waypoint rule: if near entry points, walk straight to exit
+				Vector2 corridorTarget = Vector2.Zero;
+				bool inCorridorTransit = false;
+				
+				// Check proximity to each entry point (within 50px)
+				if (Position.DistanceTo(new Vector2(177, 517)) < 50f)
+				{
+					corridorTarget = new Vector2(177, 946);
+					inCorridorTransit = true;
+				}
+				else if (Position.DistanceTo(new Vector2(1579, 510)) < 50f)
+				{
+					corridorTarget = new Vector2(1579, 946);
+					inCorridorTransit = true;
+				}
+				else if (Position.DistanceTo(new Vector2(2741, 1418)) < 50f)
+				{
+					corridorTarget = new Vector2(2741, 968);
+					inCorridorTransit = true;
+				}
+				else if (Position.DistanceTo(new Vector2(959, 1418)) < 50f)
+				{
+					corridorTarget = new Vector2(959, 968);
+					inCorridorTransit = true;
+				}
+				
+				if (inCorridorTransit)
+				{
+					// Walk straight to corridor exit
+					Vector2 dir = (corridorTarget - Position).Normalized();
+					Velocity = dir * MOVE_SPEED;
+					MoveAndCollide(Velocity * (float)delta);
+					
+					// Once close to exit, resume normal movement
+					if (Position.DistanceTo(corridorTarget) < 10f)
+					{
+						Position = corridorTarget;
+						PickNewTarget(); // Pick new target in room
+					}
+					break;
+				}
+
+				// Normal room movement
 				Vector2 direction = (_targetPosition - Position).Normalized();
 				float distanceToTarget = Position.DistanceTo(_targetPosition);
-				
 				if (distanceToTarget <= TARGET_REACHED_THRESHOLD)
 				{
-					// Arrived at target, start pausing
-					Position = _targetPosition; // Snap to exact position
+					Position = _targetPosition;
 					Velocity = Vector2.Zero;
 					_wanderState = WanderState.Pausing;
 					_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
 				}
 				else
 				{
-					// Set velocity towards target
 					Velocity = direction * MOVE_SPEED;
-					MoveAndCollide(Velocity * (float)delta);
+					var collision = MoveAndCollide(Velocity * (float)delta);
+					if (collision != null)
+					{
+						var n = collision.GetNormal();
+						Vector2 tangent = new Vector2(-n.Y, n.X);
+						float sign = _random.Next(2) == 0 ? -1f : 1f;
+						_targetPosition = Position + tangent.Normalized() * 120f * sign;
+					}
+					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD) _stuckTimer += delta; else { _stuckTimer = 0; _lastPosition = Position; }
+					if (_stuckTimer >= STUCK_TIME_THRESHOLD)
+					{
+						if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
+						{
+							Room r = _rooms[_currentRoomIndex];
+							float x = (float)(_random.NextDouble() * (r.maxX - r.minX) + r.minX);
+							float y = (float)(_random.NextDouble() * (r.maxY - r.minY) + r.minY);
+							_targetPosition = new Vector2(x, y);
+						}
+						_stuckTimer = 0.0;
+					}
 				}
 				break;
 		}
@@ -121,10 +241,69 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void PickNewTarget()
 	{
-		// Pick a random position within map bounds
-		float x = (float)(_random.NextDouble() * (_mapMax.X - _mapMin.X) + _mapMin.X);
-		float y = (float)(_random.NextDouble() * (_mapMax.Y - _mapMin.Y) + _mapMin.Y);
-		_targetPosition = new Vector2(x, y);
+		// Update current room based on position
+		_currentRoomIndex = GetRoomAtPosition(Position);
+
+		// 30% chance to move to a corridor (if not already in one)
+		if (_random.NextDouble() < 0.3 && _currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
+		{
+			// Pick a random corridor
+			int corridorIndex = _random.Next(_corridors.Count);
+			Corridor corridor = _corridors[corridorIndex];
+			
+			// Pick a random point in the corridor
+			float x = (float)(_random.NextDouble() * (corridor.maxX - corridor.minX) + corridor.minX);
+			float y = (float)(_random.NextDouble() * (corridor.maxY - corridor.minY) + corridor.minY);
+			_targetPosition = new Vector2(x, y);
+			
+			GD.Print($"{NpcId} heading to corridor {corridorIndex}");
+		}
+		else
+		{
+			// Pick a random position within current room
+			if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
+			{
+				Room room = _rooms[_currentRoomIndex];
+				float x = (float)(_random.NextDouble() * (room.maxX - room.minX) + room.minX);
+				float y = (float)(_random.NextDouble() * (room.maxY - room.minY) + room.minY);
+				_targetPosition = new Vector2(x, y);
+			}
+			else
+			{
+				// Fallback if position is in no room (shouldn't happen)
+				float x = (float)(_random.NextDouble() * (_mapMax.X - _mapMin.X) + _mapMin.X);
+				float y = (float)(_random.NextDouble() * (_mapMax.Y - _mapMin.Y) + _mapMin.Y);
+				_targetPosition = new Vector2(x, y);
+			}
+		}
+	}
+
+	private int GetRoomAtPosition(Vector2 pos)
+	{
+		for (int i = 0; i < _rooms.Count; i++)
+		{
+			Room room = _rooms[i];
+			if (pos.X >= room.minX && pos.X <= room.maxX &&
+				pos.Y >= room.minY && pos.Y <= room.maxY)
+			{
+				return i;
+			}
+		}
+		return -1; // Not in any room
+	}
+
+	private int GetCorridorAtPosition(Vector2 pos)
+	{
+		for (int i = 0; i < _corridors.Count; i++)
+		{
+			Corridor c = _corridors[i];
+			if (pos.X >= c.minX && pos.X <= c.maxX &&
+				pos.Y >= c.minY && pos.Y <= c.maxY)
+			{
+				return i;
+			}
+		}
+		return -1; // Not in any corridor
 	}
 
 	private void SetupVisuals()
