@@ -48,6 +48,7 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
+	private Font _customFont;
 
 	// World bounds
 	private Vector2 _worldSize = new Vector2(1200, 800);
@@ -236,6 +237,9 @@ public partial class GameWorld : Node2D
 		_uiLayer = new CanvasLayer();
 		AddChild(_uiLayer);
 
+		// Load custom font
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+
 		// Add Coordinate Display
 		// var coordinateDisplay = new CoordinateDisplay();
 		// AddChild(coordinateDisplay);
@@ -247,12 +251,13 @@ public partial class GameWorld : Node2D
 
 		_timerLabel = new Label();
 		_timerLabel.Text = "Time: 05:00";
+		_timerLabel.AddThemeFontOverride("font", _customFont);
 		_timerLabel.AddThemeFontSizeOverride("font_size", 20);
 		hudContainer.AddChild(_timerLabel);
 
 		_roleLabel = new Label();
 		_roleLabel.Text = "Role: Waiting...";
-		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
+		_roleLabel.AddThemeFontOverride("font", _customFont);
 		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
 		hudContainer.AddChild(_roleLabel);
 
@@ -290,6 +295,7 @@ public partial class GameWorld : Node2D
 
 		_convertedLabel = new Label();
 		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
+		_convertedLabel.AddThemeFontOverride("font", _customFont);
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		hudContainer.AddChild(_convertedLabel);
 
@@ -315,6 +321,7 @@ public partial class GameWorld : Node2D
 		_notificationText = new RichTextLabel();
 		_notificationText.BbcodeEnabled = true;
 		_notificationText.ScrollFollowing = true;
+		_notificationText.AddThemeFontOverride("normal_font", _customFont);
 		notifMargin.AddChild(_notificationText);
 
 		// Interaction Panel
@@ -326,6 +333,7 @@ public partial class GameWorld : Node2D
 		// Prophet Trap Button
 		var trapButton = new Button();
 		trapButton.Text = "Set Trap (+1 Chaos)";
+		trapButton.AddThemeFontOverride("font", _customFont);
 		trapButton.Position = new Vector2(20, 600);
 		trapButton.Pressed += () => OnActionSelected("global", "set_trap");
 		_uiLayer.AddChild(trapButton);
@@ -355,11 +363,13 @@ public partial class GameWorld : Node2D
 		mPanel.AddChild(mVBox);
 		var mLabel = new Label();
 		mLabel.Text = "Select 2 NPCs to Marry:";
+		mLabel.AddThemeFontOverride("font", _customFont);
 		mLabel.AddThemeFontSizeOverride("font_size", 14);
 		mVBox.AddChild(mLabel);
 		// NPCs populated dynamically
 		var mConfirm = new Button();
 		mConfirm.Text = "CONFIRM MARRIAGE";
+		mConfirm.AddThemeFontOverride("font", _customFont);
 		mConfirm.Pressed += OnMarryConfirm;
 		mVBox.AddChild(mConfirm);
 		_uiLayer.AddChild(mPanel);
@@ -368,13 +378,11 @@ public partial class GameWorld : Node2D
 		var marryBtn = new Button();
 		marryBtn.Name = "MarryButton";
 		marryBtn.Text = "Marry NPCs (+1 Ratings)";
+		marryBtn.AddThemeFontOverride("font", _customFont);
 		marryBtn.Position = new Vector2(20, 480);
 		marryBtn.Visible = false;
 		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
 		_uiLayer.AddChild(marryBtn);
-
-		_uiLayer.AddChild(marryBtn);
-
 		// Security Cameras Section (Visible)
 		var cPanel = new PanelContainer();
 		cPanel.Name = "CameraPanel";
@@ -388,16 +396,19 @@ public partial class GameWorld : Node2D
 		var cLabel = new Label();
 		cLabel.Text = "Security Cameras";
 		cLabel.AddThemeFontSizeOverride("font_size", 14);
+		cLabel.AddThemeFontOverride("font", _customFont);
 		cVBox.AddChild(cLabel);
 		
 		var cInfo = new Label();
 		cInfo.Name = "CameraInfo";
 		cInfo.Text = "Active: None";
+		cInfo.AddThemeFontOverride("font", _customFont);
 		cInfo.AutowrapMode = TextServer.AutowrapMode.Word;
 		cVBox.AddChild(cInfo);
 		
 		var cBtn = new Button();
 		cBtn.Text = "Manage Cameras";
+		cBtn.AddThemeFontOverride("font", _customFont);
 		cBtn.Pressed += () => TogglePanel("CameraSelectPanel");
 		cVBox.AddChild(cBtn);
 
@@ -412,47 +423,76 @@ public partial class GameWorld : Node2D
 
 		_uiLayer.AddChild(cPanel);
 
-		// Camera Selection Panel (Hidden)
-		var csPanel = new PanelContainer();
-		csPanel.Name = "CameraSelectPanel";
-		csPanel.Position = new Vector2(500, 300);
-		csPanel.Visible = false;
-		var csVBox = new VBoxContainer();
-		csVBox.AddThemeConstantOverride("separation", 10);
-		csPanel.AddChild(csVBox);
-		var csLabel = new Label();
-		csLabel.Text = "Toggle Cameras (Max 2):";
-		csLabel.AddThemeFontSizeOverride("font_size", 14);
-		csVBox.AddChild(csLabel);
-		var csGrid = new GridContainer();
-		csGrid.Columns = 2; // 2x3
-		csVBox.AddChild(csGrid);
-		
-		string[] rooms = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
-		
-		foreach (var rName in rooms)
-		{
-			var rBtn = new Button();
-			rBtn.Text = rName;
-			rBtn.CustomMinimumSize = new Vector2(100, 60);
-			rBtn.ToggleMode = true; // Use toggle to show state? 
-			// Actually state updates from server, so just click to toggle logic
-			string capturedRoom = rName;
-			rBtn.Pressed += () => {
-				OnActionSelected("producer_global", $"toggle_camera_{capturedRoom}");
-				// Verify feedback via notification or state update
-			};
-			// Store ref to update visuals later? We'll rebuild or find by name
-			rBtn.Name = $"Btn_{rName}";
-			csGrid.AddChild(rBtn);
-		}
-		
-		var closeBtn = new Button();
-		closeBtn.Text = "Close";
-		closeBtn.Pressed += () => csPanel.Visible = false;
-		csVBox.AddChild(closeBtn);
 
-		_uiLayer.AddChild(csPanel);
+		// Editorial Attention Section (Visible)
+		var ePanel = new PanelContainer();
+		ePanel.Name = "EditorialAttentionPanel";
+		ePanel.Position = new Vector2(950, 340); // Shifted down to avoid overlap
+		ePanel.CustomMinimumSize = new Vector2(180, 150);
+		ePanel.Visible = false;
+		var eVBox = new VBoxContainer();
+		eVBox.Name = "EditorialContainer";
+		eVBox.AddThemeConstantOverride("separation", 5);
+		ePanel.AddChild(eVBox);
+		var eLabel = new Label();
+		eLabel.Text = "Editorial Attention";
+		eLabel.AddThemeFontOverride("font", _customFont);
+		eLabel.AddThemeFontSizeOverride("font_size", 14);
+		eVBox.AddChild(eLabel);
+		var eInfo = new Label();
+		eInfo.Name = "EditorialInfo";
+		eInfo.Text = "Focus: None";
+		eInfo.AddThemeFontOverride("font", _customFont);
+		eInfo.AutowrapMode = TextServer.AutowrapMode.Word;
+		eVBox.AddChild(eInfo);
+		var eBtn = new Button();
+		eBtn.Text = "Set Focus";
+		eBtn.AddThemeFontOverride("font", _customFont);
+		eBtn.Pressed += () => TogglePanel("FocusPanel");
+		eVBox.AddChild(eBtn);
+		_uiLayer.AddChild(ePanel);
+
+		// Focus Panel (Hidden)
+		var fPanel = new PanelContainer();
+		fPanel.Name = "FocusPanel";
+		fPanel.Position = new Vector2(500, 300);
+		fPanel.Visible = false;
+		var fVBox = new VBoxContainer();
+		fVBox.AddThemeConstantOverride("separation", 10);
+		fPanel.AddChild(fVBox);
+		var fLabel = new Label();
+		fLabel.Text = "Select Editorial Focus:";
+		fLabel.AddThemeFontSizeOverride("font_size", 14);
+		fLabel.AddThemeFontOverride("font", _customFont);
+		fVBox.AddChild(fLabel);
+		var fGrid = new GridContainer();
+		fGrid.Columns = 2; // 2x2
+		fVBox.AddChild(fGrid);
+		
+		// Define Focus Options
+		string[] focusOptions = { "Drama", "Romance", "Suspense", "Action" };
+		string[] focusIds = { "drama", "romance", "suspense", "action" };
+
+		for (int i = 0; i < focusOptions.Length; i++)
+		{
+			var qBtn = new Button();
+			qBtn.Text = focusOptions[i];
+			qBtn.AddThemeFontOverride("font", _customFont);
+			qBtn.CustomMinimumSize = new Vector2(120, 80);
+			int qIdx = i;
+			string focusId = focusIds[i];
+			qBtn.Pressed += () => {
+				OnActionSelected("producer_global", $"set_editorial_focus_{focusId}");
+				// Update editorial attention display
+				var editorialInfo = _uiLayer.GetNodeOrNull<Label>("EditorialAttentionPanel/EditorialContainer/EditorialInfo");
+				if (editorialInfo != null) editorialInfo.Text = $"Focus: {focusOptions[qIdx]}";
+				// Hide panel
+				var fp = _uiLayer.GetNodeOrNull<Control>("FocusPanel");
+				if (fp != null) fp.Visible = false;
+			};
+			fGrid.AddChild(qBtn);
+		}
+		_uiLayer.AddChild(fPanel);
 	}
 
 	private void SetupGoalsMenu()
@@ -466,6 +506,7 @@ public partial class GameWorld : Node2D
 		var viewportSize = GetViewportRect().Size;
 		_goalsButton = new Button();
 		_goalsButton.Text = "📋 GOALS";
+		_goalsButton.AddThemeFontOverride("font", _customFont);
 		_goalsButton.CustomMinimumSize = new Vector2(120, 40);
 		_goalsButton.Position = new Vector2(
 			Mathf.Max(20, viewportSize.X - _goalsButton.CustomMinimumSize.X - 30),
@@ -678,13 +719,6 @@ public partial class GameWorld : Node2D
 			// Check if this is our local player
 			bool isLocal = kvp.Key == Multiplayer.GetUniqueId();
 			player.SetLocalPlayer(isLocal);
-			if (isLocal)
-			{
-				_localPlayer = player;
-			}
-			
-			// Connect to position change signal for local player only
-			// (Remote players get updated via RPC, not signal)
 			if (isLocal)
 			{
 				player.PositionChanged += OnPlayerPositionChanged;
@@ -1156,27 +1190,13 @@ public partial class GameWorld : Node2D
 			var csPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
 			if (csPanel != null && csPanel.Visible)
 			{
-				var grid = csPanel.GetNodeOrNull<Container>("CameraContainer/GridContainer"); // Check structure in SetupUI
-				// Structure in SetupUI was: Panel -> VBox -> GridContainer. 
-				// My previous edit: csPanel -> csVBox -> csGrid.
-				// Let's rely on finding by name I gave buttons: "Btn_Room1"
-				
-				// Finds recursively? No. Need to traverse.
-				// Or I can just check Active list against button names if I iterate children.
-				// Let's assume standard structure or finding by unique names.
-				
 				foreach (var camRoom in new[] { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" })
 				{
-					// Locate button. Since I didn't give unique path, I'll search closely
-					// It's inside csPanel -> VBox -> Grid.
-					// Let's try FindChild
-					var btn = csPanel.FindChild($"Btn_{camRoom}", true, false) as Button;
+					var btn = csPanel.FindChild($"Btn_{camRoom}", true, false) as CheckButton;
 					if (btn != null)
 					{
-						// Check if active
 						bool isActive = activeCameras.Contains(camRoom);
-						btn.Modulate = isActive ? Colors.Green : Colors.White; // Visual feedback
-						btn.ButtonPressed = isActive; // Since I set ToggleMode = true
+						btn.ButtonPressed = isActive; // Set check state
 					}
 				}
 			}
@@ -1203,6 +1223,7 @@ public partial class GameWorld : Node2D
 						var cb = new CheckButton();
 						cb.Name = npcId; // Store ID in Name
 						cb.Text = Capitalize(npcId);
+						cb.AddThemeFontOverride("font", _customFont);
 						mPanelBox.AddChild(cb);
 						mPanelBox.MoveChild(cb, idx++);
 					}
@@ -1226,7 +1247,6 @@ public partial class GameWorld : Node2D
 			_uiLayer.AddChild(rpsContainer);
 		}
 
-		// Clear explicit children if state invalid, but smart update better
 		string currentRPSKey = ""; 
 		if (conversions != null && conversions.ContainsKey(myRoleStr))
 		{
@@ -1237,54 +1257,59 @@ public partial class GameWorld : Node2D
 			
 			if (!string.IsNullOrEmpty(npcId) && !string.IsNullOrEmpty(baseActionId) && visibleOpts != null)
 			{
-				currentRPSKey = $"{npcId}_{string.Join("-", visibleOpts)}";
-				
-				// Only rebuild if changed
-				if (currentRPSKey != _lastRPSKey)
+				currentRPSKey = $"{myRoleStr}_{npcId}_{baseActionId}";
+
+				// Only rebuild if the context has changed
+				if (_lastRPSKey != currentRPSKey)
 				{
-					// Rebuild
-					foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
-					
+					// Clear existing buttons
+					foreach (Node child in rpsContainer.GetChildren())
+					{
+						child.QueueFree();
+					}
+
 					rpsContainer.Visible = true;
 					
 					// Show Header
 					var label = new Label();
 					label.Text = $"CONVERT {Capitalize(npcId)}:";
+					label.AddThemeFontOverride("font", _customFont); // Apply custom font
 					rpsContainer.AddChild(label);
 					
 					foreach (var move in visibleOpts)
 					{
 						var btn = new Button();
 						btn.Text = Capitalize(move); // Display "Rock"
+						btn.AddThemeFontOverride("font", _customFont);
 						// Action ID format: baseActionId + "_" + move.ToLower() e.g. "convert_katy_rock"
 						btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
 						rpsContainer.AddChild(btn);
 					}
-					
 					_lastRPSKey = currentRPSKey;
 				}
 			}
 			else
 			{
-				currentRPSKey = "empty";
-				if (currentRPSKey != _lastRPSKey)
+				// If context is invalid, hide and clear
+				if (rpsContainer.Visible)
 				{
-					foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
+					foreach (Node child in rpsContainer.GetChildren()) child.QueueFree();
 					rpsContainer.Visible = false;
-					_lastRPSKey = currentRPSKey;
+					_lastRPSKey = "";
 				}
 			}
 		}
 		else
 		{
-			currentRPSKey = "empty";
-			if (currentRPSKey != _lastRPSKey)
+			// No active conversion for this role, hide and clear
+			if (rpsContainer.Visible)
 			{
-				foreach (Node n in rpsContainer.GetChildren()) n.QueueFree();
+				foreach (Node child in rpsContainer.GetChildren()) child.QueueFree();
 				rpsContainer.Visible = false;
-				_lastRPSKey = currentRPSKey;
+				_lastRPSKey = "";
 			}
 		}
+
 		// Meters
 		foreach (Node child in _metersContainer.GetChildren())
 			child.QueueFree();
@@ -1302,6 +1327,7 @@ public partial class GameWorld : Node2D
 					double val = meter.Value["value"].Value<double>();
 					double max = meter.Value["max"].Value<double>();
 					label.Text = $"{meter.Name.ToUpper()}: {val:F1}/{max:F0}";
+					label.AddThemeFontOverride("font", _customFont);
 					_metersContainer.AddChild(label);
 				}
 			}
@@ -1347,6 +1373,7 @@ public partial class GameWorld : Node2D
 				var label = new Label();
 				label.Name = "GameOverLabel";
 				label.Text = winText;
+				label.AddThemeFontOverride("font", _customFont);
 				label.AddThemeFontSizeOverride("font_size", 64);
 				label.HorizontalAlignment = HorizontalAlignment.Center;
 				label.VerticalAlignment = VerticalAlignment.Center;

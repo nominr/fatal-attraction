@@ -12,6 +12,7 @@ public partial class GoalsMenu : PanelContainer
 
 	private RichTextLabel _goalsText;
 	private Button _closeButton;
+	private Font _customFont;
 	private string _currentRole = "";
 	private string _loveInterest = "";
 	private string _targets = "";
@@ -24,6 +25,9 @@ public partial class GoalsMenu : PanelContainer
 
 	private void SetupUI()
 	{
+		// Load custom font
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		
 		// Center the panel on screen
 		CustomMinimumSize = new Vector2(600, 500);
 		// Centered for 1200x800 world: (1200-600)/2 = 300, (800-500)/2 = 150
@@ -48,6 +52,7 @@ public partial class GoalsMenu : PanelContainer
 		var titleLabel = new Label();
 		titleLabel.Text = "YOUR GOALS";
 		titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		titleLabel.AddThemeFontOverride("font", _customFont);
 		titleLabel.AddThemeFontSizeOverride("font_size", 28);
 		contentVBox.AddChild(titleLabel);
 
@@ -60,12 +65,15 @@ public partial class GoalsMenu : PanelContainer
 		_goalsText = new RichTextLabel();
 		_goalsText.BbcodeEnabled = true;
 		_goalsText.FitContent = true;
+		_goalsText.AddThemeFontOverride("normal_font", _customFont);
+		_goalsText.AddThemeFontOverride("bold_font", _customFont);
 		_goalsText.CustomMinimumSize = new Vector2(560, 350);
 		contentVBox.AddChild(_goalsText);
 
 		// Close button
 		_closeButton = new Button();
 		_closeButton.Text = "X CLOSE";
+		_closeButton.AddThemeFontOverride("font", _customFont);
 		_closeButton.CustomMinimumSize = new Vector2(150, 40);
 		_closeButton.Pressed += OnClosePressed;
 		contentVBox.AddChild(_closeButton);

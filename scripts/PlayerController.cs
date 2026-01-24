@@ -27,6 +27,7 @@ public partial class PlayerController : CharacterBody2D
 	private Label _nameLabel;
 	private Label _roleLabel;
 	private Camera2D _camera;
+	private Font _customFont;
 
 	// Networking
 	private bool _isLocalPlayer = false;
@@ -37,6 +38,9 @@ public partial class PlayerController : CharacterBody2D
 
 	public override void _Ready()
 	{
+		// Load custom font
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		
 		SetupVisuals();
 		
 		// Add to players group so NPCs can detect us
@@ -82,9 +86,10 @@ public partial class PlayerController : CharacterBody2D
 		_roleLabel = new Label();
 		_roleLabel.Text = PlayerRole;
 		_roleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_roleLabel.Position = new Vector2(-40, 70); // Below sprite
+		_roleLabel.Position = new Vector2(-40, -90); // Above sprite
 		_roleLabel.AddThemeColorOverride("font_color", Colors.Black);
-		_roleLabel.AddThemeFontSizeOverride("font_size", 12);
+		_roleLabel.AddThemeFontOverride("font", _customFont);
+		_roleLabel.AddThemeFontSizeOverride("font_size", 24);
 		_roleLabel.CustomMinimumSize = new Vector2(80, 20);
 		AddChild(_roleLabel);
 	}
