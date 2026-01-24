@@ -1169,67 +1169,156 @@
                 "role": "prophet",
                 "npcStatus": "nonConverted"
               },
-              "resolution": { "type": "rps" },
+              "resolution": {
+                "type": "rps"
+              },
               "effects_on_success": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You converted Amir to your cause!" },
-                { "npc": "amir", "field": "convertedStatus", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Amir to your cause!"
+                },
+                {
+                  "npc": "amir",
+                  "field": "convertedStatus",
+                  "value": true
+                }
               ],
-              "effects_on_failure": [ { "notification": "Amir resisted your conversion." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Amir resisted your conversion."
+                }
+              ]
             },
             {
               "id": "unconvert_amir_admirer",
               "text": "Unconvert Amir",
-              "requires": { "role": "admirer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.30 },
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Amir!" },
-                { "npc": "amir", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Amir!"
+                },
+                {
+                  "npc": "amir",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Amir." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Amir."
+                }
+              ]
             },
             {
               "id": "unconvert_amir",
               "text": "Unconvert Amir",
-              "requires": { "role": "producer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.75 },
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Amir!" },
-                { "npc": "amir", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Amir!"
+                },
+                {
+                  "npc": "amir",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Amir." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Amir."
+                }
+              ]
             },
             {
               "id": "prank_amir",
               "text": "Prank Amir",
-              "requires": { "role": "prophet" },
+              "requires": {
+                "role": "prophet"
+              },
               "effects": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You pranked Amir! Chaos increased." },
-                { "npc": "amir", "field": "prankActive", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Amir! Chaos increased."
+                },
+                {
+                  "npc": "amir",
+                  "field": "prankActive",
+                  "value": true
+                }
               ]
             },
             {
               "id": "cleanup_amir",
               "text": "Clean up mess",
-              "requires": { "role": "producer", "npcPrankActive": true },
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
               "effects": [
-                { "meter": "chaos", "delta": -1, "clampMin": 0 },
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You cleaned up the mess! Chaos decreased, Ratings increased." },
-                { "npc": "amir", "field": "prankActive", "value": false }
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "amir",
+                  "field": "prankActive",
+                  "value": false
+                }
               ]
             },
             {
               "id": "interview_amir",
               "text": "Interview Amir",
-              "requires": { "role": "producer" },
+              "requires": {
+                "role": "producer"
+              },
               "effects": [
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You interviewed Amir! Ratings increased." }
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You interviewed Amir! Ratings increased."
+                }
               ]
             },
-            { "id": "leave", "text": "Walk away", "effects": [] }
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
           ]
         }
       }
@@ -1248,68 +1337,160 @@
             {
               "id": "convert_bella",
               "text": "Try to convert Bella",
-              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
-              "resolution": { "type": "rps" },
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
               "effects_on_success": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You converted Bella!" },
-                { "npc": "bella", "field": "convertedStatus", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Bella!"
+                },
+                {
+                  "npc": "bella",
+                  "field": "convertedStatus",
+                  "value": true
+                }
               ],
-              "effects_on_failure": [ { "notification": "Bella resisted your conversion." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Bella resisted your conversion."
+                }
+              ]
             },
             {
               "id": "unconvert_bella_admirer",
               "text": "Unconvert Bella",
-              "requires": { "role": "admirer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.30 },
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Bella!" },
-                { "npc": "bella", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Bella!"
+                },
+                {
+                  "npc": "bella",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Bella." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Bella."
+                }
+              ]
             },
             {
               "id": "unconvert_bella",
               "text": "Unconvert Bella",
-              "requires": { "role": "producer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.75 },
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Bella!" },
-                { "npc": "bella", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Bella!"
+                },
+                {
+                  "npc": "bella",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Bella." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Bella."
+                }
+              ]
             },
             {
               "id": "prank_bella",
               "text": "Prank Bella",
-              "requires": { "role": "prophet" },
+              "requires": {
+                "role": "prophet"
+              },
               "effects": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You pranked Bella! Chaos increased." },
-                { "npc": "bella", "field": "prankActive", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Bella! Chaos increased."
+                },
+                {
+                  "npc": "bella",
+                  "field": "prankActive",
+                  "value": true
+                }
               ]
             },
             {
               "id": "cleanup_bella",
               "text": "Clean up mess",
-              "requires": { "role": "producer", "npcPrankActive": true },
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
               "effects": [
-                { "meter": "chaos", "delta": -1, "clampMin": 0 },
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You cleaned up the mess! Chaos decreased, Ratings increased." },
-                { "npc": "bella", "field": "prankActive", "value": false }
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "bella",
+                  "field": "prankActive",
+                  "value": false
+                }
               ]
             },
             {
               "id": "interview_bella",
               "text": "Interview Bella",
-              "requires": { "role": "producer" },
+              "requires": {
+                "role": "producer"
+              },
               "effects": [
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You interviewed Bella! Ratings increased." }
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You interviewed Bella! Ratings increased."
+                }
               ]
             },
-            { "id": "leave", "text": "Walk away", "effects": [] }
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
           ]
         }
       }
@@ -1328,68 +1509,160 @@
             {
               "id": "convert_chris",
               "text": "Try to convert Chris",
-              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
-              "resolution": { "type": "rps" },
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
               "effects_on_success": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You converted Chris!" },
-                { "npc": "chris", "field": "convertedStatus", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Chris!"
+                },
+                {
+                  "npc": "chris",
+                  "field": "convertedStatus",
+                  "value": true
+                }
               ],
-              "effects_on_failure": [ { "notification": "Chris resisted your conversion." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Chris resisted your conversion."
+                }
+              ]
             },
             {
               "id": "unconvert_chris_admirer",
               "text": "Unconvert Chris",
-              "requires": { "role": "admirer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.30 },
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Chris!" },
-                { "npc": "chris", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Chris!"
+                },
+                {
+                  "npc": "chris",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Chris." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Chris."
+                }
+              ]
             },
             {
               "id": "unconvert_chris",
               "text": "Unconvert Chris",
-              "requires": { "role": "producer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.75 },
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Chris!" },
-                { "npc": "chris", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Chris!"
+                },
+                {
+                  "npc": "chris",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Chris." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Chris."
+                }
+              ]
             },
             {
               "id": "prank_chris",
               "text": "Prank Chris",
-              "requires": { "role": "prophet" },
+              "requires": {
+                "role": "prophet"
+              },
               "effects": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You pranked Chris! Chaos increased." },
-                { "npc": "chris", "field": "prankActive", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Chris! Chaos increased."
+                },
+                {
+                  "npc": "chris",
+                  "field": "prankActive",
+                  "value": true
+                }
               ]
             },
             {
               "id": "cleanup_chris",
               "text": "Clean up mess",
-              "requires": { "role": "producer", "npcPrankActive": true },
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
               "effects": [
-                { "meter": "chaos", "delta": -1, "clampMin": 0 },
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You cleaned up the mess! Chaos decreased, Ratings increased." },
-                { "npc": "chris", "field": "prankActive", "value": false }
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "chris",
+                  "field": "prankActive",
+                  "value": false
+                }
               ]
             },
             {
               "id": "interview_chris",
               "text": "Interview Chris",
-              "requires": { "role": "producer" },
+              "requires": {
+                "role": "producer"
+              },
               "effects": [
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You interviewed Chris! Ratings increased." }
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You interviewed Chris! Ratings increased."
+                }
               ]
             },
-            { "id": "leave", "text": "Walk away", "effects": [] }
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
           ]
         }
       }
@@ -1408,68 +1681,160 @@
             {
               "id": "convert_diana",
               "text": "Try to convert Diana",
-              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
-              "resolution": { "type": "rps" },
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
               "effects_on_success": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You converted Diana!" },
-                { "npc": "diana", "field": "convertedStatus", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Diana!"
+                },
+                {
+                  "npc": "diana",
+                  "field": "convertedStatus",
+                  "value": true
+                }
               ],
-              "effects_on_failure": [ { "notification": "Diana resisted your conversion." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Diana resisted your conversion."
+                }
+              ]
             },
             {
               "id": "unconvert_diana_admirer",
               "text": "Unconvert Diana",
-              "requires": { "role": "admirer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.30 },
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Diana!" },
-                { "npc": "diana", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Diana!"
+                },
+                {
+                  "npc": "diana",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Diana." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Diana."
+                }
+              ]
             },
             {
               "id": "unconvert_diana",
               "text": "Unconvert Diana",
-              "requires": { "role": "producer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.75 },
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Diana!" },
-                { "npc": "diana", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Diana!"
+                },
+                {
+                  "npc": "diana",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Diana." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Diana."
+                }
+              ]
             },
             {
               "id": "prank_diana",
               "text": "Prank Diana",
-              "requires": { "role": "prophet" },
+              "requires": {
+                "role": "prophet"
+              },
               "effects": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You pranked Diana! Chaos increased." },
-                { "npc": "diana", "field": "prankActive", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Diana! Chaos increased."
+                },
+                {
+                  "npc": "diana",
+                  "field": "prankActive",
+                  "value": true
+                }
               ]
             },
             {
               "id": "cleanup_diana",
               "text": "Clean up mess",
-              "requires": { "role": "producer", "npcPrankActive": true },
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
               "effects": [
-                { "meter": "chaos", "delta": -1, "clampMin": 0 },
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You cleaned up the mess! Chaos decreased, Ratings increased." },
-                { "npc": "diana", "field": "prankActive", "value": false }
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "diana",
+                  "field": "prankActive",
+                  "value": false
+                }
               ]
             },
             {
               "id": "interview_diana",
               "text": "Interview Diana",
-              "requires": { "role": "producer" },
+              "requires": {
+                "role": "producer"
+              },
               "effects": [
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You interviewed Diana! Ratings increased." }
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You interviewed Diana! Ratings increased."
+                }
               ]
             },
-            { "id": "leave", "text": "Walk away", "effects": [] }
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
           ]
         }
       }
@@ -1488,68 +1853,160 @@
             {
               "id": "convert_eli",
               "text": "Try to convert Eli",
-              "requires": { "role": "prophet", "npcStatus": "nonConverted" },
-              "resolution": { "type": "rps" },
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
               "effects_on_success": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You converted Eli!" },
-                { "npc": "eli", "field": "convertedStatus", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Eli!"
+                },
+                {
+                  "npc": "eli",
+                  "field": "convertedStatus",
+                  "value": true
+                }
               ],
-              "effects_on_failure": [ { "notification": "Eli resisted your conversion." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Eli resisted your conversion."
+                }
+              ]
             },
             {
               "id": "unconvert_eli_admirer",
               "text": "Unconvert Eli",
-              "requires": { "role": "admirer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.30 },
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Eli!" },
-                { "npc": "eli", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Eli!"
+                },
+                {
+                  "npc": "eli",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Eli." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Eli."
+                }
+              ]
             },
             {
               "id": "unconvert_eli",
               "text": "Unconvert Eli",
-              "requires": { "role": "producer", "npcStatus": "converted" },
-              "resolution": { "type": "chance", "successChance": 0.75 },
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
               "effects_on_success": [
-                { "notification": "You unconverted Eli!" },
-                { "npc": "eli", "field": "convertedStatus", "value": false }
+                {
+                  "notification": "You unconverted Eli!"
+                },
+                {
+                  "npc": "eli",
+                  "field": "convertedStatus",
+                  "value": false
+                }
               ],
-              "effects_on_failure": [ { "notification": "Failed to unconvert Eli." } ]
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Eli."
+                }
+              ]
             },
             {
               "id": "prank_eli",
               "text": "Prank Eli",
-              "requires": { "role": "prophet" },
+              "requires": {
+                "role": "prophet"
+              },
               "effects": [
-                { "meter": "chaos", "delta": 1, "clampMax": 10 },
-                { "notification": "You pranked Eli! Chaos increased." },
-                { "npc": "eli", "field": "prankActive", "value": true }
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Eli! Chaos increased."
+                },
+                {
+                  "npc": "eli",
+                  "field": "prankActive",
+                  "value": true
+                }
               ]
             },
             {
               "id": "cleanup_eli",
               "text": "Clean up mess",
-              "requires": { "role": "producer", "npcPrankActive": true },
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
               "effects": [
-                { "meter": "chaos", "delta": -1, "clampMin": 0 },
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You cleaned up the mess! Chaos decreased, Ratings increased." },
-                { "npc": "eli", "field": "prankActive", "value": false }
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "eli",
+                  "field": "prankActive",
+                  "value": false
+                }
               ]
             },
             {
               "id": "interview_eli",
               "text": "Interview Eli",
-              "requires": { "role": "producer" },
+              "requires": {
+                "role": "producer"
+              },
               "effects": [
-                { "meter": "ratings", "delta": 1, "clampMax": 10 },
-                { "notification": "You interviewed Eli! Ratings increased." }
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You interviewed Eli! Ratings increased."
+                }
               ]
             },
-            { "id": "leave", "text": "Walk away", "effects": [] }
+            {
+              "id": "leave",
+              "text": "Walk away",
+              "effects": []
+            }
           ]
         }
       }
@@ -1564,10 +2021,9 @@
         "primary": {
           "goal": "marry_love_interest",
           "requirement": {
-            "meter": "love",
-            "minValue": 10,
             "npcStatus": "nonConverted",
-            "npcMarried": true
+            "npcMarried": true,
+            "npcsKilled": 3
           }
         }
       },
