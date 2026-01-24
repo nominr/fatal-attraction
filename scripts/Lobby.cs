@@ -78,6 +78,7 @@ public partial class Lobby : Control
 			}
 		}
 		var ipLabel = new Label { Text = ipText };
+		// Font is inherited from theme, no need to set manually
 		GetNode("Panel/VBoxContainer").AddChild(ipLabel);
 		GetNode("Panel/VBoxContainer").MoveChild(ipLabel, 0);
 	}

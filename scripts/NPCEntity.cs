@@ -24,6 +24,7 @@ public partial class NPCEntity : CharacterBody2D
 	private Sprite2D _sprite;
 	private Label _nameLabel;
 	private CollisionShape2D _collisionShape;
+	private Font _customFont;
 	
 	// State indicators
 	private Sprite2D _convertedIndicator;
@@ -90,6 +91,9 @@ public partial class NPCEntity : CharacterBody2D
 
 	public override void _Ready()
 	{
+		// Load custom font
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		
 		// Initialize room and corridor definitions
 		_rooms = new List<Room>
 		{
@@ -319,6 +323,7 @@ public partial class NPCEntity : CharacterBody2D
 		_nameLabel.Position = new Vector2(-50, -90); // Above sprite
 		_nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
 		_nameLabel.AddThemeColorOverride("font_color", Colors.Black);
+		_nameLabel.AddThemeFontOverride("font", _customFont);
 		_nameLabel.AddThemeFontSizeOverride("font_size", 14);
 		_nameLabel.CustomMinimumSize = new Vector2(100, 20);
 		AddChild(_nameLabel);
@@ -335,6 +340,7 @@ public partial class NPCEntity : CharacterBody2D
 		_interactHint.Position = new Vector2(-60, 70); // Below sprite
 		_interactHint.HorizontalAlignment = HorizontalAlignment.Center;
 		_interactHint.AddThemeColorOverride("font_color", Colors.Black);
+		_interactHint.AddThemeFontOverride("font", _customFont);
 		_interactHint.AddThemeFontSizeOverride("font_size", 12);
 		_interactHint.CustomMinimumSize = new Vector2(120, 20);
 		_interactHint.Visible = false;

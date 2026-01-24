@@ -47,6 +47,7 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
+	private Font _customFont;
 
 	// World bounds
 	private Vector2 _worldSize = new Vector2(1200, 800);
@@ -102,6 +103,9 @@ public partial class GameWorld : Node2D
 		_uiLayer = new CanvasLayer();
 		AddChild(_uiLayer);
 
+		// Load custom font
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+
 		// Add Coordinate Display
 		// var coordinateDisplay = new CoordinateDisplay();
 		// AddChild(coordinateDisplay);
@@ -113,16 +117,19 @@ public partial class GameWorld : Node2D
 
 		_timerLabel = new Label();
 		_timerLabel.Text = "Time: 05:00";
+		_timerLabel.AddThemeFontOverride("font", _customFont);
 		_timerLabel.AddThemeFontSizeOverride("font_size", 20);
 		hudContainer.AddChild(_timerLabel);
 
 		_roleLabel = new Label();
 		_roleLabel.Text = "Role: Waiting...";
+		_roleLabel.AddThemeFontOverride("font", _customFont);
 		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
 		hudContainer.AddChild(_roleLabel);
 
 		_convertedLabel = new Label();
 		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
+		_convertedLabel.AddThemeFontOverride("font", _customFont);
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		hudContainer.AddChild(_convertedLabel);
 
@@ -148,6 +155,7 @@ public partial class GameWorld : Node2D
 		_notificationText = new RichTextLabel();
 		_notificationText.BbcodeEnabled = true;
 		_notificationText.ScrollFollowing = true;
+		_notificationText.AddThemeFontOverride("normal_font", _customFont);
 		notifMargin.AddChild(_notificationText);
 
 		// Interaction Panel
@@ -159,6 +167,7 @@ public partial class GameWorld : Node2D
 		// Prophet Trap Button
 		var trapButton = new Button();
 		trapButton.Text = "Set Trap (+1 Chaos)";
+		trapButton.AddThemeFontOverride("font", _customFont);
 		trapButton.Position = new Vector2(20, 600);
 		trapButton.Pressed += () => OnActionSelected("global", "set_trap");
 		_uiLayer.AddChild(trapButton);
@@ -188,11 +197,13 @@ public partial class GameWorld : Node2D
 		mPanel.AddChild(mVBox);
 		var mLabel = new Label();
 		mLabel.Text = "Select 2 NPCs to Marry:";
+		mLabel.AddThemeFontOverride("font", _customFont);
 		mLabel.AddThemeFontSizeOverride("font_size", 14);
 		mVBox.AddChild(mLabel);
 		// NPCs populated dynamically
 		var mConfirm = new Button();
 		mConfirm.Text = "CONFIRM MARRIAGE";
+		mConfirm.AddThemeFontOverride("font", _customFont);
 		mConfirm.Pressed += OnMarryConfirm;
 		mVBox.AddChild(mConfirm);
 		_uiLayer.AddChild(mPanel);
@@ -201,6 +212,7 @@ public partial class GameWorld : Node2D
 		var marryBtn = new Button();
 		marryBtn.Name = "MarryButton";
 		marryBtn.Text = "Marry NPCs (+1 Ratings)";
+		marryBtn.AddThemeFontOverride("font", _customFont);
 		marryBtn.Position = new Vector2(20, 480);
 		marryBtn.Visible = false;
 		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
@@ -218,15 +230,18 @@ public partial class GameWorld : Node2D
 		ePanel.AddChild(eVBox);
 		var eLabel = new Label();
 		eLabel.Text = "Editorial Attention";
+		eLabel.AddThemeFontOverride("font", _customFont);
 		eLabel.AddThemeFontSizeOverride("font_size", 14);
 		eVBox.AddChild(eLabel);
 		var eInfo = new Label();
 		eInfo.Name = "EditorialInfo";
 		eInfo.Text = "Focus: None";
+		eInfo.AddThemeFontOverride("font", _customFont);
 		eInfo.AutowrapMode = TextServer.AutowrapMode.Word;
 		eVBox.AddChild(eInfo);
 		var eBtn = new Button();
 		eBtn.Text = "Set Focus";
+		eBtn.AddThemeFontOverride("font", _customFont);
 		eBtn.Pressed += () => TogglePanel("FocusPanel");
 		eVBox.AddChild(eBtn);
 		_uiLayer.AddChild(ePanel);
@@ -241,6 +256,7 @@ public partial class GameWorld : Node2D
 		fPanel.AddChild(fVBox);
 		var fLabel = new Label();
 		fLabel.Text = "Select Editorial Focus:";
+		fLabel.AddThemeFontOverride("font", _customFont);
 		fLabel.AddThemeFontSizeOverride("font_size", 14);
 		fVBox.AddChild(fLabel);
 		var fGrid = new GridContainer();
@@ -254,6 +270,7 @@ public partial class GameWorld : Node2D
 		{
 			var qBtn = new Button();
 			qBtn.Text = focusOptions[i];
+			qBtn.AddThemeFontOverride("font", _customFont);
 			qBtn.CustomMinimumSize = new Vector2(120, 80);
 			int qIdx = i;
 			string focusId = focusIds[i];
@@ -280,6 +297,7 @@ public partial class GameWorld : Node2D
 		var viewportSize = GetViewportRect().Size;
 		_goalsButton = new Button();
 		_goalsButton.Text = "📋 GOALS";
+		_goalsButton.AddThemeFontOverride("font", _customFont);
 		_goalsButton.CustomMinimumSize = new Vector2(120, 40);
 		_goalsButton.Position = new Vector2(
 			Mathf.Max(20, viewportSize.X - _goalsButton.CustomMinimumSize.X - 30),
@@ -941,6 +959,7 @@ public partial class GameWorld : Node2D
 						var cb = new CheckButton();
 						cb.Name = npcId; // Store ID in Name
 						cb.Text = Capitalize(npcId);
+						cb.AddThemeFontOverride("font", _customFont);
 						mPanelBox.AddChild(cb);
 						mPanelBox.MoveChild(cb, idx++);
 					}
@@ -981,12 +1000,14 @@ public partial class GameWorld : Node2D
 				// Show Header
 				var label = new Label();
 				label.Text = $"CONVERT {Capitalize(npcId)}:";
+				label.AddThemeFontOverride("font", _customFont);
 				rpsContainer.AddChild(label);
 				
 				foreach (var move in visibleOpts)
 				{
 					var btn = new Button();
 					btn.Text = Capitalize(move); // Display "Rock"
+					btn.AddThemeFontOverride("font", _customFont);
 					// Action ID format: baseActionId + "_" + move.ToLower() e.g. "convert_katy_rock"
 					btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
 					rpsContainer.AddChild(btn);
@@ -1015,6 +1036,7 @@ public partial class GameWorld : Node2D
 					double val = meter.Value["value"].Value<double>();
 					double max = meter.Value["max"].Value<double>();
 					label.Text = $"{meter.Name.ToUpper()}: {val:F1}/{max:F0}";
+					label.AddThemeFontOverride("font", _customFont);
 					_metersContainer.AddChild(label);
 				}
 			}
@@ -1060,6 +1082,7 @@ public partial class GameWorld : Node2D
 				var label = new Label();
 				label.Name = "GameOverLabel";
 				label.Text = winText;
+				label.AddThemeFontOverride("font", _customFont);
 				label.AddThemeFontSizeOverride("font_size", 64);
 				label.HorizontalAlignment = HorizontalAlignment.Center;
 				label.VerticalAlignment = VerticalAlignment.Center;

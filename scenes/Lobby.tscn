@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://b8j2k3l4m5n6"]
+[gd_scene load_steps=4 format=3 uid="uid://b8j2k3l4m5n6"]
 
 [ext_resource type="Script" uid="uid://k08kmhetffod" path="res://scripts/Lobby.cs" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://gameworld2d" path="res://scenes/GameWorld.tscn" id="2_game"]
+[ext_resource type="Theme" path="res://themes/pixer_theme.tres" id="3_theme"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -10,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("3_theme")
 script = ExtResource("1_script")
 MainGameScene = ExtResource("2_game")
 

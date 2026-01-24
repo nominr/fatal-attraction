@@ -24,6 +24,7 @@ public partial class InteractionPanel : PanelContainer
 
 	// Current state
 	private string _currentNpcId;
+	private Font _customFont;
 
 	public override void _Ready()
 	{
@@ -33,6 +34,9 @@ public partial class InteractionPanel : PanelContainer
 
 	private void SetupUI()
 	{
+		// Load custom font
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		
 		// Panel styling
 		CustomMinimumSize = new Vector2(600, 300);
 
@@ -68,6 +72,7 @@ public partial class InteractionPanel : PanelContainer
 		// NPC name below portrait
 		_npcNameLabel = new Label();
 		_npcNameLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		_npcNameLabel.AddThemeFontOverride("font", _customFont);
 		_npcNameLabel.AddThemeFontSizeOverride("font_size", 18);
 		portraitVBox.AddChild(_npcNameLabel);
 
@@ -81,6 +86,7 @@ public partial class InteractionPanel : PanelContainer
 		_npcDescLabel = new Label();
 		_npcDescLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		_npcDescLabel.CustomMinimumSize = new Vector2(0, 80);
+		_npcDescLabel.AddThemeFontOverride("font", _customFont);
 		_npcDescLabel.AddThemeFontSizeOverride("font_size", 16);
 		dialogueVBox.AddChild(_npcDescLabel);
 
@@ -91,6 +97,7 @@ public partial class InteractionPanel : PanelContainer
 		// Actions label
 		var actionsLabel = new Label();
 		actionsLabel.Text = "What will you do?";
+		actionsLabel.AddThemeFontOverride("font", _customFont);
 		actionsLabel.AddThemeFontSizeOverride("font_size", 14);
 		dialogueVBox.AddChild(actionsLabel);
 
@@ -107,6 +114,7 @@ public partial class InteractionPanel : PanelContainer
 		// Close button
 		_closeButton = new Button();
 		_closeButton.Text = "Close (ESC)";
+		_closeButton.AddThemeFontOverride("font", _customFont);
 		_closeButton.Pressed += OnClosePressed;
 		dialogueVBox.AddChild(_closeButton);
 	}
@@ -143,6 +151,7 @@ public partial class InteractionPanel : PanelContainer
 			var noActionsLabel = new Label();
 			noActionsLabel.Text = "No actions available for this NPC.";
 			noActionsLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			noActionsLabel.AddThemeFontOverride("font", _customFont);
 			_actionsContainer.AddChild(noActionsLabel);
 		}
 		else
@@ -155,6 +164,7 @@ public partial class InteractionPanel : PanelContainer
 				var actionButton = new Button();
 				actionButton.Text = actionText;
 				actionButton.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+				actionButton.AddThemeFontOverride("font", _customFont);
 				
 				// Capture the actionId for the lambda
 				string capturedActionId = actionId;
