@@ -58,6 +58,9 @@ public partial class GameWorld : Node2D
 
 	public override void _Ready()
 	{
+		// RUN DEBUG TESTS
+		FatalAttraction.Tests.MurderTest.RunTests();
+
 		_networkManager = GetNode<NetworkManager>("/root/NetworkManager");
 		// Listen for network player events to keep controllers in sync
 		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
@@ -458,8 +461,14 @@ public partial class GameWorld : Node2D
 		// Camera Selection Panel (Hidden)
 		var csPanel = new PanelContainer();
 		csPanel.Name = "CameraSelectPanel";
-		csPanel.Position = new Vector2(500, 300);
+		csPanel.Name = "CameraSelectPanel";
+		// Move panel to Top Center but lower down
+		csPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterTop);
+		csPanel.Position = new Vector2(csPanel.Position.X, 150); // Increased margin from 80 to 150
+		csPanel.GrowHorizontal = Control.GrowDirection.Both;
+		csPanel.GrowVertical = Control.GrowDirection.Both;
 		csPanel.Visible = false;
+		
 		var csVBox = new VBoxContainer();
 		csVBox.AddThemeConstantOverride("separation", 10);
 		csPanel.AddChild(csVBox);
@@ -468,25 +477,58 @@ public partial class GameWorld : Node2D
 		csLabel.AddThemeFontSizeOverride("font_size", 14);
 		csLabel.AddThemeFontOverride("font", _customFont);
 		csVBox.AddChild(csLabel);
-		var csGrid = new GridContainer();
-		csGrid.Columns = 2; // 2x3
-		csVBox.AddChild(csGrid);
 		
-		string[] rooms = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
-		
-		foreach (var rName in rooms)
+		// Editorial Room Asset Integration
+		var svContainer = new SubViewportContainer();
+		// Reduced size significantly
+		svContainer.CustomMinimumSize = new Vector2(300, 200);
+		svContainer.Stretch = true;
+		csVBox.AddChild(svContainer);
+
+		var subViewport = new SubViewport();
+		subViewport.Size = new Vector2I(300, 200); 
+		subViewport.Disable3D = true;
+		subViewport.TransparentBg = true;
+		subViewport.PhysicsObjectPicking = true;
+		svContainer.AddChild(subViewport);
+
+		// Adjusted Camera:
+		// Position: 640, 360 (Asset Center) because 620 was too low (shifting asset up).
+		// Zoom: 0.45 (Larger than 0.3)
+		var camera = new Camera2D();
+		camera.Position = new Vector2(640, 360); 
+		camera.Zoom = new Vector2(0.5f, 0.5f); 
+		subViewport.AddChild(camera);
+
+		var assetScene = ResourceLoader.Load<PackedScene>("res://scenes/editorial_room_asset.tscn");
+		if (assetScene != null)
 		{
-			var rBtn = new Button();
-			rBtn.Text = rName;
-			rBtn.CustomMinimumSize = new Vector2(100, 60);
-			rBtn.ToggleMode = true; 
-			rBtn.AddThemeFontOverride("font", _customFont);
-			string capturedRoom = rName;
-			rBtn.Pressed += () => {
-				OnActionSelected("producer_global", $"toggle_camera_{capturedRoom}");
-			};
-			rBtn.Name = $"Btn_{rName}";
-			csGrid.AddChild(rBtn);
+			var assetInstance = assetScene.Instantiate();
+			subViewport.AddChild(assetInstance);
+
+			// Connect signals from the asset buttons
+			// Structure: root -> Node2D -> [ButtonRoom1, ButtonRoom2, ...]
+			var contentNode = assetInstance.GetNodeOrNull("Node2D");
+			if (contentNode != null)
+			{
+				foreach (var child in contentNode.GetChildren())
+				{
+					if (child.HasSignal("room_clicked"))
+					{
+						child.Connect("room_clicked", Callable.From<string>((roomName) =>
+						{
+							// Remove spaces to match command format (e.g. "Room 1" -> "Room1")
+							string cleanName = roomName.Replace(" ", "");
+							// GD.Print($"[GameWorld] Producer selected camera: {cleanName}");
+							OnActionSelected("producer_global", $"toggle_camera_{cleanName}");
+						}));
+					}
+				}
+			}
+		}
+		else
+		{
+			GD.PrintErr("Failed to load editorial_room_asset.tscn");
 		}
 		
 		var closeBtn = new Button();

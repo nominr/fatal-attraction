@@ -21,8 +21,8 @@
 │  InteractionPanel.cs (PanelContainer)                         │
 │  - Shows role-filtered action buttons                         │
 └──────────────────────────┬───────────────────────────────────┘
-                           │ RPCs
-                           ▼
+						   │ RPCs
+						   ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                    NETWORKING LAYER                           │
 ├──────────────────────────────────────────────────────────────┤
@@ -31,8 +31,8 @@
 │  - Player registration and role assignment                    │
 │  - Connection/disconnection handling                          │
 └──────────────────────────┬───────────────────────────────────┘
-                           │
-                           ▼
+						   │
+						   ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                    GAME LOGIC LAYER                           │
 ├──────────────────────────────────────────────────────────────┤
@@ -52,26 +52,26 @@
 
 ```
 Client clicks NPC
-       │
-       ▼
+	   │
+	   ▼
 InteractionPanel shows actions (from cached state)
-       │
-       ▼
+	   │
+	   ▼
 Client clicks action button
-       │
-       ▼
+	   │
+	   ▼
 RPC: SubmitAction(npcId, actionId) → Server
-       │
-       ▼
+	   │
+	   ▼
 Server: GameEngine.PerformAction()
-       ├─ Revalidates preconditions (race condition prevention)
-       ├─ Rolls resolution (chance/RPS)
-       └─ Applies effects to state
-       │
-       ▼
+	   ├─ Revalidates preconditions (race condition prevention)
+	   ├─ Rolls resolution (chance/RPS)
+	   └─ Applies effects to state
+	   │
+	   ▼
 Server broadcasts updated state to all clients
-       │
-       ▼
+	   │
+	   ▼
 All clients update UI and NPC visuals
 ```
 
@@ -81,13 +81,13 @@ All clients update UI and NPC visuals
 ```csharp
 public class NPC
 {
-    public string Id;
-    public string Name;
-    public bool Alive = true;
-    public bool Converted = false;
-    public bool Married = false;
-    public bool IsLoveInterest = false;
-    public bool IsTarget = false;
+	public string Id;
+	public string Name;
+	public bool Alive = true;
+	public bool Converted = false;
+	public bool Married = false;
+	public bool IsLoveInterest = false;
+	public bool IsTarget = false;
 }
 ```
 
