@@ -51,6 +51,7 @@ public partial class GameWorld : Node2D
 
 
 	private Font _customFont;
+	private Texture2D _ratingMeterTexture;
 	
 	// Hover color for buttons
 	private Color _normalColor = new Color(1, 1, 1, 1); // White
@@ -261,14 +262,14 @@ public partial class GameWorld : Node2D
 		_timerLabel = new Label();
 		_timerLabel.Text = "Time: 05:00";
 		_timerLabel.AddThemeFontOverride("font", _customFont);
-		_timerLabel.AddThemeFontSizeOverride("font_size", 20);
+		_timerLabel.AddThemeFontSizeOverride("font_size", 26);
 		hudContainer.AddChild(_timerLabel);
 		
 		_roleLabel = new Label();
 		_roleLabel.Text = "";
 		_roleLabel.Visible = false;
 		_roleLabel.AddThemeFontOverride("font", _customFont);
-		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
+		_roleLabel.AddThemeFontSizeOverride("font_size", 26);
 		hudContainer.AddChild(_roleLabel);
 
 		// Eliminated Status Label (Top Center - for non-Admirers)
@@ -306,6 +307,7 @@ public partial class GameWorld : Node2D
 		_convertedLabel = new Label();
 		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
 		_convertedLabel.AddThemeFontOverride("font", _customFont);
+		_convertedLabel.AddThemeFontSizeOverride("font_size", 26);
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		hudContainer.AddChild(_convertedLabel);
 
@@ -333,6 +335,7 @@ public partial class GameWorld : Node2D
 		_notificationText.ScrollFollowing = true;
 		_notificationText.AddThemeFontOverride("normal_font", _customFont);
 		notifMargin.AddChild(_notificationText);
+		_notificationText.AddThemeFontSizeOverride("normal_font_size", 22);
 
 		// Interaction Panel
 		_interactionPanel = new InteractionPanel();
@@ -1497,12 +1500,10 @@ public partial class GameWorld : Node2D
 				var meters = myRoleState["meters"];
 				foreach (JProperty meter in meters)
 				{
-					var label = new Label();
 					double val = meter.Value["value"].Value<double>();
 					double max = meter.Value["max"].Value<double>();
-					label.Text = $"{meter.Name.ToUpper()}: {val:F1}/{max:F0}";
-					label.AddThemeFontOverride("font", _customFont);
-					_metersContainer.AddChild(label);
+					var meterControl = CreateMeterControl(meter.Name, val, max, isProducer);
+					if (meterControl != null) _metersContainer.AddChild(meterControl);
 				}
 			}
 		}
@@ -1627,6 +1628,15 @@ public partial class GameWorld : Node2D
 			if (elimLabel != null) elimLabel.Visible = false;
 			if (gameOverOverlay != null) gameOverOverlay.Visible = false;
 		}
+	}
+
+	private Control CreateMeterControl(string name, double val, double max, bool isProducer)
+	{
+		var label = new Label();
+		label.Text = $"{name.ToUpper()}: {val:F1}/{max:F0}";
+		label.AddThemeFontOverride("font", _customFont);
+		label.AddThemeFontSizeOverride("font_size", 26);
+		return label;
 	}
 
 
