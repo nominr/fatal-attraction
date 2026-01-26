@@ -344,8 +344,56 @@ public partial class GameWorld : Node2D
 		var trapButton = new Button();
 		trapButton.Text = "Set Trap";
 		trapButton.AddThemeFontOverride("font", _customFont);
+		trapButton.AddThemeFontSizeOverride("font_size", 26); // Increased font size
 		trapButton.Position = new Vector2(20, 600);
-		trapButton.Pressed += () => OnActionSelected("global", "set_trap");
+		trapButton.CustomMinimumSize = new Vector2(180, 60); // Bigger to accommodate icon
+		
+		// Add Banana Icon
+		var bananaTexture = ResourceLoader.Load<Texture2D>("res://assets/banana.png");
+		trapButton.Icon = bananaTexture;
+		trapButton.ExpandIcon = true;
+		trapButton.IconAlignment = HorizontalAlignment.Left;
+		trapButton.AddThemeConstantOverride("h_separation", 10);
+		trapButton.AddThemeConstantOverride("icon_max_width", 40); // Change 40 to your desired width
+
+		// Create normal style (white background, black outline)
+		var normalStyle = new StyleBoxFlat();
+		normalStyle.BgColor = new Color(1, 1, 1, 1); // White background
+		normalStyle.BorderColor = new Color(0, 0, 0, 1); // Black outline
+		normalStyle.SetBorderWidthAll(2);
+		normalStyle.SetCornerRadiusAll(4);
+		trapButton.AddThemeStyleboxOverride("normal", normalStyle);
+		
+		// Create hover style (light grey background)
+		var hoverStyle = new StyleBoxFlat();
+		hoverStyle.BgColor = new Color(0.85f, 0.85f, 0.85f, 1); // Light grey
+		hoverStyle.BorderColor = new Color(0, 0, 0, 1); // Black outline
+		hoverStyle.SetBorderWidthAll(2);
+		hoverStyle.SetCornerRadiusAll(4);
+		trapButton.AddThemeStyleboxOverride("hover", hoverStyle);
+		
+		// Create pressed style (light grey background)
+		var pressedStyle = new StyleBoxFlat();
+		pressedStyle.BgColor = new Color(0.85f, 0.85f, 0.85f, 1); // Light grey
+		pressedStyle.BorderColor = new Color(0, 0, 0, 1); // Black outline
+		pressedStyle.SetBorderWidthAll(2);
+		pressedStyle.SetCornerRadiusAll(4);
+		trapButton.AddThemeStyleboxOverride("pressed", pressedStyle);
+
+		// Disabled style (darker grey, no outline)
+		var disabledStyle = new StyleBoxFlat();
+		disabledStyle.BgColor = new Color(0.6f, 0.6f, 0.6f, 1);
+		disabledStyle.SetBorderWidthAll(0);
+		trapButton.AddThemeStyleboxOverride("disabled", disabledStyle);
+		
+		// Black text that stays black
+		trapButton.AddThemeColorOverride("font_color", new Color(0, 0, 0, 1));
+		trapButton.AddThemeColorOverride("font_hover_color", new Color(0, 0, 0, 1));
+		trapButton.AddThemeColorOverride("font_pressed_color", new Color(0, 0, 0, 1));
+		trapButton.AddThemeColorOverride("font_focus_color", new Color(0, 0, 0, 1));
+		trapButton.AddThemeColorOverride("font_disabled_color", new Color(0, 0, 0, 1));
+		
+		trapButton.Pressed += OnTrapButtonPressed;
 		_uiLayer.AddChild(trapButton);
 		// Only visible if Prophet (handled in UpdateUI or default hidden?)
 		// Ideally we verify role in UpdateUI.
@@ -878,6 +926,31 @@ public partial class GameWorld : Node2D
 	{
 		// Send to server
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
+	}
+
+	private void OnTrapButtonPressed()
+	{
+		// Local cooldown: disable for 10 seconds and send action
+		var trapBtn = _uiLayer.GetNodeOrNull<Button>("TrapButton");
+		if (trapBtn != null)
+		{
+			if (!trapBtn.Disabled)
+			{
+				trapBtn.Disabled = true;
+				var timer = new Timer();
+				timer.Name = $"TrapCooldownTimer_{Time.GetTicksMsec()}";
+				timer.OneShot = true;
+				timer.WaitTime = 10.0;
+				timer.Timeout += () =>
+				{
+					if (IsInstanceValid(trapBtn)) trapBtn.Disabled = false;
+					timer.QueueFree();
+				};
+				AddChild(timer);
+				timer.Start();
+			}
+		}
+		OnActionSelected("global", "set_trap");
 	}
 	
 	private void OnInteractionPanelClosed()
@@ -1731,6 +1804,13 @@ public partial class GameWorld : Node2D
 			{
 				// TODO: Check cooldown or limits if needed
 				_gameEngine.CreateTrap(roleEnum);
+				_gameEngine.GameState.AddNotification("A trap has been placed by the Prophet.");
+				// Spawn a banana at the Prophet's current location (server authoritative), replicate to all clients
+				if (_playerControllers.TryGetValue(senderId, out var prophetController))
+				{
+					var pos = prophetController.Position;
+					Rpc(MethodName.SpawnBananaVisual, pos);
+				}
 				BroadcastGameState();
 			}
 			return;
@@ -1749,6 +1829,73 @@ public partial class GameWorld : Node2D
 		}
 
 		BroadcastGameState();
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void SpawnBananaVisual(Vector2 position)
+	{
+		// Create a BananaTrap node with sprite and collision to detect NPCs
+		var bananaTexture = ResourceLoader.Load<Texture2D>("res://assets/banana.png");
+		if (bananaTexture == null)
+		{
+			GD.PrintErr("[GameWorld] Failed to load banana texture");
+			return;
+		}
+
+		var bananaRoot = new Node2D();
+		bananaRoot.Name = $"BananaTrap_{Time.GetTicksMsec()}";
+		bananaRoot.Position = position;
+		bananaRoot.ZIndex = -5; // Behind players/NPCs (tilemap is at -10)
+
+		var sprite = new Sprite2D();
+		sprite.Texture = bananaTexture;
+		sprite.Scale = new Vector2(1.5f, 1.5f);
+		bananaRoot.AddChild(sprite);
+
+		// Collision detector
+		var area = new Area2D();
+		area.Monitoring = true;
+		area.Monitorable = true;
+		area.CollisionMask = 4; // Detect bodies on NPC layer (NPCEntity)
+			var shape = new CollisionShape2D();
+			var circle = new CircleShape2D();
+			circle.Radius = 12; // Smaller trigger radius around banana
+		shape.Shape = circle;
+		area.AddChild(shape);
+		bananaRoot.AddChild(area);
+
+		// Only the server should react to triggers
+		if (Multiplayer.IsServer())
+		{
+			area.BodyEntered += (Node2D body) =>
+			{
+				if (body is NPCEntity npc)
+				{
+					// Notify and apply slip - include the NPC's name
+					_gameEngine.GameState.AddNotification($"A trap has been triggered! {npc.NpcName} was caught in the banana trap!");
+					npc.StartSlip(3.0);
+					
+					// Increase Prophet's chaos by 1
+					var prophetState = _gameEngine.GameState.GetPlayerState(Role.Prophet);
+					if (prophetState != null)
+					{
+						var chaosMeter = prophetState.GetMeter("chaos");
+						if (chaosMeter != null)
+						{
+							chaosMeter.Add(1);
+							_gameEngine.GameState.AddNotification($"Prophet gained Chaos! ({chaosMeter.Value}/{chaosMeter.MaxValue})");
+						}
+					}
+					
+					// Remove banana so it only triggers once
+					bananaRoot.QueueFree();
+					// Broadcast updated state (for notifications)
+					BroadcastGameState();
+				}
+			};
+		}
+
+		AddChild(bananaRoot);
 	}
 
 	private string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);

@@ -1009,46 +1009,20 @@ namespace FatalAttraction.Engine
 			var trap = GameState.Traps[i];
 			trap.TimeAlive += deltaSeconds;
 
-				// P(x) = 0.5 * e^(-2x)
-				// User specified: "at any time x, f(x) is the probability of the trap triggering."
-				// Since we check discrete steps, we treat this as instantaneous probability for this frame.
-				double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
+			// P(x) = 0.5 * e^(-2x)
+			// User specified: "at any time x, f(x) is the probability of the trap triggering."
+			// Since we check discrete steps, we treat this as instantaneous probability for this frame.
+			double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
 
-				if (_random.NextDouble() < p) // Check directly against probability (assuming it's per-check or normalized)
-
-				{
-					GameState.AddNotification("A TRAP TRIGGERED! Chaos erupts!");
-					
-					// Add Chaos
-					if (Enum.TryParse<Role>(trap.CreatorRole, out var role))
-					{
-						var player = GameState.GetPlayerState(role);
-						var chaosMeter = player?.GetMeter("chaos");
-						chaosMeter?.Add(1);
-					}
-					GameState.Traps.RemoveAt(i);
-					
-					// Trap Affects Random NPC
-					var livingNpcs = GameState.NPCs.Values.Where(n => n.Alive).ToList();
-					if (livingNpcs.Count > 0)
-					{
-						var victim = livingNpcs[_random.Next(livingNpcs.Count)];
-						victim.PrankActive = true;
-						GameState.AddNotification($"{victim.Name} was caught in the trap and is now messy!");
-					}
-					
-					// Check Win Condition for Prophet (Trap Trigger)
-					string winMsg = CheckWinCondition(role);
-					if (winMsg != null)
-					{
-						GameState.Winner = role.ToString();
-						GameState.AddNotification($"GAME OVER: {winMsg}");
-					}
-				}
+			if (_random.NextDouble() < p) // Check directly against probability (assuming it's per-check or normalized)
+			{
+				// Remove trap
+				GameState.Traps.RemoveAt(i);
 			}
 		}
+	}
 
-		public void StartConversion(Role role, string npcId)
+	public void StartConversion(Role role, string npcId)
 		{
 			// Generate Winning Move Randomly (Uniform Distribution)
 			// Using Random.Shared to avoid seed bias

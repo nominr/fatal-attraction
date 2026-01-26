@@ -93,6 +93,10 @@ public partial class NPCEntity : CharacterBody2D
 	private Vector2 _clientTargetPosition;
 	private bool _hasReceivedFirstSync = false;
 
+	// Temporary movement disable (slip on banana)
+	private bool _isSlipping = false;
+	private double _slipTimer = 0.0;
+
 	public override void _Ready()
 	{
 		// Load custom font
@@ -144,11 +148,30 @@ public partial class NPCEntity : CharacterBody2D
 
 	public override void _Process(double delta)
 	{
+		// Update slip timer and resume when elapsed
+		if (_isSlipping)
+		{
+			_slipTimer -= delta;
+			if (_slipTimer <= 0)
+			{
+				_isSlipping = false;
+				_slipTimer = 0;
+				// Restore upright rotation only if not dead
+				if (_isAlive && _sprite != null)
+				{
+					_sprite.RotationDegrees = 0;
+				}
+			}
+		}
+
 		UpdateWandering(delta);
 	}
 
 	private void UpdateWandering(double delta)
 	{
+		// If slipping, don't move
+		if (_isSlipping) return;
+
 		// CLIENTS DO NOT RUN AI - they are synced by server
 		if (!Multiplayer.IsServer())
 		{
@@ -548,8 +571,15 @@ public partial class NPCEntity : CharacterBody2D
 		// Dim the sprite if dead
 		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
 		
-		// Rotate sprite 90 degrees clockwise if dead
-		_sprite.RotationDegrees = alive ? 0 : 90;
+		// Rotate sprite 90 degrees clockwise if dead. If alive and currently slipping, preserve slip rotation.
+		if (!alive)
+		{
+			_sprite.RotationDegrees = 90;
+		}
+		else if (!_isSlipping)
+		{
+			_sprite.RotationDegrees = 0;
+		}
 		
 		// Disable interaction if dead
 		InputPickable = alive;
@@ -580,6 +610,20 @@ public partial class NPCEntity : CharacterBody2D
 			// Snap strictly on first update to avoid flying in from (0,0)
 			Position = pos;
 			_hasReceivedFirstSync = true;
+		}
+	}
+
+	/// <summary>
+	/// Temporarily disable movement and rotate 90 degrees clockwise for the specified duration.
+	/// </summary>
+	/// <param name="seconds">Duration in seconds.</param>
+	public void StartSlip(double seconds)
+	{
+		_isSlipping = true;
+		_slipTimer = Math.Max(0, seconds);
+		if (_sprite != null)
+		{
+			_sprite.RotationDegrees = 90;
 		}
 	}
 }
