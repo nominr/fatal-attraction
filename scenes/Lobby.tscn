@@ -1,8 +1,44 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8j2k3l4m5n6"]
+[gd_scene load_steps=12 format=3 uid="uid://b8j2k3l4m5n6"]
 
 [ext_resource type="Script" uid="uid://k08kmhetffod" path="res://scripts/Lobby.cs" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://gameworld2d" path="res://scenes/GameWorld.tscn" id="2_game"]
 [ext_resource type="Theme" path="res://themes/pixer_theme.tres" id="3_theme"]
+[ext_resource type="Texture2D" uid="uid://544kmabvjppk" path="res://assets/Title_BG_1.png" id="4_bg1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8"]
+bg_color = Color(0.85, 0.85, 0.85, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_9"]
+bg_color = Color(0.7, 0.7, 0.7, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_10"]
+bg_color = Color(0.7, 0.5, 0.9, 0.3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_11"]
+bg_color = Color(0.7, 0.5, 0.9, 0.15)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_1"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -15,89 +51,278 @@ theme = ExtResource("3_theme")
 script = ExtResource("1_script")
 MainGameScene = ExtResource("2_game")
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="BackgroundTimer" type="Timer" parent="."]
+wait_time = 0.5
+autostart = true
+
+[node name="Background" type="Sprite2D" parent="."]
+position = Vector2(640, 360)
+scale = Vector2(2, 2)
+texture = ExtResource("4_bg1")
+
+[node name="TitleLabel" type="Label" parent="."]
 layout_mode = 1
-anchors_preset = 8
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = -250.0
-offset_right = 200.0
-offset_bottom = 250.0
+offset_left = -300.0
+offset_top = 30.0
+offset_right = 300.0
+offset_bottom = 90.0
 grow_horizontal = 2
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Label" type="Label" parent="Panel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 48
 text = "Fatal Attraction Lobby"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="NameInput" type="LineEdit" parent="Panel/VBoxContainer"]
+[node name="IPAddressLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 138.0
+offset_top = 120.0
+offset_right = 478.0
+offset_bottom = 170.0
+theme_override_font_sizes/font_size = 28
+text = "Your IP: Loading..."
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="NameInputLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 137.0
+offset_top = 190.0
+offset_right = 337.0
+offset_bottom = 225.0
+theme_override_font_sizes/font_size = 28
+text = "Name:"
+vertical_alignment = 1
+
+[node name="NameInputContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+offset_left = 135.0
+offset_top = 235.0
+offset_right = 583.0
+offset_bottom = 280.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+
+[node name="NameInput" type="LineEdit" parent="NameInputContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_placeholder_color = Color(0.5, 0.3, 0.6, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_4")
 placeholder_text = "Enter Name"
 
-[node name="IPInput" type="LineEdit" parent="Panel/VBoxContainer"]
+[node name="IPInputLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 137.0
+offset_top = 300.0
+offset_right = 337.0
+offset_bottom = 335.0
+theme_override_font_sizes/font_size = 28
+text = "Host IP:"
+vertical_alignment = 1
+
+[node name="IPInputContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+offset_left = 135.0
+offset_top = 345.0
+offset_right = 584.0
+offset_bottom = 390.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_2")
+
+[node name="IPInput" type="LineEdit" parent="IPInputContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_placeholder_color = Color(0.5, 0.3, 0.6, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_5")
 text = "127.0.0.1"
 placeholder_text = "Host IP Address"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 10
+[node name="ButtonsContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 109.0
+offset_top = 420.0
+offset_right = 609.0
+offset_bottom = 470.0
+theme_override_constants/separation = 15
 alignment = 1
 
-[node name="HostButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
+[node name="HostButton" type="Button" parent="ButtonsContainer"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6")
+theme_override_styles/hover = SubResource("StyleBoxFlat_6")
 text = "Host"
 
-[node name="JoinButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
+[node name="JoinButton" type="Button" parent="ButtonsContainer"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6")
+theme_override_styles/hover = SubResource("StyleBoxFlat_6")
 text = "Join"
 
-[node name="CancelButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
+[node name="CancelButton" type="Button" parent="ButtonsContainer"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6")
+theme_override_styles/hover = SubResource("StyleBoxFlat_6")
 text = "Cancel"
 
-[node name="RoleLabel" type="Label" parent="Panel/VBoxContainer"]
-layout_mode = 2
+[node name="RoleLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 755.0
+offset_top = 120.0
+offset_right = 1095.0
+offset_bottom = 165.0
+theme_override_font_sizes/font_size = 30
 text = "Select Your Role:"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="RoleButtonsContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 10
+[node name="RoleButtonsContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 620.0
+offset_top = 175.0
+offset_right = 1219.0
+offset_bottom = 230.0
+theme_override_constants/separation = 15
+alignment = 1
 
-[node name="AdmirerButton" type="Button" parent="Panel/VBoxContainer/RoleButtonsContainer"]
+[node name="AdmirerButton" type="Button" parent="RoleButtonsContainer"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_1")
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_hover_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_9")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8")
+theme_override_styles/focus = SubResource("StyleBoxFlat_9")
 text = "Admirer"
 
-[node name="ProphetButton" type="Button" parent="Panel/VBoxContainer/RoleButtonsContainer"]
+[node name="ProphetButton" type="Button" parent="RoleButtonsContainer"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_1")
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_hover_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_9")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8")
+theme_override_styles/focus = SubResource("StyleBoxFlat_9")
 text = "Prophet"
 
-[node name="ProducerButton" type="Button" parent="Panel/VBoxContainer/RoleButtonsContainer"]
+[node name="ProducerButton" type="Button" parent="RoleButtonsContainer"]
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_1")
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_hover_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_9")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8")
+theme_override_styles/focus = SubResource("StyleBoxFlat_9")
 text = "Producer"
 
-[node name="StatusLabel" type="Label" parent="Panel/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.8, 0, 1)
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 699.0
+offset_top = 250.0
+offset_right = 1139.0
+offset_bottom = 295.0
+theme_override_colors/font_color = Color(1, 1, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 24
 horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
 
-[node name="PlayerListLabel" type="Label" parent="Panel/VBoxContainer"]
-layout_mode = 2
+[node name="PlayerListLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 749.0
+offset_top = 330.0
+offset_right = 1089.0
+offset_bottom = 375.0
+theme_override_font_sizes/font_size = 30
 text = "Connected Players:"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="PlayerList" type="ItemList" parent="Panel/VBoxContainer"]
-custom_minimum_size = Vector2(0, 200)
-layout_mode = 2
+[node name="PlayerListContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+offset_left = 691.0
+offset_top = 385.0
+offset_right = 1147.0
+offset_bottom = 515.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
 
-[node name="StartButton" type="Button" parent="Panel/VBoxContainer"]
+[node name="PlayerList" type="ItemList" parent="PlayerListContainer"]
 layout_mode = 2
+mouse_filter = 2
+select_mode = 3
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/panel = SubResource("StyleBoxFlat_7")
+
+[node name="StartButton" type="Button" parent="."]
+layout_mode = 1
+offset_left = 690.0
+offset_top = 538.0
+offset_right = 1147.0
+offset_bottom = 588.0
+theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_pressed_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.7, 0.5, 0.9, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_6")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_6")
+theme_override_styles/hover = SubResource("StyleBoxFlat_6")
 text = "Start Game"
+
+[node name="BackLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -120.0
+offset_right = 100.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 48
+text = "Back"
+horizontal_alignment = 1
+vertical_alignment = 1

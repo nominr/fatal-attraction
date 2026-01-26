@@ -6,6 +6,8 @@ public partial class Lobby : Control
 	[Export]
 	public PackedScene MainGameScene { get; set; }
 
+	private const int MAX_PLAYERS = 3;
+
 	private NetworkManager _networkManager;
 
 	private LineEdit _nameInput;
@@ -14,6 +16,7 @@ public partial class Lobby : Control
 	private Button _joinButton;
 	private Button _cancelButton;
 	private Button _startButton;
+	private Label _backLabel;
 	private Label _statusLabel;
 	private ItemList _playerList;
 	private Button _admireButton;
@@ -22,6 +25,13 @@ public partial class Lobby : Control
 	private bool _isHosting = false;
 	private bool _isConnected = false;
 	private string _autoJoinRole = null;
+	
+	// Background animation
+	private Sprite2D _background;
+	private Timer _backgroundTimer;
+	private Texture2D _bg1;
+	private Texture2D _bg2;
+	private bool _showingBg1 = true;
 
 	public override void _Ready()
 	{
@@ -29,18 +39,30 @@ public partial class Lobby : Control
 		_networkManager = GetNode<NetworkManager>("/root/NetworkManager");
 		
 		// Map UI nodes
-		_nameInput = GetNode<LineEdit>("Panel/VBoxContainer/NameInput");
-		_ipInput = GetNode<LineEdit>("Panel/VBoxContainer/IPInput");
-		_hostButton = GetNode<Button>("Panel/VBoxContainer/HBoxContainer/HostButton");
-		_joinButton = GetNode<Button>("Panel/VBoxContainer/HBoxContainer/JoinButton");
-		_cancelButton = GetNode<Button>("Panel/VBoxContainer/HBoxContainer/CancelButton");
-		_startButton = GetNode<Button>("Panel/VBoxContainer/StartButton");
-		_statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusLabel");
-		_playerList = GetNode<ItemList>("Panel/VBoxContainer/PlayerList");
-		_admireButton = GetNode<Button>("Panel/VBoxContainer/RoleButtonsContainer/AdmirerButton");
-		_prophetButton = GetNode<Button>("Panel/VBoxContainer/RoleButtonsContainer/ProphetButton");
-		_producerButton = GetNode<Button>("Panel/VBoxContainer/RoleButtonsContainer/ProducerButton");
+		_nameInput = GetNode<LineEdit>("NameInputContainer/NameInput");
+		_ipInput = GetNode<LineEdit>("IPInputContainer/IPInput");
+		_hostButton = GetNode<Button>("ButtonsContainer/HostButton");
+		_joinButton = GetNode<Button>("ButtonsContainer/JoinButton");
+		_cancelButton = GetNode<Button>("ButtonsContainer/CancelButton");
+		_startButton = GetNode<Button>("StartButton");
+		_backLabel = GetNode<Label>("BackLabel");
+		_statusLabel = GetNode<Label>("StatusLabel");
+		_playerList = GetNode<ItemList>("PlayerListContainer/PlayerList");
+		_admireButton = GetNode<Button>("RoleButtonsContainer/AdmirerButton");
+		_prophetButton = GetNode<Button>("RoleButtonsContainer/ProphetButton");
+		_producerButton = GetNode<Button>("RoleButtonsContainer/ProducerButton");
+		
+		// Map background nodes
+		_background = GetNode<Sprite2D>("Background");
+		_backgroundTimer = GetNode<Timer>("BackgroundTimer");
 
+		// Load background textures
+		_bg1 = GD.Load<Texture2D>("res://assets/Title_BG_1.png");
+		_bg2 = GD.Load<Texture2D>("res://assets/Title_BG_2.png");
+		
+		// Make back label clickable
+		_backLabel.MouseFilter = MouseFilterEnum.Stop;
+		
 		// Connect signals
 		_hostButton.Pressed += OnHostPressed;
 		_joinButton.Pressed += OnJoinPressed;
@@ -49,6 +71,7 @@ public partial class Lobby : Control
 		_admireButton.Pressed += () => OnRoleButtonPressed("Admirer");
 		_prophetButton.Pressed += () => OnRoleButtonPressed("Prophet");
 		_producerButton.Pressed += () => OnRoleButtonPressed("Producer");
+		_backgroundTimer.Timeout += OnBackgroundTimerTimeout;
 
 		// Initially hide the cancel button
 		_cancelButton.Visible = false;
@@ -61,27 +84,42 @@ public partial class Lobby : Control
 
 		_startButton.Disabled = true;
 		
-		// Hide role selection until player joins or hosts
-		var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
-		roleButtonsContainer.Visible = false;
-		var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
-		roleLabel.Visible = false;
-
 		// Display Local IP(s) to help with LAN hosting
 		var ips = Godot.IP.GetLocalAddresses();
-		string ipText = "Your IP(s): ";
+		string ipText = "Your IP: ";
+		bool firstIP = true;
+		bool foundIP = false;
+		
+		GD.Print("[Lobby] Checking local IP addresses...");
 		foreach(string ip in ips)
 		{
+			GD.Print($"[Lobby] Found IP: {ip}");
 			// Filter for likely LAN IPs (IPv4, not localhost)
 			if (ip.Contains(".") && !ip.StartsWith("127.") && !ip.StartsWith("169."))
 			{
-				ipText += ip + "\n";
+				if (!firstIP) ipText += ", ";
+				ipText += ip;
+				firstIP = false;
+				foundIP = true;
 			}
 		}
-		var ipLabel = new Label { Text = ipText };
-		// Font is inherited from theme, no need to set manually
-		GetNode("Panel/VBoxContainer").AddChild(ipLabel);
-		GetNode("Panel/VBoxContainer").MoveChild(ipLabel, 0);
+		
+		if (!foundIP)
+		{
+			ipText += "No network found";
+		}
+		
+		// Update the IP address label
+		var ipAddressLabel = GetNode<Label>("IPAddressLabel");
+		if (ipAddressLabel != null)
+		{
+			ipAddressLabel.Text = ipText;
+			GD.Print($"[Lobby] IP Label updated: {ipText}");
+		}
+		else
+		{
+			GD.PrintErr("[Lobby] IPAddressLabel node not found!");
+		}
 
 		// Process Command Line Arguments for Auto-Start
 		CallDeferred(MethodName.ProcessCommandLineArgs);
@@ -129,11 +167,10 @@ public partial class Lobby : Control
 		_isHosting = true;
 		_isConnected = false; // Not considered connected until role is selected
 		
-		// Show role options for host
-		var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
-		roleButtonsContainer.Visible = true;
-		var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
-		roleLabel.Visible = true;
+		// Enable role buttons for host
+		_admireButton.Disabled = false;
+		_prophetButton.Disabled = false;
+		_producerButton.Disabled = false;
 		UpdateAvailableRoles();
 		
 		// Don't send role yet - wait for host to select one
@@ -144,6 +181,13 @@ public partial class Lobby : Control
 		if (string.IsNullOrEmpty(_nameInput.Text) || string.IsNullOrEmpty(_ipInput.Text))
 		{
 			_statusLabel.Text = "Please enter a name and IP.";
+			return;
+		}
+
+		// Check player count before allowing join (this will be validated server-side too)
+		if (_networkManager.Players.Count >= MAX_PLAYERS)
+		{
+			_statusLabel.Text = "Lobby is full (max 3 players).";
 			return;
 		}
 
@@ -181,11 +225,10 @@ public partial class Lobby : Control
 		_isHosting = false;
 		_isConnected = false;
 		
-		// Hide role selection
-		var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
-		roleButtonsContainer.Visible = false;
-		var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
-		roleLabel.Visible = false;
+		// Disable role selection buttons instead of hiding
+		_admireButton.Disabled = true;
+		_prophetButton.Disabled = true;
+		_producerButton.Disabled = true;
 		
 		UpdatePlayerList();
 		UpdateAvailableRoles();
@@ -193,6 +236,15 @@ public partial class Lobby : Control
 
 	private void OnPlayerConnected(long id, string name)
 	{
+		// Enforce player limit on server
+		if (Multiplayer.IsServer() && _networkManager.Players.Count > MAX_PLAYERS)
+		{
+			GD.Print($"[Lobby] Player limit exceeded. Disconnecting player {id}");
+			// Disconnect the player who exceeded the limit
+			Multiplayer.MultiplayerPeer.DisconnectPeer((int)id);
+			return;
+		}
+		
 		UpdatePlayerList();
 	}
 
@@ -218,11 +270,10 @@ public partial class Lobby : Control
 			_startButton.Disabled = true;
 			_isConnected = false;
 			
-			// Hide role selection
-			var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
-			roleButtonsContainer.Visible = false;
-			var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
-			roleLabel.Visible = false;
+			// Disable role selection buttons instead of hiding
+			_admireButton.Disabled = true;
+			_prophetButton.Disabled = true;
+			_producerButton.Disabled = true;
 			
 			UpdatePlayerList();
 			return;
@@ -240,11 +291,10 @@ public partial class Lobby : Control
 		_isConnected = false;
 		_isHosting = false;
 		
-		// Hide role selection
-		var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
-		roleButtonsContainer.Visible = false;
-		var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
-		roleLabel.Visible = false;
+		// Disable role selection buttons instead of hiding
+		_admireButton.Disabled = true;
+		_prophetButton.Disabled = true;
+		_producerButton.Disabled = true;
 		
 		// Clear player list
 		_networkManager.Players.Clear();
@@ -271,11 +321,10 @@ public partial class Lobby : Control
 		_statusLabel.Text = "Connected! Please select a role.";
 		_isConnected = true;
 		
-		// NOW show role options
-		var roleButtonsContainer = GetNode<Control>("Panel/VBoxContainer/RoleButtonsContainer");
-		roleButtonsContainer.Visible = true;
-		var roleLabel = GetNode<Label>("Panel/VBoxContainer/RoleLabel");
-		roleLabel.Visible = true;
+		// Enable role buttons for client
+		_admireButton.Disabled = false;
+		_prophetButton.Disabled = false;
+		_producerButton.Disabled = false;
 		
 		UpdateAvailableRoles();
 
@@ -347,5 +396,40 @@ public partial class Lobby : Control
 		if (_admireButton.Disabled) GD.Print("[Lobby] Admirer role is taken");
 		if (_prophetButton.Disabled) GD.Print("[Lobby] Prophet role is taken");
 		if (_producerButton.Disabled) GD.Print("[Lobby] Producer role is taken");
+	}
+	
+	private void OnBackgroundTimerTimeout()
+	{
+		// Alternate between the two background images
+		_showingBg1 = !_showingBg1;
+		_background.Texture = _showingBg1 ? _bg1 : _bg2;
+	}
+	
+	public override void _Input(InputEvent @event)
+	{
+		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
+		{
+			// Check if click is within the Back label bounds
+			if (_backLabel != null)
+			{
+				var labelRect = _backLabel.GetGlobalRect();
+				if (labelRect.HasPoint(mouseEvent.Position))
+				{
+					OnBackClicked();
+				}
+			}
+		}
+	}
+	
+	private void OnBackClicked()
+	{
+		// Disconnect if connected
+		if (_isConnected || _isHosting)
+		{
+			OnCancelPressed();
+		}
+		
+		GD.Print("Going back to Info scene");
+		GetTree().ChangeSceneToFile("res://scenes/InfoScene.tscn");
 	}
 }
