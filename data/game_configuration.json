@@ -399,11 +399,6 @@
                   "notification": "You interviewed Katy! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -589,11 +584,6 @@
                   "notification": "You interviewed John! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -779,11 +769,6 @@
                   "notification": "You interviewed Rebecca! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -969,11 +954,6 @@
                   "notification": "You interviewed Marcus! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -1141,11 +1121,6 @@
                   "notification": "You interviewed Sofia! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -1313,11 +1288,6 @@
                   "notification": "You interviewed Amir! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -1485,11 +1455,6 @@
                   "notification": "You interviewed Bella! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -1657,11 +1622,6 @@
                   "notification": "You interviewed Chris! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -1829,11 +1789,6 @@
                   "notification": "You interviewed Diana! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }
@@ -2001,11 +1956,6 @@
                   "notification": "You interviewed Eli! Ratings increased."
                 }
               ]
-            },
-            {
-              "id": "leave",
-              "text": "Walk away",
-              "effects": []
             }
           ]
         }

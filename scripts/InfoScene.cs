@@ -5,6 +5,7 @@ public partial class InfoScene : Control
 {
     private Label _nextLabel;
     private Label _backLabel;
+    private Label _skipLabel;
     private Label _infoTextLabel;
     private Sprite2D _background;
     private Sprite2D _tvLobby;
@@ -12,6 +13,10 @@ public partial class InfoScene : Control
     private Texture2D _bg1;
     private Texture2D _bg2;
     private bool _showingBg1 = true;
+    
+    // Hover color for buttons
+    private Color _normalColor = new Color(1, 1, 1, 1); // White
+    private Color _hoverColor = new Color(1, 0.9f, 0.2f, 1); // Yellowish
     
     // Array of text messages to cycle through
     private string[] _textMessages = new string[]
@@ -30,6 +35,7 @@ public partial class InfoScene : Control
     {
         _nextLabel = GetNode<Label>("NextLabel");
         _backLabel = GetNode<Label>("BackLabel");
+        _skipLabel = GetNode<Label>("SkipLabel");
         _infoTextLabel = GetNode<Label>("InfoText");
         _background = GetNode<Sprite2D>("Background");
         _tvLobby = GetNode<Sprite2D>("TvLobby");
@@ -39,9 +45,10 @@ public partial class InfoScene : Control
         _bg1 = GD.Load<Texture2D>("res://assets/Title_BG_1.png");
         _bg2 = GD.Load<Texture2D>("res://assets/Title_BG_2.png");
         
-        // Make the labels clickable
-        _nextLabel.MouseFilter = MouseFilterEnum.Stop;
-        _backLabel.MouseFilter = MouseFilterEnum.Stop;
+        // Make the labels clickable and set up hover signals
+        SetupLabelHover(_nextLabel);
+        SetupLabelHover(_backLabel);
+        SetupLabelHover(_skipLabel);
         
         // Connect timer for background animation
         _backgroundTimer.Timeout += OnBackgroundTimerTimeout;
@@ -75,6 +82,25 @@ public partial class InfoScene : Control
         _background.Texture = _showingBg1 ? _bg1 : _bg2;
     }
     
+    private void SetupLabelHover(Label label)
+    {
+        if (label == null) return;
+        
+        label.MouseFilter = MouseFilterEnum.Stop;
+        label.MouseEntered += () => OnLabelMouseEntered(label);
+        label.MouseExited += () => OnLabelMouseExited(label);
+    }
+    
+    private void OnLabelMouseEntered(Label label)
+    {
+        label.AddThemeColorOverride("font_color", _hoverColor);
+    }
+    
+    private void OnLabelMouseExited(Label label)
+    {
+        label.AddThemeColorOverride("font_color", _normalColor);
+    }
+    
     public override void _Input(InputEvent @event)
     {
         if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
@@ -98,6 +124,16 @@ public partial class InfoScene : Control
                     OnBackClicked();
                 }
             }
+            
+            // Check if click is within the Skip label bounds
+            if (_skipLabel != null)
+            {
+                var labelRect = _skipLabel.GetGlobalRect();
+                if (labelRect.HasPoint(mouseEvent.Position))
+                {
+                    OnSkipClicked();
+                }
+            }
         }
     }
     
@@ -117,6 +153,7 @@ public partial class InfoScene : Control
             tween.TweenProperty(_infoTextLabel, "modulate:a", 0.0f, 0.5f);
             tween.TweenProperty(_nextLabel, "modulate:a", 0.0f, 0.5f);
             tween.TweenProperty(_backLabel, "modulate:a", 0.0f, 0.5f);
+            tween.TweenProperty(_skipLabel, "modulate:a", 0.0f, 0.5f);
             tween.Chain().TweenCallback(Callable.From(() => 
             {
                 GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
@@ -144,5 +181,23 @@ public partial class InfoScene : Control
             // Otherwise, show the previous message
             UpdateInfoText();
         }
+    }
+    
+    private void OnSkipClicked()
+    {
+        GD.Print("Skip clicked - transitioning to Lobby scene");
+        
+        // Create a tween to fade out everything then go to Lobby
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(_tvLobby, "modulate:a", 0.0f, 0.5f);
+        tween.TweenProperty(_infoTextLabel, "modulate:a", 0.0f, 0.5f);
+        tween.TweenProperty(_nextLabel, "modulate:a", 0.0f, 0.5f);
+        tween.TweenProperty(_backLabel, "modulate:a", 0.0f, 0.5f);
+        tween.TweenProperty(_skipLabel, "modulate:a", 0.0f, 0.5f);
+        tween.Chain().TweenCallback(Callable.From(() => 
+        {
+            GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
+        }));
     }
 }

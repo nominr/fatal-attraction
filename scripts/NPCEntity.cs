@@ -548,6 +548,9 @@ public partial class NPCEntity : CharacterBody2D
 		// Dim the sprite if dead
 		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
 		
+		// Rotate sprite 90 degrees clockwise if dead
+		_sprite.RotationDegrees = alive ? 0 : 90;
+		
 		// Disable interaction if dead
 		InputPickable = alive;
 	}

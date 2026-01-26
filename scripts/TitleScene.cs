@@ -10,6 +10,10 @@ public partial class TitleScene : Control
     private Texture2D _bg2;
     private bool _showingBg1 = true;
     
+    // Hover color for buttons
+    private Color _normalColor = new Color(1, 1, 1, 1); // White
+    private Color _hoverColor = new Color(1, 0.9f, 0.2f, 1); // Yellowish
+    
     public override void _Ready()
     {
         _startLabel = GetNode<Label>("StartLabel");
@@ -20,11 +24,23 @@ public partial class TitleScene : Control
         _bg1 = GD.Load<Texture2D>("res://assets/Title_BG_1.png");
         _bg2 = GD.Load<Texture2D>("res://assets/Title_BG_2.png");
         
-        // Make the label clickable
+        // Make the label clickable and set up hover signals
         _startLabel.MouseFilter = MouseFilterEnum.Stop;
+        _startLabel.MouseEntered += OnStartLabelMouseEntered;
+        _startLabel.MouseExited += OnStartLabelMouseExited;
         
         // Connect timer for background animation
         _backgroundTimer.Timeout += OnBackgroundTimerTimeout;
+    }
+    
+    private void OnStartLabelMouseEntered()
+    {
+        _startLabel.AddThemeColorOverride("font_color", _hoverColor);
+    }
+    
+    private void OnStartLabelMouseExited()
+    {
+        _startLabel.AddThemeColorOverride("font_color", _normalColor);
     }
     
     private void OnBackgroundTimerTimeout()
