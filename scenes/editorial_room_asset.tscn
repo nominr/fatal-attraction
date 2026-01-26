@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://dkacfyed7du6p" path="res://room_1.gd" id="2_7iqg5"]
 
 [node name="editorialRoomAsset" type="Node2D"]
+position = Vector2(-60, -25)
 
 [node name="Node2D" type="Node2D" parent="."]
 

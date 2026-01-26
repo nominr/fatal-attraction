@@ -32,6 +32,10 @@ public partial class Lobby : Control
 	private Texture2D _bg1;
 	private Texture2D _bg2;
 	private bool _showingBg1 = true;
+	
+	// Hover color for buttons
+	private Color _normalColor = new Color(1, 1, 1, 1); // White
+	private Color _hoverColor = new Color(1, 0.9f, 0.2f, 1); // Yellowish
 
 	public override void _Ready()
 	{
@@ -60,8 +64,10 @@ public partial class Lobby : Control
 		_bg1 = GD.Load<Texture2D>("res://assets/Title_BG_1.png");
 		_bg2 = GD.Load<Texture2D>("res://assets/Title_BG_2.png");
 		
-		// Make back label clickable
+		// Make back label clickable and set up hover signals
 		_backLabel.MouseFilter = MouseFilterEnum.Stop;
+		_backLabel.MouseEntered += OnBackLabelMouseEntered;
+		_backLabel.MouseExited += OnBackLabelMouseExited;
 		
 		// Connect signals
 		_hostButton.Pressed += OnHostPressed;
@@ -123,6 +129,20 @@ public partial class Lobby : Control
 
 		// Process Command Line Arguments for Auto-Start
 		CallDeferred(MethodName.ProcessCommandLineArgs);
+	}
+
+	public override void _ExitTree()
+	{
+		// Disconnect signal handlers to prevent ObjectDisposedException
+		// when this node is freed but NetworkManager still exists
+		if (_networkManager != null)
+		{
+			_networkManager.PlayerConnected -= OnPlayerConnected;
+			_networkManager.PlayerDisconnected -= OnPlayerDisconnected;
+			_networkManager.ConnectionFailed -= OnConnectionFailed;
+			_networkManager.ConnectionSucceeded -= OnConnectionSucceeded;
+			_networkManager.GameStarted -= OnGameStarted;
+		}
 	}
 
 	private void ProcessCommandLineArgs()
@@ -403,6 +423,16 @@ public partial class Lobby : Control
 		// Alternate between the two background images
 		_showingBg1 = !_showingBg1;
 		_background.Texture = _showingBg1 ? _bg1 : _bg2;
+	}
+	
+	private void OnBackLabelMouseEntered()
+	{
+		_backLabel.AddThemeColorOverride("font_color", _hoverColor);
+	}
+
+	private void OnBackLabelMouseExited()
+	{
+		_backLabel.AddThemeColorOverride("font_color", _normalColor);
 	}
 	
 	public override void _Input(InputEvent @event)

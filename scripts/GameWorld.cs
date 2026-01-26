@@ -19,7 +19,7 @@ public partial class GameWorld : Node2D
 	// Game Logic (server only)
 	private GameEngine _gameEngine;
 	private bool _gameActive = false;
-	private double _timeRemaining = 180.0;
+	private double _timeRemaining;
 	private double _broadcastTimer = 0.0;
 	private const double BROADCAST_INTERVAL = 0.1; // Broadcast game state every 0.1s (10Hz) for smoother movement
 
@@ -37,7 +37,7 @@ public partial class GameWorld : Node2D
 	private InteractionPanel _interactionPanel;
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
-	private Button _goalsButton;
+	private TextureButton _goalsButton;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
@@ -51,6 +51,10 @@ public partial class GameWorld : Node2D
 
 
 	private Font _customFont;
+	
+	// Hover color for buttons
+	private Color _normalColor = new Color(1, 1, 1, 1); // White
+	private Color _hoverColor = new Color(1, 0.9f, 0.2f, 1); // Yellowish
 
 	// World bounds
 	private Vector2 _worldSize = new Vector2(1200, 800);
@@ -261,7 +265,8 @@ public partial class GameWorld : Node2D
 		hudContainer.AddChild(_timerLabel);
 		
 		_roleLabel = new Label();
-		_roleLabel.Text = "Role: Waiting...";
+		_roleLabel.Text = "";
+		_roleLabel.Visible = false;
 		_roleLabel.AddThemeFontOverride("font", _customFont);
 		_roleLabel.AddThemeFontSizeOverride("font_size", 18);
 		hudContainer.AddChild(_roleLabel);
@@ -337,7 +342,7 @@ public partial class GameWorld : Node2D
 
 		// Prophet Trap Button
 		var trapButton = new Button();
-		trapButton.Text = "Set Trap (+1 Chaos)";
+		trapButton.Text = "Set Trap";
 		trapButton.AddThemeFontOverride("font", _customFont);
 		trapButton.Position = new Vector2(20, 600);
 		trapButton.Pressed += () => OnActionSelected("global", "set_trap");
@@ -589,15 +594,21 @@ public partial class GameWorld : Node2D
 		_goalsMenu.MenuClosed += OnGoalsMenuClosed;
 		_uiLayer.AddChild(_goalsMenu);
 
-		// Goals Button (upper right corner)
+		// Goals Button (upper right corner) - Phone Icon
 		var viewportSize = GetViewportRect().Size;
+		var phoneTexture = ResourceLoader.Load<Texture2D>("res://assets/phone-menu.png");
 
-		_goalsButton = new Button();
-		_goalsButton.Text = "📋 GOALS";
-		_goalsButton.AddThemeFontOverride("font", _customFont);
-		_goalsButton.CustomMinimumSize = new Vector2(120, 40);
+		_goalsButton = new TextureButton();
+		_goalsButton.TextureNormal = phoneTexture;
+		_goalsButton.IgnoreTextureSize = false;
+		_goalsButton.StretchMode = TextureButton.StretchModeEnum.Scale;
+		// Scale the phone icon (2x scale for reasonable size)
+		_goalsButton.Scale = new Vector2(2.0f, 2.0f);
+		
+		// Position in upper right corner
+		float buttonWidth = phoneTexture != null ? phoneTexture.GetWidth() * 2 : 40;
 		_goalsButton.Position = new Vector2(
-			Mathf.Max(20, viewportSize.X - _goalsButton.CustomMinimumSize.X - 30),
+			Mathf.Max(20, viewportSize.X - buttonWidth - 30),
 			20);
 		_goalsButton.Pressed += OnGoalsButtonPressed;
 		_uiLayer.AddChild(_goalsButton);
@@ -830,7 +841,8 @@ public partial class GameWorld : Node2D
 		if (_networkManager.Players.ContainsKey(myId))
 		{
 			_myRole = _networkManager.Players[myId].Role;
-			_roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
+			// Role label hidden per user request
+			// _roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 		}
 	}
 
@@ -1221,7 +1233,8 @@ public partial class GameWorld : Node2D
 		{
 			_myRole = _networkManager.Players[myId].Role;
 		}
-		_roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
+		// Role label hidden per user request
+		// _roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 
 		bool isProphet = (_myRole?.ToLower() == "prophet");
 
@@ -1448,11 +1461,13 @@ public partial class GameWorld : Node2D
 			// 2. BLOCK UI CLICKS & SHOW OVERLAY
 			if (!HasNode("GameOverOverlay"))
 			{
-				// Full screen blocking rect
-				var overlay = new ColorRect();
+				// Full screen blocking rect with title background
+				var overlay = new TextureRect();
 				overlay.Name = "GameOverOverlay";
-				overlay.Size = _worldSize; // Cover entire world
-				overlay.Color = new Color(0, 0, 0, 0.7f); // Semi-transparent black
+				overlay.Texture = ResourceLoader.Load<Texture2D>("res://assets/Title_BG_1.png");
+				overlay.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+				overlay.StretchMode = TextureRect.StretchModeEnum.Scale;
+				overlay.Size = _worldSize * 1.2f; // Cover entire world (20% bigger)
 				overlay.MouseFilter = Control.MouseFilterEnum.Stop; // BLOCK ALL CLICKS
 				overlay.ZIndex = 99; // Above everything else
 				_uiLayer.AddChild(overlay);
@@ -1467,9 +1482,33 @@ public partial class GameWorld : Node2D
 				label.VerticalAlignment = VerticalAlignment.Center;
 				label.AnchorsPreset = (int)Control.LayoutPreset.Center;
 				// Center in overlay
-				label.Position = _worldSize / 2 - new Vector2(200, 50);
+				label.Position = _worldSize / 2 - new Vector2(200, 150);
 				label.ZIndex = 100;
 				_uiLayer.AddChild(label);
+
+				// Return to Lobby Button
+				var lobbyButton = new Button();
+				lobbyButton.Name = "ReturnToLobbyButton";
+				lobbyButton.Text = "Return to Lobby";
+				lobbyButton.AddThemeFontOverride("font", _customFont);
+				lobbyButton.AddThemeFontSizeOverride("font_size", 32);
+				lobbyButton.CustomMinimumSize = new Vector2(250, 60);
+				// Make button transparent (no black box)
+				var emptyStyle = new StyleBoxEmpty();
+				lobbyButton.AddThemeStyleboxOverride("normal", emptyStyle);
+				lobbyButton.AddThemeStyleboxOverride("hover", emptyStyle);
+				lobbyButton.AddThemeStyleboxOverride("pressed", emptyStyle);
+				lobbyButton.AddThemeStyleboxOverride("focus", emptyStyle);
+				// Position below the label
+				lobbyButton.Position = _worldSize / 2 - new Vector2(100, 50);
+				lobbyButton.ZIndex = 100;
+				lobbyButton.Pressed += OnReturnToLobbyPressed;
+				
+				// Add hover effect
+				lobbyButton.MouseEntered += () => lobbyButton.AddThemeColorOverride("font_color", _hoverColor);
+				lobbyButton.MouseExited += () => lobbyButton.AddThemeColorOverride("font_color", _normalColor);
+				
+				_uiLayer.AddChild(lobbyButton);
 			}
 		}
 
@@ -1713,4 +1752,48 @@ public partial class GameWorld : Node2D
 	}
 
 	private string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);
+
+	private void OnReturnToLobbyPressed()
+	{
+		GD.Print("[GameWorld] Return to Lobby button pressed");
+		
+		if (Multiplayer.IsServer())
+		{
+			// Server tells all clients to return to lobby, then returns itself
+			Rpc(MethodName.ReturnToLobby);
+		}
+		else
+		{
+			// Client asks server to initiate return to lobby for everyone
+			RpcId(1, MethodName.RequestReturnToLobby);
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+	private void RequestReturnToLobby()
+	{
+		if (!Multiplayer.IsServer()) return;
+		GD.Print("[GameWorld] Server received request to return to lobby");
+		// Server broadcasts to all clients (including itself via CallLocal in ReturnToLobby)
+		Rpc(MethodName.ReturnToLobby);
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	private void ReturnToLobby()
+	{
+		GD.Print("[GameWorld] Returning to lobby...");
+		
+		// Disconnect all peers and reset network state
+		if (Multiplayer.HasMultiplayerPeer())
+		{
+			Multiplayer.MultiplayerPeer.Close();
+			Multiplayer.MultiplayerPeer = null;
+		}
+		
+		// Clear network manager state
+		_networkManager.Players.Clear();
+		
+		// Change scene to lobby
+		GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
+	}
 }
