@@ -41,6 +41,7 @@ public partial class GameWorld : Node2D
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
+	private string _currentConversionNpcId = null;
 	private bool _goalsShownAtStart = false;
 	
 	private Label _timerLabel;
@@ -1041,6 +1042,16 @@ public partial class GameWorld : Node2D
 		// If interaction panel is visible, check if player is still in range of NPC
 		if (_interactionPanel != null && _interactionPanel.Visible && _currentInteractingNpcId != null)
 		{
+			// Try to find local player if not set
+			if (_localPlayer == null)
+			{
+				var myId = Multiplayer.GetUniqueId();
+				if (_playerControllers.TryGetValue(myId, out var localCtrl))
+				{
+					_localPlayer = localCtrl;
+				}
+			}
+
 			var npc = _npcEntities.GetValueOrDefault(_currentInteractingNpcId);
 			if (npc != null && _localPlayer != null)
 			{
@@ -1051,6 +1062,71 @@ public partial class GameWorld : Node2D
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
 					_interactionPanel.Hide();
 					_currentInteractingNpcId = null;
+				}
+			}
+		}
+		
+		// If RPS conversion overlay is visible, check if player is still in range of NPC
+		if (_currentConversionNpcId != null)
+		{
+			// Try to find local player if not set
+			if (_localPlayer == null)
+			{
+				var myId = Multiplayer.GetUniqueId();
+				if (_playerControllers.TryGetValue(myId, out var localCtrl))
+				{
+					_localPlayer = localCtrl;
+				}
+			}
+			
+			var rpsOverlay = _uiLayer?.GetNodeOrNull<CenterContainer>("RPSOverlay");
+			
+			if (_localPlayer != null && rpsOverlay != null && rpsOverlay.Visible)
+			{
+				var npc = _npcEntities.GetValueOrDefault(_currentConversionNpcId);
+				
+				if (npc != null)
+				{
+					float distance = _localPlayer.Position.DistanceTo(npc.Position);
+					
+					// Close RPS overlay if player gets too far (200 = larger buffer for conversion game)
+					if (distance > 200)
+					{
+						GD.Print($"Player moved too far from NPC {_currentConversionNpcId} during conversion (distance: {distance}), cancelling RPS overlay");
+						
+						// Tell server to cancel the conversion
+						if (!string.IsNullOrEmpty(_myRole))
+						{
+							if (Multiplayer.IsServer())
+							{
+								// We are the server, directly cancel
+								if (Enum.TryParse<Role>(_myRole, ignoreCase: true, out var role))
+								{
+									if (_gameEngine.GameState.ActiveConversions.ContainsKey(role))
+									{
+										_gameEngine.GameState.ActiveConversions.Remove(role);
+										_gameEngine.GameState.AddNotification($"Conversion cancelled - moved too far away!");
+										BroadcastGameState();
+									}
+								}
+							}
+							else
+							{
+								// Send RPC to server
+								RpcId(1, MethodName.CancelConversionDueToDistance, _myRole);
+							}
+						}
+						
+						// Hide the overlay locally and clear state
+						var rpsRoot = rpsOverlay.GetNodeOrNull<PanelContainer>("RPSRootContainer");
+						if (rpsRoot != null)
+						{
+							foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
+						}
+						rpsOverlay.Visible = false;
+						_lastRPSKey = "";
+						_currentConversionNpcId = null;
+					}
 				}
 			}
 		}
@@ -1466,6 +1542,9 @@ public partial class GameWorld : Node2D
 			{
 				currentRPSKey = $"{myRoleStr}_{npcId}_{baseActionId}";
 				
+				// Track which NPC is in conversion for distance checking
+				_currentConversionNpcId = npcId;
+				
 				// ALWAYS ensure it's visible if we have a context
 				rpsOverlay.Visible = true;
 				rpsRoot.Visible = true;
@@ -1511,6 +1590,7 @@ public partial class GameWorld : Node2D
 					foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
 					rpsOverlay.Visible = false;
 					_lastRPSKey = "";
+					_currentConversionNpcId = null;
 				}
 			}
 		}
@@ -1521,6 +1601,7 @@ public partial class GameWorld : Node2D
 				foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
 				rpsOverlay.Visible = false;
 				_lastRPSKey = "";
+				_currentConversionNpcId = null;
 			}
 		}
 
@@ -1773,6 +1854,7 @@ public partial class GameWorld : Node2D
 		player.SetLocalPlayer(isLocal);
 		if (isLocal)
 		{
+			_localPlayer = player;
 			player.PositionChanged += OnPlayerPositionChanged;
 			GD.Print($"[GameWorld] Connected PositionChanged for local player {playerId}");
 		}
@@ -2137,5 +2219,27 @@ public partial class GameWorld : Node2D
 		
 		// Change scene to lobby
 		GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+	private void CancelConversionDueToDistance(string playerRole)
+	{
+		if (!Multiplayer.IsServer()) return;
+		
+		GD.Print($"[GameWorld] Cancelling conversion for {playerRole} due to distance");
+		
+		// Parse the role string to Role enum
+		if (Enum.TryParse<Role>(playerRole, ignoreCase: true, out var role))
+		{
+			// Remove the conversion from the game engine
+			if (_gameEngine.GameState.ActiveConversions.ContainsKey(role))
+			{
+				_gameEngine.GameState.ActiveConversions.Remove(role);
+				_gameEngine.GameState.AddNotification($"Conversion cancelled - {playerRole} moved too far away!");
+				
+				// Broadcast the updated state
+				BroadcastGameState();
+			}
+		}
 	}
 }
