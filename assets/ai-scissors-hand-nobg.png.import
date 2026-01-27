@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bowtlfpn1xl4u"
-path="res://.godot/imported/ai-paper-scissors.png-4330c998a7dc7062452dae8092a2aee5.ctex"
+uid="uid://4s57gjhcg2q1"
+path="res://.godot/imported/ai-scissors-hand-nobg.png-c3433028466c306cd0ebdd3859352022.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ai-paper-scissors.png"
-dest_files=["res://.godot/imported/ai-paper-scissors.png-4330c998a7dc7062452dae8092a2aee5.ctex"]
+source_file="res://assets/ai-scissors-hand-nobg.png"
+dest_files=["res://.godot/imported/ai-scissors-hand-nobg.png-c3433028466c306cd0ebdd3859352022.ctex"]
 
 [params]
 

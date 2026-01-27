@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cftix130a4sxv"
-path="res://.godot/imported/ai-paper-rock.png-50bb81e0355363665972322d52eccaf2.ctex"
+uid="uid://b760xb77n3krq"
+path="res://.godot/imported/ai-rock-hand.png-0067a9acf2eeee65743c7e6aa84c88cc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ai-paper-rock.png"
-dest_files=["res://.godot/imported/ai-paper-rock.png-50bb81e0355363665972322d52eccaf2.ctex"]
+source_file="res://assets/ai-rock-hand.png"
+dest_files=["res://.godot/imported/ai-rock-hand.png-0067a9acf2eeee65743c7e6aa84c88cc.ctex"]
 
 [params]
 

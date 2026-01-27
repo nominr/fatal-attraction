@@ -49,6 +49,7 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
+	private RPSResultOverlay _rpsResultOverlay;
 
 
 	private Font _customFont;
@@ -415,6 +416,10 @@ public partial class GameWorld : Node2D
 		// Ideally we verify role in UpdateUI.
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
+
+		// RPS Result Overlay
+		_rpsResultOverlay = new RPSResultOverlay();
+		AddChild(_rpsResultOverlay);
 
 		// Producer UI Elements
 		SetupProducerUI();
@@ -940,6 +945,23 @@ public partial class GameWorld : Node2D
 
 	private void OnActionSelected(string npcId, string actionId)
 	{
+		// Check if this is an RPS action (contains rock, paper, or scissors)
+		if (actionId.Contains("rock") || actionId.Contains("paper") || actionId.Contains("scissors"))
+		{
+			// Extract the move from the action ID (e.g., "convert_rock" -> "rock")
+			string playerMove = "rock";
+			if (actionId.Contains("rock")) playerMove = "rock";
+			else if (actionId.Contains("paper")) playerMove = "paper";
+			else if (actionId.Contains("scissors")) playerMove = "scissors";
+
+			// Show the RPS result overlay for 1 second
+			// For now, assume NPC wins (you can change this based on game logic)
+			if (_rpsResultOverlay != null)
+			{
+				_rpsResultOverlay.Show(playerMove, npcWins: true);
+			}
+		}
+
 		// Send to server
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
 	}
