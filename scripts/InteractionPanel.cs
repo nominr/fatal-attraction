@@ -159,11 +159,16 @@ public partial class InteractionPanel : PanelContainer
 			foreach (var action in actions)
 			{
 				string actionId = action["id"]?.Value<string>() ?? "unknown";
+				
+				// FILTER: Don't show RPS moves in the text box (handled by bottom bar)
+				if (actionId.EndsWith("_rock") || actionId.EndsWith("_paper") || actionId.EndsWith("_scissors"))
+					continue;
+
 				string actionText = action["text"]?.Value<string>() ?? "Unknown Action";
 
 				var actionButton = new Button();
 				actionButton.Text = actionText;
-				actionButton.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+				actionButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 				actionButton.AddThemeFontOverride("font", _customFont);
 				
 				// Capture the actionId for the lambda

@@ -70,8 +70,6 @@ public partial class GameWorld : Node2D
 		// Listen for network player events to keep controllers in sync
 		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
 		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
-		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
-		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
 		
 		// Connect Room Signals
 		ConnectRoomSignals();
@@ -1410,21 +1408,38 @@ public partial class GameWorld : Node2D
 
 
 		// Persistent RPS Conversion UI
-		// myId already defined above
 		string myRoleStr = _myRole?.ToLower() ?? "";
-		
 		var conversions = _localGameState?["active_conversions"] as JObject;
-		var rpsContainer = _uiLayer.GetNodeOrNull<HBoxContainer>("RPSContainer");
 		
-		if (rpsContainer == null)
+		var rpsOverlay = _uiLayer.GetNodeOrNull<CenterContainer>("RPSOverlay");
+		if (rpsOverlay == null)
 		{
-			rpsContainer = new HBoxContainer();
-			rpsContainer.Name = "RPSContainer";
-			rpsContainer.Position = new Vector2(400, 600); // Center-ish
-			_uiLayer.AddChild(rpsContainer);
+			rpsOverlay = new CenterContainer();
+			rpsOverlay.Name = "RPSOverlay";
+			rpsOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+			rpsOverlay.MouseFilter = Control.MouseFilterEnum.Ignore;
+			_uiLayer.AddChild(rpsOverlay);
 		}
 
-		string currentRPSKey = ""; 
+		var rpsRoot = rpsOverlay.GetNodeOrNull<PanelContainer>("RPSRootContainer");
+		if (rpsRoot == null)
+		{
+			rpsRoot = new PanelContainer();
+			rpsRoot.Name = "RPSRootContainer";
+			
+			// Styling: Dark semi-transparent background
+			var panelStyle = new StyleBoxFlat();
+			panelStyle.BgColor = new Color(0, 0, 0, 0.85f);
+			panelStyle.SetContentMarginAll(40); // More padding
+			panelStyle.SetCornerRadiusAll(15);
+			panelStyle.BorderWidthBottom = 4;
+			panelStyle.BorderColor = new Color(1, 1, 1, 0.2f);
+			rpsRoot.AddThemeStyleboxOverride("panel", panelStyle);
+
+			rpsOverlay.AddChild(rpsRoot);
+		}
+
+		string currentRPSKey = "";
 		if (conversions != null && conversions.ContainsKey(myRoleStr))
 		{
 			var ctx = conversions[myRoleStr];
@@ -1435,31 +1450,40 @@ public partial class GameWorld : Node2D
 			if (!string.IsNullOrEmpty(npcId) && !string.IsNullOrEmpty(baseActionId) && visibleOpts != null)
 			{
 				currentRPSKey = $"{myRoleStr}_{npcId}_{baseActionId}";
+				
+				// ALWAYS ensure it's visible if we have a context
+				rpsOverlay.Visible = true;
+				rpsRoot.Visible = true;
 
-				// Only rebuild if the context has changed
 				if (_lastRPSKey != currentRPSKey)
 				{
-					// Clear existing buttons
-					foreach (Node child in rpsContainer.GetChildren())
-					{
-						child.QueueFree();
-					}
+					// Clear existing
+					foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
 
-					rpsContainer.Visible = true;
+					rpsRoot.Visible = true;
 					
-					// Show Header
-					var label = new Label();
-					label.Text = $"CONVERT {Capitalize(npcId)}:";
-					label.AddThemeFontOverride("font", _customFont); // Apply custom font
-					rpsContainer.AddChild(label);
+					var mainVBox = new VBoxContainer();
+					mainVBox.AddThemeConstantOverride("separation", 30);
+					rpsRoot.AddChild(mainVBox);
+
+					// 1. Header (Centered)
+					var headerLabel = new Label();
+					headerLabel.Text = $"Convert {Capitalize(npcId)} through a game of rock, paper, scissors.";
+					headerLabel.AddThemeFontOverride("font", _customFont);
+					headerLabel.AddThemeFontSizeOverride("font_size", 26);
+					headerLabel.HorizontalAlignment = HorizontalAlignment.Center;
+					mainVBox.AddChild(headerLabel);
+
+					// 2. Buttons Container
+					var rpsContainer = new HBoxContainer();
+					rpsContainer.Name = "RPSContainer";
+					rpsContainer.Alignment = BoxContainer.AlignmentMode.Center;
+					rpsContainer.AddThemeConstantOverride("separation", 50);
+					mainVBox.AddChild(rpsContainer);
 					
 					foreach (var move in visibleOpts)
 					{
-						var btn = new Button();
-						btn.Text = Capitalize(move); // Display "Rock"
-						btn.AddThemeFontOverride("font", _customFont);
-						// Action ID format: baseActionId + "_" + move.ToLower() e.g. "convert_katy_rock"
-						btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
+						var btn = CreateRPSButton(move, npcId, baseActionId);
 						rpsContainer.AddChild(btn);
 					}
 					_lastRPSKey = currentRPSKey;
@@ -1467,22 +1491,20 @@ public partial class GameWorld : Node2D
 			}
 			else
 			{
-				// If context is invalid, hide and clear
-				if (rpsContainer.Visible)
+				if (rpsOverlay.Visible)
 				{
-					foreach (Node child in rpsContainer.GetChildren()) child.QueueFree();
-					rpsContainer.Visible = false;
+					foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
+					rpsOverlay.Visible = false;
 					_lastRPSKey = "";
 				}
 			}
 		}
 		else
 		{
-			// No active conversion for this role, hide and clear
-			if (rpsContainer.Visible)
+			if (rpsOverlay != null && rpsOverlay.Visible)
 			{
-				foreach (Node child in rpsContainer.GetChildren()) child.QueueFree();
-				rpsContainer.Visible = false;
+				foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
+				rpsOverlay.Visible = false;
 				_lastRPSKey = "";
 			}
 		}
@@ -1804,6 +1826,14 @@ public partial class GameWorld : Node2D
 		if (!Multiplayer.IsServer()) return;
 
 		long senderId = Multiplayer.GetRemoteSenderId();
+		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
+
+		if (!_networkManager.Players.ContainsKey(senderId))
+		{
+			GD.PrintErr($"[SubmitAction] Sender {senderId} not found in player list.");
+			return;
+		}
+
 		string senderRole = _networkManager.Players[senderId].Role.ToLower();
 		Role roleEnum = Enum.Parse<Role>(senderRole, true);
 
@@ -1819,7 +1849,13 @@ public partial class GameWorld : Node2D
 				if (_playerControllers.TryGetValue(senderId, out var prophetController))
 				{
 					var pos = prophetController.Position;
-					Rpc(MethodName.SpawnBananaVisual, pos);
+					string trapId = $"Trap_{Time.GetTicksMsec()}_{senderId}";
+					GD.Print($"[SubmitAction] Prophet {senderId} placed trap {trapId} at {pos}. Broadcasting to all.");
+					Rpc(MethodName.SpawnBananaVisual, pos, trapId);
+				}
+				else
+				{
+					GD.PrintErr($"[SubmitAction] Could not find controller for Prophet {senderId}");
 				}
 				BroadcastGameState();
 			}
@@ -1841,9 +1877,10 @@ public partial class GameWorld : Node2D
 		BroadcastGameState();
 	}
 
-	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
-	private void SpawnBananaVisual(Vector2 position)
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	public void SpawnBananaVisual(Vector2 position, string trapId)
 	{
+		GD.Print($"[SpawnBananaVisual] Spawning banana {trapId} at {position} on peer {Multiplayer.GetUniqueId()}");
 		// Create a BananaTrap node with sprite and collision to detect NPCs
 		var bananaTexture = ResourceLoader.Load<Texture2D>("res://assets/banana.png");
 		if (bananaTexture == null)
@@ -1853,13 +1890,14 @@ public partial class GameWorld : Node2D
 		}
 
 		var bananaRoot = new Node2D();
-		bananaRoot.Name = $"BananaTrap_{Time.GetTicksMsec()}";
+		bananaRoot.Name = trapId;
 		bananaRoot.Position = position;
+		bananaRoot.AddToGroup("traps");
 		bananaRoot.ZIndex = -5; // Behind players/NPCs (tilemap is at -10)
 
 		var sprite = new Sprite2D();
 		sprite.Texture = bananaTexture;
-		sprite.Scale = new Vector2(1.5f, 1.5f);
+		sprite.Scale = new Vector2(1.5f, 1.5f); // Reverted to original size
 		bananaRoot.AddChild(sprite);
 
 		// Collision detector
@@ -1881,9 +1919,11 @@ public partial class GameWorld : Node2D
 			{
 				if (body is NPCEntity npc)
 				{
-					// Notify and apply slip - include the NPC's name
+					// Notify and apply slip globally
 					_gameEngine.GameState.AddNotification($"A trap has been triggered! {npc.NpcName} was caught in the banana trap!");
-					npc.StartSlip(3.0);
+					
+					// Sync the slip and removal to ALL clients
+					Rpc(MethodName.SyncTrapTriggered, trapId, npc.NpcId);
 					
 					// Increase Prophet's chaos by 1
 					var prophetState = _gameEngine.GameState.GetPlayerState(Role.Prophet);
@@ -1897,8 +1937,6 @@ public partial class GameWorld : Node2D
 						}
 					}
 					
-					// Remove banana so it only triggers once
-					bananaRoot.QueueFree();
 					// Broadcast updated state (for notifications)
 					BroadcastGameState();
 				}
@@ -1906,6 +1944,75 @@ public partial class GameWorld : Node2D
 		}
 
 		AddChild(bananaRoot);
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	public void SyncTrapTriggered(string trapId, string npcId)
+	{
+		GD.Print($"[SyncTrapTriggered] Trap {trapId} triggered by NPC {npcId}");
+		
+		// 1. Remove the visual banana trap on all clients
+		var trapNode = GetNodeOrNull(trapId);
+		if (trapNode != null)
+		{
+			trapNode.QueueFree();
+			GD.Print($"[SyncTrapTriggered] Removed trap node {trapId}");
+		}
+
+		// 2. Make the NPC slip visually on all clients
+		if (_npcEntities.TryGetValue(npcId, out var npc))
+		{
+			npc.StartSlip(3.0);
+			GD.Print($"[SyncTrapTriggered] NPC {npcId} started slipping");
+		}
+	}
+
+	private Control CreateRPSButton(string move, string npcId, string baseActionId)
+	{
+		var btn = new Button();
+		btn.CustomMinimumSize = new Vector2(100, 120);
+		btn.Flat = true; // No default background
+		
+		// Transparent styleboxes
+		var emptyStyle = new StyleBoxEmpty();
+		btn.AddThemeStyleboxOverride("normal", emptyStyle);
+		btn.AddThemeStyleboxOverride("hover", emptyStyle);
+		btn.AddThemeStyleboxOverride("pressed", emptyStyle);
+		btn.AddThemeStyleboxOverride("focus", emptyStyle);
+
+		var vbox = new VBoxContainer();
+		vbox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		vbox.MouseFilter = Control.MouseFilterEnum.Ignore;
+		vbox.AddThemeConstantOverride("separation", 5);
+		btn.AddChild(vbox);
+
+		// Image
+		var tex = new TextureRect();
+		string texturePath = $"res://assets/{move.ToLower()}-btn.png";
+		if (ResourceLoader.Exists(texturePath))
+		{
+			tex.Texture = ResourceLoader.Load<Texture2D>(texturePath);
+		}
+		tex.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+		tex.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		vbox.AddChild(tex);
+
+		// Name at bottom
+		var lbl = new Label();
+		lbl.Text = Capitalize(move);
+		lbl.AddThemeFontOverride("font", _customFont);
+		lbl.AddThemeFontSizeOverride("font_size", 18);
+		lbl.AddThemeColorOverride("font_color", Colors.White);
+		lbl.HorizontalAlignment = HorizontalAlignment.Center;
+		vbox.AddChild(lbl);
+
+		// Hover effect: Darken asset
+		btn.MouseEntered += () => tex.Modulate = new Color(0.7f, 0.7f, 0.7f, 1.0f);
+		btn.MouseExited += () => tex.Modulate = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+
+		btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
+		
+		return btn;
 	}
 
 	private string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);
