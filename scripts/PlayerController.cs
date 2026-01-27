@@ -199,6 +199,33 @@ public partial class PlayerController : CharacterBody2D
 		}
 	}
 
+	/// <summary>
+	/// Set the ghost mode for eliminated players (Admirer)
+	/// </summary>
+	public void SetGhostMode(bool enabled)
+	{
+		if (_sprite != null)
+		{
+			// Semi-transparent if ghost
+			var color = _sprite.Modulate;
+			color.A = enabled ? 0.5f : 1.0f;
+			_sprite.Modulate = color;
+		}
+
+		// Update collision layers
+		// Normal: Layer 2 (Bit 1) = Players
+		// Ghost: Remove Layer 2 so they don't trigger interaction areas (Mask 2)
+		if (enabled)
+		{
+			CollisionLayer &= ~(uint)2; // Clear bit 1
+			GD.Print($"Player {_playerId} entered GHOST MODE. CollisionLayer: {CollisionLayer}");
+		}
+		else
+		{
+			CollisionLayer |= (uint)2; // Set bit 1
+		}
+	}
+
 	// Input control
 	public bool InputEnabled { get; set; } = true;
 

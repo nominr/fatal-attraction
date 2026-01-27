@@ -79,23 +79,45 @@ public partial class GameWorld : Node2D
 		
 		// Debug: Check if TileMapLayer loaded from scene and scale it
 		var tileMapLayer = GetNodeOrNull("TileMapLayer");
-		if (tileMapLayer != null)
+		if (tileMapLayer != null && tileMapLayer is Node2D tileMapNode)
 		{
-			GD.Print($"TileMapLayer found in scene! Type: {tileMapLayer.GetType().Name}");
+			GD.Print($"TileMapLayer found! Original Pos: {tileMapNode.Position}");
 			
-			// Scale the tilemap to fill the viewport
-			// The tilemap uses 32x32 tiles, and we want it to fill 1200x800 world
-			// Assuming the tile layout is roughly 37.5 tiles wide x 25 tiles tall
-			// We can scale it up by a factor to make it visible
-			if (tileMapLayer is Node2D tileMapNode)
+			// Store original position for relative calculations
+			Vector2 originalTileMapPos = tileMapNode.Position;
+			Vector2 targetPos = new Vector2(500, 200);
+			Vector2 targetScale = new Vector2(4.0f, 4.0f);
+			
+			// Scale and Move TileMap
+			tileMapNode.Scale = targetScale;
+			tileMapNode.Position = targetPos;
+			tileMapNode.ZIndex = -10; 
+			
+			GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
+			
+			// ALIGN ROOM AREAS TO MATCH SCALED WORLD
+			// The Areas in the scene are 1x scale and relative to the original TileMap layout.
+			// We must transform them to match the new world coordinates.
+			string[] roomNames = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
+			foreach (var rName in roomNames)
 			{
-				// Scale tilemap to match character sprite scale (4x)
-				tileMapNode.Scale = new Vector2(4.0f, 4.0f);
-				// Center the tilemap - offset it to align with viewport center
-				// The tilemap data uses negative coordinates, so we need to offset it
-				tileMapNode.Position = new Vector2(500, 200); // Center of 1200x800 world
-				tileMapNode.ZIndex = -10; // Ensure it's behind everything
-				GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
+				var area = GetNodeOrNull<Area2D>(rName);
+				if (area != null)
+				{
+					// Calculate relative position to the ORIGINAL TileMap position
+					// (Assuming user aligned them in editor)
+					Vector2 relPos = area.Position - originalTileMapPos;
+					
+					// Apply Scale
+					// New Relative Pos = Old Rel Pos * Scale
+					Vector2 newRelPos = relPos * targetScale;
+					
+					// Apply Global Offset (TargetPos)
+					area.Position = targetPos + newRelPos;
+					area.Scale = targetScale;
+					
+					GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {relPos + originalTileMapPos}), Scale {area.Scale}");
+				}
 			}
 		}
 		else
@@ -121,108 +143,100 @@ public partial class GameWorld : Node2D
 			var area = GetNodeOrNull<Area2D>(rName);
 			if (area != null)
 			{
-				bool shapesUpdated = false;
-
-				// FIX: Hallways Area2D in scene doesn't match NPC coordinates.
-				if (rName == "Hallways")
-				{
-					// Clear existing incorrect shapes
-					foreach (Node child in area.GetChildren())
-					{
-						if (child is CollisionShape2D) child.QueueFree();
-					}
-
-					// Define Corridors (MinX, MaxX, MinY, MaxY)
-					var corridors = new[]
-					{
-						new Vector4(1564, 1612, 547, 900),   // C0
-						new Vector4(156, 204, 547, 900),     // C1
-						new Vector4(924, 972, 1056, 1370),   // C2
-						new Vector4(2716, 2764, 1056, 1370)  // C3
-					};
-
-					foreach (var c in corridors)
-					{
-						float width = c.Y - c.X;
-						float height = c.W - c.Z;
-						float centerX = c.X + width / 2;
-						float centerY = c.Z + height / 2;
-
-						var shape = new CollisionShape2D();
-						var rect = new RectangleShape2D();
-						rect.Size = new Vector2(width, height);
-						shape.Shape = rect;
-						// Convert global coordinate to local coordinate relative to the Area2D
-						shape.Position = new Vector2(centerX, centerY) - area.Position;
-						area.AddChild(shape);
-					}
-					shapesUpdated = true;
-				}
-				else if (rName.StartsWith("Room"))
-				{
-					// FIX: Rooms also need to match NPCEntity coordinates EXACTLY
-					if (int.TryParse(rName.Substring(4), out int roomNum))
-					{
-						int roomIndex = roomNum - 1;
-						// Definitions from NPCEntity.cs (Must match!)
-						var roomDefs = new[]
-						{
-							new Vector4(50, 1000, 175, 400),       // Room 1 (Idx 0)
-							new Vector4(-300, 2700, 930, 950),     // Room 2 (Idx 1)
-							new Vector4(2500, 2850, 1450, 1750),   // Room 3 (Idx 2) - Fixed height
-							new Vector4(580, 2030, 1450, 1740),    // Room 4 (Idx 3)
-							new Vector4(1600, 2300, 160, 440)      // Room 5 (Idx 4)
-						};
-
-						if (roomIndex >= 0 && roomIndex < roomDefs.Length)
-						{
-							// Clear existing
-							foreach (Node child in area.GetChildren())
-							{
-								if (child is CollisionShape2D) child.QueueFree();
-							}
-
-							var def = roomDefs[roomIndex];
-							float width = def.Y - def.X;
-							float height = def.W - def.Z;
-							float centerX = def.X + width / 2;
-							float centerY = def.Z + height / 2;
-
-							var shape = new CollisionShape2D();
-							var rect = new RectangleShape2D();
-							rect.Size = new Vector2(width, height);
-							shape.Shape = rect;
-							// Convert global coordinate to local coordinate relative to the Area2D
-							shape.Position = new Vector2(centerX, centerY) - area.Position;
-							area.AddChild(shape);
-							// GD.Print($"[GameWorld] Fixed Shape for {rName}: {rect.Size} at {shape.Position}");
-							shapesUpdated = true;
-						}
-					}
-				}
-
-				if (shapesUpdated)
-				{
-					GD.Print($"[GameWorld] Updated collision shapes for {rName}");
-				}
-
 				// We need to capture the room name variable for the lambda
 				string capturedRoomName = rName;
 				
 				// Ensure Area monitors the NPC layer (Layer 3/Value 4 based on NPCEntity.cs)
 				// NPCEntity uses CollisionLayer = 4. 
-				// We'll set Mask to include 4 (plus 1 for players etc just in case).
-				area.CollisionMask = 0xFF; // Monitor first 8 layers
+				// We'll set Mask to include 4 (NPCs) and 2 (Players) for future-proofing
+				area.CollisionMask = 4 | 2; 
 				area.Monitorable = false; // Room areas don't need to be detected by others
 				area.Monitoring = true;
 				
+				// Disconnect existing if any to avoid duplicates (safeguard)
+				if (area.IsConnected(Area2D.SignalName.BodyEntered, Callable.From<Node>((body) => OnBodyEnteredRoom(body, capturedRoomName))))
+				{
+					area.Disconnect(Area2D.SignalName.BodyEntered, Callable.From<Node>((body) => OnBodyEnteredRoom(body, capturedRoomName)));
+				}
+
 				area.BodyEntered += (body) => OnBodyEnteredRoom(body, capturedRoomName);
+				
+				GD.Print($"[GameWorld] Connected signals for {rName} (using existing collision shapes)");
 			}
 			else
 			{
 				GD.PrintErr($"Room Area not found: {rName}");
 			}
 		}
+	}
+
+	private string GetRoomIdAtPosition(Vector2 pos)
+	{
+		// ROBUST DETECTION STRATEGY:
+		// 1. Prioritize specific rooms (Room1-Room5) over Hallways.
+		// 2. Use expanded bounds (margin) to catch players standing near walls or in misaligned areas.
+		// 3. If multiple rooms match (due to expansion), pick the one with the CLOSEST CENTER.
+		
+		string[] specificAndHallway = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
+		
+		string bestRoomId = null;
+		float minDistanceSq = float.MaxValue;
+		
+		// Scaled margin to forgive alignment issues (e.g. 150px in world space -> ~37px in unscaled)
+		// Since we convert to local space, we use unscaled margin.
+		// Visual tiles are ~32px. 37px is roughly 1 tile margin.
+		// Wait, if misalignment is ~160px (global) -> 40px local.
+		float marginX = 80.0f; // Generous horizontal margin
+		float marginY = 50.0f; // Generous vertical margin
+		
+		foreach (var rName in specificAndHallway)
+		{
+			var area = GetNodeOrNull<Area2D>(rName);
+			if (area != null)
+			{
+				foreach (var child in area.GetChildren())
+				{
+					if (child is CollisionShape2D shape && shape.Shape is RectangleShape2D rect)
+					{
+						var dim = rect.Size / 2;
+						var localPos = area.ToLocal(pos) - shape.Position;
+						
+						// Check overlaps with expansion
+						float dx = Math.Abs(localPos.X);
+						float dy = Math.Abs(localPos.Y);
+						
+						// Strict check for Hallways (don't expand hallways, they are the fallback)
+						float expansionX = (rName == "Hallways") ? 0 : marginX;
+						float expansionY = (rName == "Hallways") ? 0 : marginY;
+
+						if (dx <= (dim.X + expansionX) && dy <= (dim.Y + expansionY))
+						{
+							// Calculate distance to center (squared) for tie-breaking
+							// Prefer the room we are deeper inside
+							// Actually, prefer the room with closer CENTER to the point
+							float distSq = localPos.LengthSquared();
+							
+							// Bias AGAINST Hallways in tie-breaker
+							if (rName == "Hallways") distSq += 100000f; 
+							
+							if (distSq < minDistanceSq)
+							{
+								minDistanceSq = distSq;
+								bestRoomId = rName;
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		if (bestRoomId != null) 
+		{
+			// GD.Print($"[GameWorld] Resolved {pos} to {bestRoomId}");
+			return bestRoomId;
+		}
+
+		return null;
 	}
 
 	private void OnBodyEnteredRoom(Node body, string roomId)
@@ -1176,6 +1190,7 @@ public partial class GameWorld : Node2D
 		
 		UpdateUI();
 		UpdateNPCVisuals();
+		UpdateGhostMode();
 
 		// Show goals menu at game start (first time game state is received)
 		if (!_goalsShownAtStart && !string.IsNullOrEmpty(_myRole))
@@ -1694,6 +1709,43 @@ public partial class GameWorld : Node2D
 		}
 	}
 
+	private void UpdateGhostMode()
+	{
+		// Check for Admirer Elimination
+		bool admirerEliminated = _localGameState?["admirer_eliminated"]?.Value<bool>() ?? false;
+		
+		// Iterate through all players
+		foreach (var kvp in _playerControllers)
+		{
+			long pid = kvp.Key;
+			var controller = kvp.Value;
+			
+			// Determine role
+			string role = "Observer";
+			if (_localGameState != null)
+			{
+				var netPlayers = _localGameState["network_players"] as JObject;
+				role = netPlayers?[pid.ToString()]?["role"]?.Value<string>() ?? controller.PlayerRole;
+			}
+			
+			bool isAdmirer = role.ToLower() == "admirer";
+			
+			// Enable Ghost Mode if it's the Admirer and they are eliminated
+			// Note: We might want to expand this to any eliminated role in future
+			if (isAdmirer && admirerEliminated)
+			{
+				// Only set if not already set (optimize?) - SetGhostMode handles internal checks or lightweight assignment
+				// Check collision layer to see if update needed? 
+				// Just call it, it's cheap.
+				controller.SetGhostMode(true);
+			}
+			else
+			{
+				controller.SetGhostMode(false);
+			}
+		}
+	}
+
 	// ---- PLAYER CONTROLLER LIFECYCLE ----
 
 	private void SpawnPlayer(long playerId)
@@ -1860,6 +1912,32 @@ public partial class GameWorld : Node2D
 				BroadcastGameState();
 			}
 			return;
+		}
+
+		// CRITICAL FIX: Camera Detection Consistency
+		// Intercept "kill_" actions to ensure the NPC's room location is 100% accurate before processing.
+		if (actionId.StartsWith("kill_"))
+		{
+			// Find the NPC entity
+			if (_npcEntities.TryGetValue(npcId, out var npcEntity))
+			{
+				// Determine which room they are ACTUALLY in right now
+				string currentRoomId = GetRoomIdAtPosition(npcEntity.Position);
+				if (!string.IsNullOrEmpty(currentRoomId))
+				{
+					// Force update the Game Engine state
+					var npc = _gameEngine.GameState.GetNPC(npcId);
+					if (npc != null && npc.CurrentRoomId != currentRoomId)
+					{
+						GD.Print($"[GameWorld] Force-updating NPC {npcId} room from '{npc.CurrentRoomId}' to '{currentRoomId}' before kill.");
+						npc.CurrentRoomId = currentRoomId;
+					}
+				}
+				else
+				{
+					GD.Print($"[GameWorld] Warning: Could not determine room for NPC {npcId} at {npcEntity.Position} during kill.");
+				}
+			}
 		}
 
 		var (success, failReason) = _gameEngine.PerformAction(npcId, actionId, roleEnum);

@@ -545,6 +545,9 @@ namespace FatalAttraction.Engine
 					else
 					{
 						Console.WriteLine($"[DEBUG] Detection Failed. NPC Room '{npc.CurrentRoomId}' not in Active List.");
+						// Add failing notification for debug as requested
+						// Only show to Admirer ideally, but global notif is fine for now or handle via UI filtering
+						// _gameState.AddNotification($"[DEBUG] Murder in {npc.CurrentRoomId} (Unmonitored)");
 					}
 				}
 			}
