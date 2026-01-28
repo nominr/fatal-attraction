@@ -38,8 +38,8 @@ public partial class GameWorld : Node2D
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
-    // Editorial asset content node (holds room Area2D children)
-    private Node2D _editorialContentNode;
+	// Editorial asset content node (holds room Area2D children)
+	private Node2D _editorialContentNode;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
@@ -727,10 +727,10 @@ public partial class GameWorld : Node2D
 			var contentNode = assetInstance.GetNodeOrNull("Node2D");
 			if (contentNode != null)
 			{
-                // keep reference to the content node so we can update room visuals later
-                _editorialContentNode = contentNode as Node2D;
+				// keep reference to the content node so we can update room visuals later
+				_editorialContentNode = contentNode as Node2D;
 
-                foreach (var child in contentNode.GetChildren())
+				foreach (var child in contentNode.GetChildren())
 				{
 					if (child.HasSignal("room_clicked"))
 					{

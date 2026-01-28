@@ -369,10 +369,15 @@ public partial class NPCEntity : CharacterBody2D
 		AddChild(_nameLabel);
 
 		// Status indicators (hidden by default)
-		_convertedIndicator = CreateStatusIndicator(Colors.Purple, new Vector2(20, -20));
-		_deadOverlay = CreateStatusIndicator(Colors.Black.Lerp(Colors.Transparent, 0.3f), Vector2.Zero);
-		_deadOverlay.Scale = new Vector2(1.2f, 1.2f);
-		_marriedIndicator = CreateStatusIndicator(Colors.Pink, new Vector2(-20, -20));
+		// Converted (Halo) - Above head (e.g., -60 relative to center)
+		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -75));
+		
+		// Married (Heart) - Above head (slightly offset or overlapping halo if both?)
+		// Let's put it slightly higher or same spot.
+		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -95));
+
+		// Dead Overlay (Darkens sprite)
+		_deadOverlay = CreateDeadOverlay();
 
 		// Interact hint below NPC (black color)
 		_interactHint = new Label();
@@ -441,21 +446,38 @@ public partial class NPCEntity : CharacterBody2D
 		}
 	}
 
-	private Sprite2D CreateStatusIndicator(Color color, Vector2 offset)
+	private Sprite2D CreateStatusIndicator(string texturePath, Vector2 offset)
+	{
+		var indicator = new Sprite2D();
+		var texture = ResourceLoader.Load<Texture2D>(texturePath);
+		if (texture != null)
+		{
+			indicator.Texture = texture;
+			// Scale sprites to match character pixel grid (4x)
+			indicator.Scale = new Vector2(4.0f, 4.0f); 
+		}
+		indicator.TextureFilter = TextureFilterEnum.Nearest;
+		indicator.Position = offset;
+		indicator.Visible = false;
+		AddChild(indicator);
+		return indicator;
+	}
+
+	private Sprite2D CreateDeadOverlay()
 	{
 		var indicator = new Sprite2D();
 		var texture = new GradientTexture2D();
-		texture.Width = 16;
-		texture.Height = 16;
+		texture.Width = 32;
+		texture.Height = 32;
 		texture.Fill = GradientTexture2D.FillEnum.Radial;
 		texture.FillFrom = new Vector2(0.5f, 0.5f);
 		texture.FillTo = new Vector2(1f, 0.5f);
 		var gradient = new Gradient();
-		gradient.SetColor(0, color);
-		gradient.SetColor(1, color.Darkened(0.5f));
+		gradient.SetColor(0, Colors.Black.Lerp(Colors.Transparent, 0.3f));
+		gradient.SetColor(1, Colors.Black.Lerp(Colors.Transparent, 0.8f));
 		texture.Gradient = gradient;
 		indicator.Texture = texture;
-		indicator.Position = offset;
+		indicator.Scale = new Vector2(4.0f, 4.0f); // Cover the whole sprite
 		indicator.Visible = false;
 		AddChild(indicator);
 		return indicator;
