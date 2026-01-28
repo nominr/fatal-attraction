@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 Godot Engine v4.5.1.stable.mono.official.f62fdbde1 - https://godotengine.org
 Metal 3.1 - Forward+ - Using Device #0: Apple - Apple M3 (Apple9)
@@ -30906,3 +30907,8 @@ WARNING: 1 RID of type "CanvasItem" was leaked.
 WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
      at: cleanup (core/object/object.cpp:2514)
 >>>>>>> 5f2181d4d7ad7ecea8d9dcecc3ef569f468b7534
+=======
+Godot Engine v4.5.1.stable.mono.official.f62fdbde1 - https://godotengine.org
+Metal 3.1 - Forward+ - Using Device #0: Apple - Apple M3 (Apple9)
+
+>>>>>>> parent of b988ba3 (fixed the RPS bug)

@@ -66,7 +66,7 @@ public partial class MainGame : Control
 		_editorialPanel.Hide();
 
 		// Check Role and Init
-		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer())
+		if (Multiplayer.IsServer())
 		{
 			InitializeServer();
 		}
@@ -97,7 +97,7 @@ public partial class MainGame : Control
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void RequestGameState()
 	{
-		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
+		if (!Multiplayer.IsServer()) return;
 		long senderId = Multiplayer.GetRemoteSenderId();
 		GD.Print($"Client {senderId} requested game state.");
 		
@@ -120,7 +120,7 @@ public partial class MainGame : Control
 
 	private void OnStartButtonPressed()
 	{
-		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer())
+		if (Multiplayer.IsServer())
 		{
 			StartNewTurn();
 			_goalPanel.Hide();
@@ -151,7 +151,7 @@ public partial class MainGame : Control
 
 	public override void _Process(double delta)
 	{
-		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer() && _gameActive)
+		if (Multiplayer.IsServer() && _gameActive)
 		{
 			_timeRemaining -= delta;
 			if (_timeRemaining <= 0)
@@ -186,7 +186,7 @@ public partial class MainGame : Control
 
 	private void BroadcastGameState()
 	{
-		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
+		if (!Multiplayer.IsServer()) return;
 		string json = GenerateGameStateJson();
 		Rpc(MethodName.UpdateGameState, json);
 	}
@@ -355,7 +355,7 @@ public partial class MainGame : Control
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
 	public void SubmitAction(string npcId, string actionId)
 	{
-		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
+		if (!Multiplayer.IsServer()) return;
 
 		// Validate sender
 		long senderId = Multiplayer.GetRemoteSenderId();

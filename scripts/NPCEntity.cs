@@ -176,16 +176,15 @@ public partial class NPCEntity : CharacterBody2D
 		if (_isSlipping || _isFrozen) return;
 
 		// CLIENTS DO NOT RUN AI - they are synced by server
-		if (!Multiplayer.IsServer())
+	if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer())
+	{
+		if (_hasReceivedFirstSync)
 		{
-			if (_hasReceivedFirstSync)
-			{
-				// Interpolate towards target
-				// Use a factor that depends on delta to be frame-rate independent
-				// A factor of 10.0f * delta gives quick but smooth catch-up
-				Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
-			}
-			return;
+			// Interpolate towards target
+			// Use a factor that depends on delta to be frame-rate independent
+			// A factor of 10.0f * delta gives quick but smooth catch-up
+			Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
+		}
 		}
 
 		// Dead NPCs don't wander

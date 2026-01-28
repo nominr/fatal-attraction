@@ -259,7 +259,7 @@ public partial class Lobby : Control
 	private void OnPlayerConnected(long id, string name)
 	{
 		// Enforce player limit on server
-		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer() && _networkManager.Players.Count > MAX_PLAYERS)
+		if (Multiplayer.IsServer() && _networkManager.Players.Count > MAX_PLAYERS)
 		{
 			GD.Print($"[Lobby] Player limit exceeded. Disconnecting player {id}");
 			// Disconnect the player who exceeded the limit
