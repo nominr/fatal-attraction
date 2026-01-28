@@ -945,24 +945,7 @@ public partial class GameWorld : Node2D
 
 	private void OnActionSelected(string npcId, string actionId)
 	{
-		// Check if this is an RPS action (contains rock, paper, or scissors)
-		if (actionId.Contains("rock") || actionId.Contains("paper") || actionId.Contains("scissors"))
-		{
-			// Extract the move from the action ID (e.g., "convert_rock" -> "rock")
-			string playerMove = "rock";
-			if (actionId.Contains("rock")) playerMove = "rock";
-			else if (actionId.Contains("paper")) playerMove = "paper";
-			else if (actionId.Contains("scissors")) playerMove = "scissors";
-
-			// Show the RPS result overlay for 1 second
-			// For now, assume NPC wins (you can change this based on game logic)
-			if (_rpsResultOverlay != null)
-			{
-				_rpsResultOverlay.Show(playerMove, npcWins: true);
-			}
-		}
-
-		// Send to server
+		// Send to server - overlay will be shown when result comes back in notifications
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
 	}
 
@@ -1655,6 +1638,30 @@ public partial class GameWorld : Node2D
 			foreach (string msg in notifs)
 			{
 				_notificationText.AddText(msg + "\n");
+				
+				// Check for RPS result in notifications to show the overlay
+				if (_rpsResultOverlay != null && msg.Contains("played") && (msg.Contains("WON") || msg.Contains("LOST")))
+				{
+					// Parse the notification to extract the player's move and result
+					// Format: "Prophet played Rock vs Scissors... and WON!"
+					bool playerWon = msg.Contains("WON");
+					string playerMove = "";
+					
+					// Extract the player's move (comes after "played " and before " vs")
+					int playedIndex = msg.IndexOf("played ");
+					int vsIndex = msg.IndexOf(" vs");
+					
+					if (playedIndex >= 0 && vsIndex > playedIndex)
+					{
+						string moveText = msg.Substring(playedIndex + 7, vsIndex - (playedIndex + 7)).Trim();
+						playerMove = moveText.ToLower();
+					}
+					
+					if (!string.IsNullOrEmpty(playerMove))
+					{
+						_rpsResultOverlay.Show(playerMove, playerWins: playerWon);
+					}
+				}
 			}
 		}
 
