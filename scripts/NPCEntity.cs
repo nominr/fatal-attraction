@@ -376,12 +376,11 @@ public partial class NPCEntity : CharacterBody2D
 		// Size will auto-adjust based on text content
 
 		// Status indicators (hidden by default)
-		// Converted (Halo) - Above head (e.g., -60 relative to center)
-		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -75));
+		// Converted (Halo) - Above head (approx -90)
+		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -65));
 		
-		// Married (Heart) - Above head (slightly offset or overlapping halo if both?)
-		// Let's put it slightly higher or same spot.
-		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -95));
+		// Married (Heart) - Above head (approx -90)
+		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
 
 		// Dead Overlay (Darkens sprite)
 		_deadOverlay = CreateDeadOverlay();
@@ -502,7 +501,7 @@ public partial class NPCEntity : CharacterBody2D
 		// Create collision shape matching player controller (80x128 rectangle)
 		_collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		shape.Size = new Vector2(80, 128);
+		shape.Size = new Vector2(60, 120);
 		_collisionShape.Shape = shape;
 		AddChild(_collisionShape);
 		
@@ -672,7 +671,8 @@ public partial class NPCEntity : CharacterBody2D
 		if (_nameLabel != null)
 		{
 			var labelWidth = _nameLabel.Size.X;
-			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -115);
+			// Position much higher (-140) to be above the status icons which are at -90
+			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -120);
 		}
 	}
 
