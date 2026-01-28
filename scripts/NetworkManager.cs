@@ -20,6 +20,9 @@ public partial class NetworkManager : Node
 	[Signal]
 	public delegate void GameStartedEventHandler();
 
+	[Signal]
+	public delegate void RoleRejectedEventHandler(string role, string reason);
+
 	private const int DefaultPort = 7000;
 	private const int MaxClients = 4;
 
@@ -195,19 +198,58 @@ public partial class NetworkManager : Node
 	public void AssignRole(long playerId, string role)
 	{
 		if (!Multiplayer.IsServer()) return;
+		
+		GD.Print($"[NetworkManager] AssignRole called for player {playerId} with role '{role}'");
+		
+		// Check if player exists in dictionary
+		if (!Players.ContainsKey(playerId))
+		{
+			GD.PrintErr($"[NetworkManager] Player {playerId} not found in Players dictionary!");
+			return;
+		}
+		
+		// Check if role is already taken by another player (ignore Observer)
+		if (role != "Observer")
+		{
+			foreach (var kvp in Players)
+			{
+				if (kvp.Key != playerId && kvp.Value.Role == role && kvp.Value.Role != "Observer")
+				{
+					GD.Print($"[NetworkManager] Role '{role}' is already taken by player {kvp.Value.Name}");
+					// Notify the requesting player that their role was rejected
+					RpcId(playerId, MethodName.NotifyRoleRejected, role, "already taken");
+					return;
+				}
+			}
+		}
+		
+		GD.Print($"[NetworkManager] Role '{role}' approved for player {playerId}. Broadcasting...");
 		Rpc(MethodName.SyncPlayerRole, playerId, role);
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void SyncPlayerRole(long playerId, string role)
 	{
+		GD.Print($"[NetworkManager] SyncPlayerRole called for player {playerId} with role '{role}' on peer {Multiplayer.GetUniqueId()}");
+		
 		if (Players.ContainsKey(playerId))
 		{
 			var info = Players[playerId];
+			GD.Print($"[NetworkManager] Player {playerId} ({info.Name}) role updated from '{info.Role}' to '{role}'");
 			info.Role = role;
 			Players[playerId] = info;
 			EmitSignal(SignalName.PlayerConnected, playerId, info.Name);
 		}
+		else
+		{
+			GD.PrintErr($"[NetworkManager] SyncPlayerRole: Player {playerId} not found in Players dictionary!");
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void NotifyRoleRejected(string role, string reason)
+	{
+		EmitSignal(SignalName.RoleRejected, role, reason);
 	}
 
 	// Broadcast: server informs clients a player joined

@@ -87,6 +87,7 @@ public partial class Lobby : Control
 		_networkManager.ConnectionFailed += OnConnectionFailed;
 		_networkManager.ConnectionSucceeded += OnConnectionSucceeded;
 		_networkManager.GameStarted += OnGameStarted;
+		_networkManager.RoleRejected += OnRoleRejected;
 
 		_startButton.Disabled = true;
 		
@@ -142,6 +143,7 @@ public partial class Lobby : Control
 			_networkManager.ConnectionFailed -= OnConnectionFailed;
 			_networkManager.ConnectionSucceeded -= OnConnectionSucceeded;
 			_networkManager.GameStarted -= OnGameStarted;
+			_networkManager.RoleRejected -= OnRoleRejected;
 		}
 	}
 
@@ -365,6 +367,13 @@ public partial class Lobby : Control
 			return;
 		}
 		GetTree().ChangeSceneToPacked(MainGameScene);
+	}
+
+	private void OnRoleRejected(string role, string reason)
+	{
+		_statusLabel.Text = $"Role '{role}' is {reason}. Please choose another role.";
+		GD.Print($"[Lobby] Role '{role}' was rejected: {reason}");
+		UpdateAvailableRoles();
 	}
 
 	private void UpdatePlayerList()
