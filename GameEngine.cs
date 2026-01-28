@@ -28,6 +28,15 @@ namespace FatalAttraction.Engine
 		public List<string> VisibleOptions { get; set; } = new();
 	}
 
+	public class InterviewContext
+	{
+		public string NpcId { get; set; }
+		public string CurrentStage { get; set; } = "Intro"; // "Intro" or "Followup"
+		public int CurrentScore { get; set; } = 0;
+		public string LastResponse { get; set; }
+		public List<string> AvailableQuestionIds { get; set; } = new();
+	}
+
 	public class Meter
 	{
 		public string Name { get; set; }
@@ -112,6 +121,8 @@ namespace FatalAttraction.Engine
 		public bool MonitoringActive { get; set; } = false; // "Set Focus" essentially activates monitoring
 		public int InteractionSeed { get; set; } = 0;
 		public Dictionary<Role, ConversionContext> ActiveConversions { get; private set; } = new();
+		public Dictionary<Role, InterviewContext> ActiveInterviews { get; private set; } = new();
+		public JObject InterviewData { get; private set; }
 
 		public GameState(string configPath)
 		{
@@ -119,6 +130,24 @@ namespace FatalAttraction.Engine
 			Config = JObject.Parse(configText);
 			MaxTurns = Config["gameRules"]["turnsPerGame"].Value<int>();
 			
+			// Load Interview Data
+			try 
+			{
+				var interviewPath = configPath.Replace("game_configuration.json", "interview_data.json");
+				if (File.Exists(interviewPath))
+				{
+					InterviewData = JObject.Parse(File.ReadAllText(interviewPath));
+				}
+				else
+				{
+					Console.WriteLine($"[GameState] Warning: Interview data not found at {interviewPath}");
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[GameState] Error loading interview data: {ex.Message}");
+			}
+
 			InitializeGame();
 		}
 
@@ -236,6 +265,37 @@ namespace FatalAttraction.Engine
 			var player = _gameState.GetPlayerState(playerRole);
 			var options = npcConfig["interactionTree"]?["root"]?["options"] as JArray ?? new();
 			var availableOptions = new List<JToken>();
+
+			// INTERVIEW LOGIC
+			if (_gameState.ActiveInterviews.TryGetValue(playerRole, out var interviewCtx) && interviewCtx.NpcId == npcId)
+			{
+				// Start/Continue Interview - Show Dynamic Questions
+				var interviewData = _gameState.InterviewData;
+				foreach (var qId in interviewCtx.AvailableQuestionIds)
+				{
+					JToken qData = null;
+					if (interviewCtx.CurrentStage == "Intro")
+					{
+						var intros = interviewData?["default"]?["intro_topics"] as JArray;
+						qData = intros?.FirstOrDefault(x => x["id"]?.Value<string>() == qId);
+					}
+					else // Followup
+					{
+						qData = interviewData?["default"]?["followups"]?[qId];
+					}
+
+					if (qData != null)
+					{
+						var newOpt = new JObject();
+						newOpt["id"] = $"interview_option_{qId}"; // Prefix to identify it in Resolve
+						newOpt["text"] = qData["text"];
+						availableOptions.Add(newOpt);
+					}
+				}
+				
+				// Always return immediately if in interview mode (don't show other options)
+				return availableOptions;
+			}
 
 			foreach (var option in options)
 			{
@@ -409,6 +469,15 @@ namespace FatalAttraction.Engine
 			{
 				if (playerRole != Role.Producer) return (false, "Only Producer can perform these actions.");
 
+				if (optionId == "end_interview_force")
+				{
+					if (_gameState.ActiveInterviews.ContainsKey(Role.Producer))
+					{
+						_gameState.ActiveInterviews.Remove(Role.Producer);
+						return (true, null);
+					}
+				}
+
 				if (optionId.StartsWith("marry_"))
 				{
 					// Expected format: marry_npc1_npc2
@@ -519,6 +588,92 @@ namespace FatalAttraction.Engine
 			var npc = _gameState.GetNPC(npcId);
 			if (npc == null)
 				return (false, "NPC not found");
+
+			// INTERVIEW RESOLUTION
+			if (optionId == "start_interview")
+			{
+				if (playerRole != Role.Producer) return (false, "Only Producer can interview.");
+				if (_gameState.ActiveInterviews.ContainsKey(playerRole)) return (false, "You are already interviewing someone!");
+				
+				var interviewData = _gameState.InterviewData;
+				var introTopics = interviewData?["default"]?["intro_topics"] as JArray;
+				
+				if (introTopics == null || introTopics.Count == 0) return (false, "No interview topics found!");
+
+				// Pick 3 random intro questions
+				var randomQuestions = introTopics.OrderBy(x => _random.Next()).Take(3)
+					.Select(x => x["id"]?.Value<string>()).ToList();
+
+				var ctx = new InterviewContext
+				{
+					NpcId = npcId,
+					CurrentStage = "Intro",
+					CurrentScore = 0,
+					LastResponse = "The camera is rolling...", // Initial state
+					AvailableQuestionIds = randomQuestions
+				};
+				
+				_gameState.ActiveInterviews[playerRole] = ctx;
+				_gameState.AddNotification($"Interview started with {npc.Name}!");
+				return (true, null);
+			}
+
+			if (optionId.StartsWith("interview_option_"))
+			{
+				if (!_gameState.ActiveInterviews.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
+				{
+					return (false, "No active interview with this NPC.");
+				}
+				
+				string qId = optionId.Replace("interview_option_", "");
+				var interviewData = _gameState.InterviewData;
+				
+				JToken qData = null;
+				if (ctx.CurrentStage == "Intro")
+				{
+					var intros = interviewData?["default"]?["intro_topics"] as JArray;
+					qData = intros?.FirstOrDefault(x => x["id"]?.Value<string>() == qId);
+				}
+				else
+				{
+					qData = interviewData?["default"]?["followups"]?[qId];
+				}
+
+				if (qData == null) return (false, "Invalid interview question data.");
+
+				// Apply Score
+				int score = qData["score"]?.Value<int>() ?? 0;
+				ctx.CurrentScore += score;
+				
+				// Set Response
+				string response = qData["response"]?.Value<string>() ?? "...";
+				ctx.LastResponse = response;
+
+				// Flow Logic
+				if (ctx.CurrentStage == "Intro")
+				{
+					// Move to Followup
+					var followups = qData["followups"]?.ToObject<List<string>>() ?? new List<string>();
+					if (followups.Count > 0)
+					{
+						ctx.CurrentStage = "Followup";
+						// Take up to 3
+						ctx.AvailableQuestionIds = followups.OrderBy(x => _random.Next()).Take(3).ToList();
+						return (true, null);
+					}
+					else
+					{
+						// No followups? End interview early
+						ApplyInterviewResult(ctx, playerRole);
+						return (true, null);
+					}
+				}
+				else // Followup Done
+				{
+					ApplyInterviewResult(ctx, playerRole);
+					return (true, null);
+				}
+			}
 
 			// Check if NPC is dead first
 			if (!npc.Alive && optionId != "leave")
@@ -749,6 +904,27 @@ namespace FatalAttraction.Engine
 				return (false, "Action failed (chance roll)");
 
 			return (true, null);
+		}
+
+		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole)
+		{
+			// Add score to Ratings (if > 0)
+			// User request: "-1 ratings points" for bad, so we apply delta directly.
+			// However, ratings can't go below 0 usually, handled by Meter.
+			
+			var playerS = _gameState.GetPlayerState(playerRole);
+			var ratings = playerS?.GetMeter("ratings");
+			
+			if (ratings != null)
+			{
+				ratings.Add(ctx.CurrentScore);
+			}
+
+			string resultMsg = ctx.CurrentScore > 0 ? "Great interview!" : (ctx.CurrentScore < 0 ? "Disastrous interview..." : "Average interview.");
+			 _gameState.AddNotification($"Interview finished. Score: {ctx.CurrentScore}. {resultMsg}");
+			 
+			 // Clear interview
+			 _gameState.ActiveInterviews.Remove(playerRole);
 		}
 
 		private void ApplyActionEffects(JToken option, Role playerRole, string npcId, bool success)

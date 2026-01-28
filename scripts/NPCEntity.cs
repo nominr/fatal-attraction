@@ -80,7 +80,7 @@ public partial class NPCEntity : CharacterBody2D
 	private Vector2 _lastPosition = Vector2.Zero;
 	private double _stuckTimer = 0.0;
 	private const float STUCK_DISTANCE_THRESHOLD = 3.0f; // pixels
-	private const float STUCK_TIME_THRESHOLD = 0.8f; // seconds
+	private const float STUCK_TIME_THRESHOLD = 0.4f; // seconds (faster reaction)
 	
 	// Map bounds (encompass all NPC spawn zones globally)
 	private Vector2 _mapMin = new Vector2(-300, 160);
@@ -96,6 +96,9 @@ public partial class NPCEntity : CharacterBody2D
 	// Temporary movement disable (slip on banana)
 	private bool _isSlipping = false;
 	private double _slipTimer = 0.0;
+	
+	// Interview immobilization
+	private bool _isFrozen = false;
 
 	public override void _Ready()
 	{
@@ -169,8 +172,8 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
-		// If slipping, don't move
-		if (_isSlipping) return;
+		// If slipping or frozen (interview), don't move
+		if (_isSlipping || _isFrozen) return;
 
 		// CLIENTS DO NOT RUN AI - they are synced by server
 		if (!Multiplayer.IsServer())
@@ -231,10 +234,24 @@ public partial class NPCEntity : CharacterBody2D
 				
 				if (inCorridorTransit)
 				{
-					// Walk straight to corridor exit
-					Vector2 dir = (corridorTarget - Position).Normalized();
-					Velocity = dir * MOVE_SPEED;
-					MoveAndCollide(Velocity * (float)delta);
+					// Axis-Aligned Movement for Corridors
+					// First align X (center in corridor), then move Y (traverse).
+					float xDiff = corridorTarget.X - Position.X;
+					float yDiff = corridorTarget.Y - Position.Y;
+
+					// Threshold for X alignment
+					if (Mathf.Abs(xDiff) > 5.0f)
+					{
+						// Move Horizontally
+						Velocity = new Vector2(Mathf.Sign(xDiff), 0) * MOVE_SPEED;
+					}
+					else
+					{
+						// Move Vertically
+						Velocity = new Vector2(0, Mathf.Sign(yDiff)) * MOVE_SPEED;
+					}
+
+					MoveAndSlide();
 					
 					// Once close to exit, resume normal movement
 					if (Position.DistanceTo(corridorTarget) < 10f)
@@ -258,25 +275,52 @@ public partial class NPCEntity : CharacterBody2D
 				else
 				{
 					Velocity = direction * MOVE_SPEED;
-					var collision = MoveAndCollide(Velocity * (float)delta);
-					if (collision != null)
+
+					// Slide Assist: If we hit a wall last frame, redirect velocity along the wall
+					// to prevent "sticking" or slowing down.
+					if (GetSlideCollisionCount() > 0)
 					{
-						var n = collision.GetNormal();
-						Vector2 tangent = new Vector2(-n.Y, n.X);
-						float sign = _random.Next(2) == 0 ? -1f : 1f;
-						_targetPosition = Position + tangent.Normalized() * 120f * sign;
+						var collision = GetSlideCollision(0);
+						// Only if hitting a wall (Layer 1)
+						if ((collision.GetCollider() as Node)?.IsInGroup("players") == false && !(collision.GetCollider() is NPCEntity))
+						{
+							// Project velocity onto the wall plane to get "slide" vector
+							Vector2 normal = collision.GetNormal();
+							Vector2 slide = Velocity.Slide(normal);
+							// Preserve speed (sprint along the wall)
+							Velocity = slide.Normalized() * MOVE_SPEED;
+						}
 					}
-					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD) _stuckTimer += delta; else { _stuckTimer = 0; _lastPosition = Position; }
+
+					MoveAndSlide();
+
+					// INTEGRATED STUCK CHECK:
+					// 1. Immediate "Vibration" Check: Touching wall + Low Speed = Jammed
+					if (GetSlideCollisionCount() > 0 && Velocity.Length() < 5.0f)
+					{
+						// We are pushing a wall and not moving -> VIBRATING
+						_stuckTimer = STUCK_TIME_THRESHOLD; // Force stuck trigger immediately
+					}
+
+					// 2. Positional Stuck Check (Corner Trap)
+					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD)
+					{
+						_stuckTimer += delta; 
+					}
+					else 
+					{ 
+						_stuckTimer = 0; 
+						_lastPosition = Position; 
+					}
+
+					// Trigger Retargeting
 					if (_stuckTimer >= STUCK_TIME_THRESHOLD)
 					{
-						if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
-						{
-							Room r = _rooms[_currentRoomIndex];
-							float x = (float)(_random.NextDouble() * (r.maxX - r.minX) + r.minX);
-							float y = (float)(_random.NextDouble() * (r.maxY - r.minY) + r.minY);
-							_targetPosition = new Vector2(x, y);
-						}
+						// Pick a new random target instantly to break the loop
+						PickNewTarget();
 						_stuckTimer = 0.0;
+						// Also reset state to Pause briefly to let physics settle? No, keep moving to break free.
+						// actually, let's just pick and go.
 					}
 				}
 				break;
@@ -304,12 +348,23 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		else
 		{
-			// Pick a random position within current room
+			// Pick a random position within current room with PADDING to avoid walls
 			if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
 			{
 				Room room = _rooms[_currentRoomIndex];
-				float x = (float)(_random.NextDouble() * (room.maxX - room.minX) + room.minX);
-				float y = (float)(_random.NextDouble() * (room.maxY - room.minY) + room.minY);
+				float padding = 60.0f; 
+
+				float rMinX = room.minX + padding;
+				float rMaxX = room.maxX - padding;
+				float rMinY = room.minY + padding;
+				float rMaxY = room.maxY - padding;
+
+				// Safety check if room is too small for padding
+				if (rMinX >= rMaxX) { rMinX = room.minX; rMaxX = room.maxX; }
+				if (rMinY >= rMaxY) { rMinY = room.minY; rMaxY = room.maxY; }
+
+				float x = (float)(_random.NextDouble() * (rMaxX - rMinX) + rMinX);
+				float y = (float)(_random.NextDouble() * (rMaxY - rMinY) + rMinY);
 				_targetPosition = new Vector2(x, y);
 			}
 			else
@@ -376,10 +431,14 @@ public partial class NPCEntity : CharacterBody2D
 		// Size will auto-adjust based on text content
 
 		// Status indicators (hidden by default)
-		_convertedIndicator = CreateStatusIndicator(Colors.Purple, new Vector2(20, -20));
-		_deadOverlay = CreateStatusIndicator(Colors.Black.Lerp(Colors.Transparent, 0.3f), Vector2.Zero);
-		_deadOverlay.Scale = new Vector2(1.2f, 1.2f);
-		_marriedIndicator = CreateStatusIndicator(Colors.Pink, new Vector2(-20, -20));
+		// Converted (Halo) - Above head (approx -90)
+		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -65));
+		
+		// Married (Heart) - Above head (approx -90)
+		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
+
+		// Dead Overlay (Darkens sprite)
+		_deadOverlay = CreateDeadOverlay();
 
 		// Interact hint below NPC (white color on transparent grey background)
 		_interactHint = new Label();
@@ -455,21 +514,38 @@ public partial class NPCEntity : CharacterBody2D
 		}
 	}
 
-	private Sprite2D CreateStatusIndicator(Color color, Vector2 offset)
+	private Sprite2D CreateStatusIndicator(string texturePath, Vector2 offset)
+	{
+		var indicator = new Sprite2D();
+		var texture = ResourceLoader.Load<Texture2D>(texturePath);
+		if (texture != null)
+		{
+			indicator.Texture = texture;
+			// Scale sprites to match character pixel grid (4x)
+			indicator.Scale = new Vector2(4.0f, 4.0f); 
+		}
+		indicator.TextureFilter = TextureFilterEnum.Nearest;
+		indicator.Position = offset;
+		indicator.Visible = false;
+		AddChild(indicator);
+		return indicator;
+	}
+
+	private Sprite2D CreateDeadOverlay()
 	{
 		var indicator = new Sprite2D();
 		var texture = new GradientTexture2D();
-		texture.Width = 16;
-		texture.Height = 16;
+		texture.Width = 32;
+		texture.Height = 32;
 		texture.Fill = GradientTexture2D.FillEnum.Radial;
 		texture.FillFrom = new Vector2(0.5f, 0.5f);
 		texture.FillTo = new Vector2(1f, 0.5f);
 		var gradient = new Gradient();
-		gradient.SetColor(0, color);
-		gradient.SetColor(1, color.Darkened(0.5f));
+		gradient.SetColor(0, Colors.Black.Lerp(Colors.Transparent, 0.3f));
+		gradient.SetColor(1, Colors.Black.Lerp(Colors.Transparent, 0.8f));
 		texture.Gradient = gradient;
 		indicator.Texture = texture;
-		indicator.Position = offset;
+		indicator.Scale = new Vector2(4.0f, 4.0f); // Cover the whole sprite
 		indicator.Visible = false;
 		AddChild(indicator);
 		return indicator;
@@ -480,7 +556,8 @@ public partial class NPCEntity : CharacterBody2D
 		// Create collision shape matching player controller (80x128 rectangle)
 		_collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		shape.Size = new Vector2(80, 128);
+		// Reduced width to 40 to fit in 48px corridors
+		shape.Size = new Vector2(40, 118);
 		_collisionShape.Shape = shape;
 		AddChild(_collisionShape);
 		
@@ -650,7 +727,8 @@ public partial class NPCEntity : CharacterBody2D
 		if (_nameLabel != null)
 		{
 			var labelWidth = _nameLabel.Size.X;
-			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -115);
+			// Position much higher (-140) to be above the status icons which are at -90
+			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -120);
 		}
 	}
 
@@ -664,6 +742,19 @@ public partial class NPCEntity : CharacterBody2D
 		{
 			var labelWidth = _interactHint.Size.X;
 			_interactHint.Position = new Vector2(-labelWidth / 2, 70);
+		}
+	}
+
+	/// <summary>
+	/// Freezes the NPC (stops wandering) for interviews or other events.
+	/// </summary>
+	public void SetFrozen(bool frozen)
+	{
+		_isFrozen = frozen;
+		if (frozen)
+		{
+			// Optional: Stop current velocity
+			Velocity = Vector2.Zero;
 		}
 	}
 }

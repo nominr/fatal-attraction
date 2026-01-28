@@ -64,7 +64,7 @@ public partial class PlayerController : CharacterBody2D
 		
 		// Sprite is scaled 4x (approx 128px height)
 		// Set collision to match height (128) and reduced width (80) for playability
-		shape.Size = new Vector2(80, 128); 
+		shape.Size = new Vector2(60, 120); 
 		collisionShape.Shape = shape;
 		// Position centered (0,0) matches sprite center
 		

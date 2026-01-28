@@ -134,37 +134,13 @@ public partial class InteractionPanel : PanelContainer
 		_closeButton.AddThemeFontSizeOverride("font_size", 24);
 		_closeButton.CustomMinimumSize = new Vector2(0, 40);
 		_closeButton.Pressed += OnClosePressed;
-		
-		contentVBox.AddChild(scrollMargin);
+		dialogueVBox.AddChild(_closeButton);
 
-		// Right side: Portrait with NPC name overlay
-		var portraitContainer = new Control();
-		portraitContainer.CustomMinimumSize = new Vector2(224, 655);
-		mainHBox.AddChild(portraitContainer);
-
-		// Portrait sprite
-		_portraitSprite = new TextureRect();
-		_portraitSprite.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprite-portrait.png");
-		_portraitSprite.StretchMode = TextureRect.StretchModeEnum.KeepAspect;
-		_portraitSprite.CustomMinimumSize = new Vector2(224, 655);
-		portraitContainer.AddChild(_portraitSprite);
-
-		// NPC name on top of portrait
-		var nameMargin = new MarginContainer();
-		nameMargin.AddThemeConstantOverride("margin_top", -80);
-		nameMargin.CustomMinimumSize = new Vector2(160, 50);
-		portraitContainer.AddChild(nameMargin);
-
-		_npcNameLabel = new Label();
-		_npcNameLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_npcNameLabel.VerticalAlignment = VerticalAlignment.Top;
-		_npcNameLabel.AddThemeFontOverride("font", _customFont);
-		_npcNameLabel.AddThemeFontSizeOverride("font_size", 28);
-		_npcNameLabel.AddThemeColorOverride("font_color", Colors.White);
-		_npcNameLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
-		_npcNameLabel.AddThemeConstantOverride("outline_size", 3);
-		_npcNameLabel.Visible = false;
-		nameMargin.AddChild(_npcNameLabel);
+		// Layering and Positioning
+		ZIndex = 95; // High ZIndex to sit above most UI (Producer panels are ~0, GameOver is 99)
+		SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
+		GrowHorizontal = Control.GrowDirection.Both;
+		GrowVertical = Control.GrowDirection.Both;
 	}
 
 	/// <summary>
@@ -242,9 +218,9 @@ public partial class InteractionPanel : PanelContainer
 				var actionButton = new Button();
 				actionButton.Text = actionText;
 				actionButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+				actionButton.CustomMinimumSize = new Vector2(0, 40); // Taller buttons for easier clicking
 				actionButton.AddThemeFontOverride("font", _customFont);
-				actionButton.AddThemeFontSizeOverride("font_size", 24);
-				actionButton.CustomMinimumSize = new Vector2(0, 40);
+				actionButton.AddThemeFontSizeOverride("font_size", 20); // Larger text
 				
 				// Capture the actionId for the lambda
 				string capturedActionId = actionId;
@@ -253,20 +229,9 @@ public partial class InteractionPanel : PanelContainer
 				_actionsContainer.AddChild(actionButton);
 			}
 		}
-		
-		// Add close button at the end of the actions list (create a fresh one each time)
-		var closeButton = new Button();
-		closeButton.Text = "Close (ESC)";
-		closeButton.AddThemeFontOverride("font", _customFont);
-		closeButton.AddThemeFontSizeOverride("font_size", 24);
-		closeButton.CustomMinimumSize = new Vector2(0, 40);
-		closeButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-		closeButton.Pressed += OnClosePressed;
-		_actionsContainer.AddChild(closeButton);
 
-		// Position at center of screen
-		var viewportSize = GetViewport().GetVisibleRect().Size;
-		Position = (viewportSize - Size) / 2;
+		// Reset position to center (force update)
+		SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
 
 		Show();
 	}
@@ -275,8 +240,14 @@ public partial class InteractionPanel : PanelContainer
 	{
 		GD.Print($"Action selected: {actionId} for NPC {_currentNpcId}");
 		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
-		Hide();
-		EmitSignal(SignalName.PanelClosed);
+		
+		// Don't close panel if it's an interview step
+		// "start_interview" or "interview_option_..."
+		if (!actionId.Contains("interview"))
+		{
+			Hide();
+			EmitSignal(SignalName.PanelClosed);
+		}
 	}
 
 	private void OnClosePressed()
