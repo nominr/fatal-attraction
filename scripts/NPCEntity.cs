@@ -80,7 +80,7 @@ public partial class NPCEntity : CharacterBody2D
 	private Vector2 _lastPosition = Vector2.Zero;
 	private double _stuckTimer = 0.0;
 	private const float STUCK_DISTANCE_THRESHOLD = 3.0f; // pixels
-	private const float STUCK_TIME_THRESHOLD = 0.8f; // seconds
+	private const float STUCK_TIME_THRESHOLD = 0.4f; // seconds (faster reaction)
 	
 	// Map bounds (encompass all NPC spawn zones globally)
 	private Vector2 _mapMin = new Vector2(-300, 160);
@@ -231,10 +231,24 @@ public partial class NPCEntity : CharacterBody2D
 				
 				if (inCorridorTransit)
 				{
-					// Walk straight to corridor exit
-					Vector2 dir = (corridorTarget - Position).Normalized();
-					Velocity = dir * MOVE_SPEED;
-					MoveAndCollide(Velocity * (float)delta);
+					// Axis-Aligned Movement for Corridors
+					// First align X (center in corridor), then move Y (traverse).
+					float xDiff = corridorTarget.X - Position.X;
+					float yDiff = corridorTarget.Y - Position.Y;
+
+					// Threshold for X alignment
+					if (Mathf.Abs(xDiff) > 5.0f)
+					{
+						// Move Horizontally
+						Velocity = new Vector2(Mathf.Sign(xDiff), 0) * MOVE_SPEED;
+					}
+					else
+					{
+						// Move Vertically
+						Velocity = new Vector2(0, Mathf.Sign(yDiff)) * MOVE_SPEED;
+					}
+
+					MoveAndSlide();
 					
 					// Once close to exit, resume normal movement
 					if (Position.DistanceTo(corridorTarget) < 10f)
@@ -258,25 +272,52 @@ public partial class NPCEntity : CharacterBody2D
 				else
 				{
 					Velocity = direction * MOVE_SPEED;
-					var collision = MoveAndCollide(Velocity * (float)delta);
-					if (collision != null)
+
+					// Slide Assist: If we hit a wall last frame, redirect velocity along the wall
+					// to prevent "sticking" or slowing down.
+					if (GetSlideCollisionCount() > 0)
 					{
-						var n = collision.GetNormal();
-						Vector2 tangent = new Vector2(-n.Y, n.X);
-						float sign = _random.Next(2) == 0 ? -1f : 1f;
-						_targetPosition = Position + tangent.Normalized() * 120f * sign;
+						var collision = GetSlideCollision(0);
+						// Only if hitting a wall (Layer 1)
+						if ((collision.GetCollider() as Node)?.IsInGroup("players") == false && !(collision.GetCollider() is NPCEntity))
+						{
+							// Project velocity onto the wall plane to get "slide" vector
+							Vector2 normal = collision.GetNormal();
+							Vector2 slide = Velocity.Slide(normal);
+							// Preserve speed (sprint along the wall)
+							Velocity = slide.Normalized() * MOVE_SPEED;
+						}
 					}
-					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD) _stuckTimer += delta; else { _stuckTimer = 0; _lastPosition = Position; }
+
+					MoveAndSlide();
+
+					// INTEGRATED STUCK CHECK:
+					// 1. Immediate "Vibration" Check: Touching wall + Low Speed = Jammed
+					if (GetSlideCollisionCount() > 0 && Velocity.Length() < 5.0f)
+					{
+						// We are pushing a wall and not moving -> VIBRATING
+						_stuckTimer = STUCK_TIME_THRESHOLD; // Force stuck trigger immediately
+					}
+
+					// 2. Positional Stuck Check (Corner Trap)
+					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD)
+					{
+						_stuckTimer += delta; 
+					}
+					else 
+					{ 
+						_stuckTimer = 0; 
+						_lastPosition = Position; 
+					}
+
+					// Trigger Retargeting
 					if (_stuckTimer >= STUCK_TIME_THRESHOLD)
 					{
-						if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
-						{
-							Room r = _rooms[_currentRoomIndex];
-							float x = (float)(_random.NextDouble() * (r.maxX - r.minX) + r.minX);
-							float y = (float)(_random.NextDouble() * (r.maxY - r.minY) + r.minY);
-							_targetPosition = new Vector2(x, y);
-						}
+						// Pick a new random target instantly to break the loop
+						PickNewTarget();
 						_stuckTimer = 0.0;
+						// Also reset state to Pause briefly to let physics settle? No, keep moving to break free.
+						// actually, let's just pick and go.
 					}
 				}
 				break;
@@ -304,12 +345,23 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		else
 		{
-			// Pick a random position within current room
+			// Pick a random position within current room with PADDING to avoid walls
 			if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
 			{
 				Room room = _rooms[_currentRoomIndex];
-				float x = (float)(_random.NextDouble() * (room.maxX - room.minX) + room.minX);
-				float y = (float)(_random.NextDouble() * (room.maxY - room.minY) + room.minY);
+				float padding = 60.0f; 
+
+				float rMinX = room.minX + padding;
+				float rMaxX = room.maxX - padding;
+				float rMinY = room.minY + padding;
+				float rMaxY = room.maxY - padding;
+
+				// Safety check if room is too small for padding
+				if (rMinX >= rMaxX) { rMinX = room.minX; rMaxX = room.maxX; }
+				if (rMinY >= rMaxY) { rMinY = room.minY; rMaxY = room.maxY; }
+
+				float x = (float)(_random.NextDouble() * (rMaxX - rMinX) + rMinX);
+				float y = (float)(_random.NextDouble() * (rMaxY - rMinY) + rMinY);
 				_targetPosition = new Vector2(x, y);
 			}
 			else
@@ -501,7 +553,8 @@ public partial class NPCEntity : CharacterBody2D
 		// Create collision shape matching player controller (80x128 rectangle)
 		_collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		shape.Size = new Vector2(60, 120);
+		// Reduced width to 40 to fit in 48px corridors
+		shape.Size = new Vector2(40, 118);
 		_collisionShape.Shape = shape;
 		AddChild(_collisionShape);
 		
