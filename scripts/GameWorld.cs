@@ -38,6 +38,8 @@ public partial class GameWorld : Node2D
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
+    // Editorial asset content node (holds room Area2D children)
+    private Node2D _editorialContentNode;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
@@ -62,6 +64,26 @@ public partial class GameWorld : Node2D
 	// World bounds
 	private Vector2 _worldSize = new Vector2(1200, 800);
 	private const int PROPHET_CONVERT_GOAL = 5;
+
+	// Marriage UI State
+	private string _marrySelectionA = "";
+	private string _marrySelectionB = "";
+
+	// Producer HUD Elements
+	private VBoxContainer _producerStatsContainer;
+	private Label _activeCamerasLabel;
+	private Button _callPoliceButton;
+
+	// Helper for Trap-Like UI Style
+	private StyleBoxFlat CreateTrapStyle(Color bgColor, Color borderColor)
+	{
+		var style = new StyleBoxFlat();
+		style.BgColor = bgColor;
+		style.BorderColor = borderColor;
+		style.SetBorderWidthAll(2);
+		style.SetCornerRadiusAll(4);
+		return style;
+	}
 
 	public override void _Ready()
 	{
@@ -339,7 +361,27 @@ public partial class GameWorld : Node2D
 		hudContainer.AddChild(_convertedLabel);
 
 		_metersContainer = new VBoxContainer();
+		_metersContainer = new VBoxContainer();
 		hudContainer.AddChild(_metersContainer);
+
+		// Producer Stats Container (Active Cameras / Police)
+		_producerStatsContainer = new VBoxContainer();
+		hudContainer.AddChild(_producerStatsContainer);
+
+		_activeCamerasLabel = new Label();
+		_activeCamerasLabel.Text = "Active Security Cameras:\nNone";
+		_activeCamerasLabel.AddThemeFontOverride("font", _customFont);
+		_activeCamerasLabel.AddThemeFontSizeOverride("font_size", 20);
+		_activeCamerasLabel.Visible = false;
+		_producerStatsContainer.AddChild(_activeCamerasLabel);
+
+		_callPoliceButton = new Button();
+		_callPoliceButton.Text = "CALL POLICE!";
+		_callPoliceButton.Modulate = Colors.Red;
+		_callPoliceButton.Visible = false;
+		_callPoliceButton.AddThemeFontOverride("font", _customFont);
+		_callPoliceButton.Pressed += () => OnActionSelected("producer_global", "call_police");
+		_producerStatsContainer.AddChild(_callPoliceButton);
 
 		// Notification Panel (bottom right)
 		var viewportSize = GetViewportRect().Size; // Use actual viewport to avoid clipping on smaller windows
@@ -386,34 +428,16 @@ public partial class GameWorld : Node2D
 		trapButton.AddThemeConstantOverride("h_separation", 10);
 		trapButton.AddThemeConstantOverride("icon_max_width", 40); // Change 40 to your desired width
 
-		// Create normal style (white background, black outline)
-		var normalStyle = new StyleBoxFlat();
-		normalStyle.BgColor = new Color(1, 1, 1, 1); // White background
-		normalStyle.BorderColor = new Color(0, 0, 0, 1); // Black outline
-		normalStyle.SetBorderWidthAll(2);
-		normalStyle.SetCornerRadiusAll(4);
-		trapButton.AddThemeStyleboxOverride("normal", normalStyle);
-		
-		// Create hover style (light grey background)
-		var hoverStyle = new StyleBoxFlat();
-		hoverStyle.BgColor = new Color(0.85f, 0.85f, 0.85f, 1); // Light grey
-		hoverStyle.BorderColor = new Color(0, 0, 0, 1); // Black outline
-		hoverStyle.SetBorderWidthAll(2);
-		hoverStyle.SetCornerRadiusAll(4);
-		trapButton.AddThemeStyleboxOverride("hover", hoverStyle);
-		
-		// Create pressed style (light grey background)
-		var pressedStyle = new StyleBoxFlat();
-		pressedStyle.BgColor = new Color(0.85f, 0.85f, 0.85f, 1); // Light grey
-		pressedStyle.BorderColor = new Color(0, 0, 0, 1); // Black outline
-		pressedStyle.SetBorderWidthAll(2);
-		pressedStyle.SetCornerRadiusAll(4);
-		trapButton.AddThemeStyleboxOverride("pressed", pressedStyle);
+		// Style settings
+		var normalStyle = CreateTrapStyle(Colors.White, Colors.Black);
+		var hoverStyle = CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black);
+		var pressedStyle = CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black);
+		var disabledStyle = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
+		disabledStyle.SetBorderWidthAll(0); // Trap disabled has no border (from original code)
 
-		// Disabled style (darker grey, no outline)
-		var disabledStyle = new StyleBoxFlat();
-		disabledStyle.BgColor = new Color(0.6f, 0.6f, 0.6f, 1);
-		disabledStyle.SetBorderWidthAll(0);
+		trapButton.AddThemeStyleboxOverride("normal", normalStyle);
+		trapButton.AddThemeStyleboxOverride("hover", hoverStyle);
+		trapButton.AddThemeStyleboxOverride("pressed", pressedStyle);
 		trapButton.AddThemeStyleboxOverride("disabled", disabledStyle);
 		
 		// Black text that stays black
@@ -446,75 +470,193 @@ public partial class GameWorld : Node2D
 		// Marriage Section (Visible)
 		var mPanel = new PanelContainer();
 		mPanel.Name = "MarriagePanel";
-		mPanel.Position = new Vector2(20, 150);
-		mPanel.CustomMinimumSize = new Vector2(250, 200);
+		mPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center); // Center screen
+		mPanel.GrowHorizontal = Control.GrowDirection.Both; // Required for true center
+		mPanel.GrowVertical = Control.GrowDirection.Both;
+		mPanel.CustomMinimumSize = new Vector2(400, 400); // Wider for 2 columns
 		mPanel.Visible = false;
-		var mVBox = new VBoxContainer();
-		mVBox.Name = "Container";
-		mVBox.AddThemeConstantOverride("separation", 5);
-		mPanel.AddChild(mVBox);
-		var mLabel = new Label();
-		mLabel.Text = "Select 2 NPCs to Marry:";
-		mLabel.AddThemeFontOverride("font", _customFont);
-		mLabel.AddThemeFontSizeOverride("font_size", 14);
-		mVBox.AddChild(mLabel);
-		// NPCs populated dynamically
+		mPanel.ZIndex = 20; // Ensure it's above other UI elements
+		
+		var mVBoxMain = new VBoxContainer();
+		mVBoxMain.Name = "Container"; // Keeping name for reference finding
+		mVBoxMain.AddThemeConstantOverride("separation", 10);
+		mVBoxMain.MouseFilter = Control.MouseFilterEnum.Pass;
+		mPanel.AddChild(mVBoxMain);
+
+		var mTitle = new Label();
+		mTitle.Text = "Select 2 NPCs to Marry:";
+		mTitle.HorizontalAlignment = HorizontalAlignment.Center;
+		mTitle.AddThemeFontOverride("font", _customFont);
+		mTitle.AddThemeFontSizeOverride("font_size", 18);
+		mVBoxMain.AddChild(mTitle);
+
+		// Columns Container
+		var columnsHBox = new HBoxContainer();
+		columnsHBox.Name = "ColumnsContainer";
+		columnsHBox.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		columnsHBox.AddThemeConstantOverride("separation", 20);
+		columnsHBox.MouseFilter = Control.MouseFilterEnum.Pass;
+		mVBoxMain.AddChild(columnsHBox);
+
+		// Column A
+		var colA = new VBoxContainer();
+		colA.Name = "ColumnA";
+		colA.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		colA.MouseFilter = Control.MouseFilterEnum.Pass;
+		columnsHBox.AddChild(colA);
+		var lblA = new Label();
+		lblA.Text = "Partner 1";
+		lblA.HorizontalAlignment = HorizontalAlignment.Center;
+		lblA.AddThemeFontOverride("font", _customFont);
+		colA.AddChild(lblA);
+		// ScrollContainer for list A
+		var scrollA = new ScrollContainer();
+		scrollA.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		scrollA.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks to pass through if hitting empty space
+		colA.AddChild(scrollA);
+		var listA = new VBoxContainer();
+		listA.Name = "ListA";
+		listA.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		listA.MouseFilter = Control.MouseFilterEnum.Pass;
+		scrollA.AddChild(listA);
+
+		// Column B
+		var colB = new VBoxContainer();
+		colB.Name = "ColumnB";
+		colB.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		colB.MouseFilter = Control.MouseFilterEnum.Pass;
+		columnsHBox.AddChild(colB);
+		var lblB = new Label();
+		lblB.Text = "Partner 2";
+		lblB.HorizontalAlignment = HorizontalAlignment.Center;
+		lblB.AddThemeFontOverride("font", _customFont);
+		colB.AddChild(lblB);
+		// ScrollContainer for list B
+		var scrollB = new ScrollContainer();
+		scrollB.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		scrollB.MouseFilter = Control.MouseFilterEnum.Pass;
+		colB.AddChild(scrollB);
+		var listB = new VBoxContainer();
+		listB.Name = "ListB";
+		listB.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		listB.MouseFilter = Control.MouseFilterEnum.Pass;
+		scrollB.AddChild(listB);
+
+
+
+		// Confirm Button at bottom
 		var mConfirm = new Button();
 		mConfirm.Text = "CONFIRM MARRIAGE";
+		mConfirm.CustomMinimumSize = new Vector2(0, 50);
 		mConfirm.AddThemeFontOverride("font", _customFont);
+		
+		mConfirm.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+		mConfirm.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+		mConfirm.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+		mConfirm.AddThemeColorOverride("font_color", Colors.Black);
+		mConfirm.AddThemeColorOverride("font_hover_color", Colors.Black);
+		mConfirm.AddThemeColorOverride("font_pressed_color", Colors.Black);
+		mConfirm.MouseFilter = Control.MouseFilterEnum.Stop;
+		
 		mConfirm.Pressed += OnMarryConfirm;
-		mVBox.AddChild(mConfirm);
+		mVBoxMain.AddChild(mConfirm);
+
 		_uiLayer.AddChild(mPanel);
 
 		// Marriage Toggle Button
 		var marryBtn = new Button();
 		marryBtn.Name = "MarryButton";
-		marryBtn.Text = "Marry NPCs (+1 Ratings)";
+		marryBtn.Text = "Marry NPCs";
+		marryBtn.ToggleMode = true; // Stay pressed when active
 		marryBtn.AddThemeFontOverride("font", _customFont);
-		marryBtn.Position = new Vector2(20, 480);
+		marryBtn.AddThemeFontSizeOverride("font_size", 26);
+		// Position bottom left (Swapped with Manage Cameras)
+		marryBtn.Position = new Vector2(20, 530);
+		marryBtn.CustomMinimumSize = new Vector2(180, 60);
 		marryBtn.Visible = false;
-		marryBtn.Pressed += () => TogglePanel("MarriagePanel");
+		
+		// Trap Styling for Marry Button
+		// Normal/Hover match Trap Normal/Hover
+		marryBtn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+		marryBtn.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+		
+		// Pressed matches Trap DISABLED (Dark Grey, No Border)
+		var mPressed = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
+		mPressed.SetBorderWidthAll(0);
+		marryBtn.AddThemeStyleboxOverride("pressed", mPressed);
+		
+		var mDisabled = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
+		mDisabled.SetBorderWidthAll(0);
+		marryBtn.AddThemeStyleboxOverride("disabled", mDisabled);
+		
+		marryBtn.AddThemeColorOverride("font_color", Colors.Black);
+		marryBtn.AddThemeColorOverride("font_hover_color", Colors.Black);
+		marryBtn.AddThemeColorOverride("font_pressed_color", Colors.Black);
+		marryBtn.AddThemeColorOverride("font_focus_color", Colors.Black);
+		marryBtn.MouseFilter = Control.MouseFilterEnum.Stop; 
+
+		// Use Toggled to bind visibility directly to button state
+		marryBtn.Toggled += (pressed) => 
+		{
+			var panel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
+			if (panel != null) panel.Visible = pressed;
+			
+			// Mutual Exclusivity: Close Camera Panel if opening Marriage
+			if (pressed)
+			{
+				var camBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
+				if (camBtn != null && camBtn.ButtonPressed) camBtn.ButtonPressed = false;
+			}
+		};
 		_uiLayer.AddChild(marryBtn);
-		// Security Cameras Section (Visible)
-		var cPanel = new PanelContainer();
-		cPanel.Name = "CameraPanel";
-		cPanel.Position = new Vector2(950, 120);
-		cPanel.CustomMinimumSize = new Vector2(220, 200);
-		cPanel.Visible = false;
-		var cVBox = new VBoxContainer();
-		cVBox.Name = "CameraContainer";
-		cVBox.AddThemeConstantOverride("separation", 5);
-		cPanel.AddChild(cVBox);
-		var cLabel = new Label();
-		cLabel.Text = "Security Cameras";
-		cLabel.AddThemeFontSizeOverride("font_size", 14);
-		cLabel.AddThemeFontOverride("font", _customFont);
-		cVBox.AddChild(cLabel);
 		
-		var cInfo = new Label();
-		cInfo.Name = "CameraInfo";
-		cInfo.Text = "Active: None";
-		cInfo.AddThemeFontOverride("font", _customFont);
-		cInfo.AutowrapMode = TextServer.AutowrapMode.Word;
-		cVBox.AddChild(cInfo);
+		// Manage Cameras Button (Restyled and Repositioned)
+		var manageCamsBtn = new Button();
+		manageCamsBtn.Name = "ManageCamerasButton"; // Explicit name for visibility toggling
+		manageCamsBtn.Text = "Manage Cameras";
+		manageCamsBtn.ToggleMode = true;
+		manageCamsBtn.AddThemeFontOverride("font", _customFont);
+		manageCamsBtn.AddThemeFontSizeOverride("font_size", 26);
+		// Position above Marry Button (Swapped with Marry)
+		manageCamsBtn.Position = new Vector2(20, 600);
+		manageCamsBtn.CustomMinimumSize = new Vector2(240, 60);
+		manageCamsBtn.Visible = false;
 		
-		var cBtn = new Button();
-		cBtn.Text = "Manage Cameras";
-		cBtn.AddThemeFontOverride("font", _customFont);
-		cBtn.Pressed += () => TogglePanel("CameraSelectPanel");
-		cVBox.AddChild(cBtn);
+		// Apply same style to Manage Cameras
+		manageCamsBtn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+		manageCamsBtn.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+		
+		// Pressed matches Trap DISABLED
+		var mcPressed = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
+		mcPressed.SetBorderWidthAll(0);
+		manageCamsBtn.AddThemeStyleboxOverride("pressed", mcPressed);
+		
+		var mcDisabled = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
+		mcDisabled.SetBorderWidthAll(0);
+		manageCamsBtn.AddThemeStyleboxOverride("disabled", mcDisabled);
+		
+		manageCamsBtn.AddThemeColorOverride("font_color", Colors.Black);
+		manageCamsBtn.AddThemeColorOverride("font_hover_color", Colors.Black);
+		manageCamsBtn.AddThemeColorOverride("font_pressed_color", Colors.Black);
+		manageCamsBtn.AddThemeColorOverride("font_focus_color", Colors.Black);
+		manageCamsBtn.MouseFilter = Control.MouseFilterEnum.Stop;
 
-		// Call Police Button (Initially Hidden)
-		var policeBtn = new Button();
-		policeBtn.Name = "CallPoliceButton";
-		policeBtn.Text = "CALL POLICE!";
-		policeBtn.Modulate = Colors.Red;
-		policeBtn.Visible = false;
-		policeBtn.Pressed += () => OnActionSelected("producer_global", "call_police");
-		policeBtn.AddThemeFontOverride("font", _customFont);
-		cVBox.AddChild(policeBtn);
+		// Use Toggled to bind visibility directly to button state
+		manageCamsBtn.Toggled += (pressed) => 
+		{
+			var panel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
+			if (panel != null) panel.Visible = pressed;
+			
+			// Mutual Exclusivity: Close Marriage Panel if opening Cameras
+			if (pressed)
+			{
+				var mBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+				if (mBtn != null && mBtn.ButtonPressed) mBtn.ButtonPressed = false;
+			}
+		};
+		_uiLayer.AddChild(manageCamsBtn);
 
-		_uiLayer.AddChild(cPanel);
+		// _uiLayer.AddChild(cPanel); // REMOVED
 
 
 		// Editorial Attention Section (Visible)
@@ -549,42 +691,42 @@ public partial class GameWorld : Node2D
 		var csPanel = new PanelContainer();
 		csPanel.Name = "CameraSelectPanel";
 		csPanel.Name = "CameraSelectPanel";
-		// Move panel to Top Center but lower down
-		csPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterTop);
-		csPanel.Position = new Vector2(csPanel.Position.X, 150); // Increased margin from 80 to 150
+		// Center panel on screen
+		csPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
 		csPanel.GrowHorizontal = Control.GrowDirection.Both;
 		csPanel.GrowVertical = Control.GrowDirection.Both;
 		csPanel.Visible = false;
 		
 		var csVBox = new VBoxContainer();
-		csVBox.AddThemeConstantOverride("separation", 10);
+		csVBox.AddThemeConstantOverride("separation", 5); // Tighter spacing
 		csPanel.AddChild(csVBox);
 		var csLabel = new Label();
 		csLabel.Text = "Toggle Cameras (Max 2):";
-		csLabel.AddThemeFontSizeOverride("font_size", 14);
+		csLabel.HorizontalAlignment = HorizontalAlignment.Center; // Center title
+		csLabel.AddThemeFontSizeOverride("font_size", 24); // Larger text
 		csLabel.AddThemeFontOverride("font", _customFont);
 		csVBox.AddChild(csLabel);
 		
 		// Editorial Room Asset Integration
 		var svContainer = new SubViewportContainer();
-		// Reduced size significantly
-		svContainer.CustomMinimumSize = new Vector2(300, 200);
+		// Minimal Map Size (Aggressively cropped)
+		svContainer.CustomMinimumSize = new Vector2(400, 260);
 		svContainer.Stretch = true;
 		csVBox.AddChild(svContainer);
 
 		var subViewport = new SubViewport();
-		subViewport.Size = new Vector2I(300, 200); 
+		subViewport.Size = new Vector2I(400, 260); 
 		subViewport.Disable3D = true;
 		subViewport.TransparentBg = true;
 		subViewport.PhysicsObjectPicking = true;
 		svContainer.AddChild(subViewport);
 
 		// Adjusted Camera:
-		// Position: 640, 360 (Asset Center) because 620 was too low (shifting asset up).
-		// Zoom: 0.45 (Larger than 0.3)
+		// Position: 590, 360 (Shifted left to center map in viewport)
+		// Zoom: 0.7 (Zoomed in slightly more to fill space)
 		var camera = new Camera2D();
-		camera.Position = new Vector2(640, 360); 
-		camera.Zoom = new Vector2(0.5f, 0.5f); 
+		camera.Position = new Vector2(590, 360); 
+		camera.Zoom = new Vector2(0.7f, 0.7f); 
 		subViewport.AddChild(camera);
 
 		var assetScene = ResourceLoader.Load<PackedScene>("res://scenes/editorial_room_asset.tscn");
@@ -598,7 +740,10 @@ public partial class GameWorld : Node2D
 			var contentNode = assetInstance.GetNodeOrNull("Node2D");
 			if (contentNode != null)
 			{
-				foreach (var child in contentNode.GetChildren())
+                // keep reference to the content node so we can update room visuals later
+                _editorialContentNode = contentNode as Node2D;
+
+                foreach (var child in contentNode.GetChildren())
 				{
 					if (child.HasSignal("room_clicked"))
 					{
@@ -619,9 +764,26 @@ public partial class GameWorld : Node2D
 		}
 		
 		var closeBtn = new Button();
-		closeBtn.Text = "Close";
+		closeBtn.Text = "Close Map";
+		closeBtn.CustomMinimumSize = new Vector2(0, 50); // Taller button
 		closeBtn.AddThemeFontOverride("font", _customFont);
-		closeBtn.Pressed += () => csPanel.Visible = false;
+		closeBtn.AddThemeFontSizeOverride("font_size", 24); // Larger text
+		
+		// Apply consistent Trap Style to Close Button
+		closeBtn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+		closeBtn.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+		closeBtn.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+		closeBtn.AddThemeColorOverride("font_color", Colors.Black);
+		closeBtn.AddThemeColorOverride("font_hover_color", Colors.Black);
+		closeBtn.AddThemeColorOverride("font_pressed_color", Colors.Black);
+		closeBtn.MouseFilter = Control.MouseFilterEnum.Stop;
+
+		// Sync state: Unpress the toggle button, which updates visibility (if signal emitted, but safer to do both)
+		closeBtn.Pressed += () => 
+		{
+			manageCamsBtn.ButtonPressed = false; // Reset toggle visual
+			csPanel.Visible = false; // Hide panel
+		};
 		csVBox.AddChild(closeBtn);
 
 		_uiLayer.AddChild(csPanel);
@@ -772,29 +934,110 @@ public partial class GameWorld : Node2D
 
 	private void OnMarryConfirm()
 	{
-		var panel = _uiLayer.GetNodeOrNull("MarriagePanel/Container");
-		if (panel == null) return;
-
-		List<string> selected = new();
-		foreach (var node in panel.GetChildren())
+		if (!string.IsNullOrEmpty(_marrySelectionA) && !string.IsNullOrEmpty(_marrySelectionB))
 		{
-			if (node is CheckButton cb && cb.ButtonPressed)
-			{
-				selected.Add(cb.Name); // Name holds NPC ID
-			}
-		}
-
-		if (selected.Count == 2)
-		{
-			OnActionSelected("producer_global", $"marry_{selected[0]}_{selected[1]}");
+			OnActionSelected("producer_global", $"marry_{_marrySelectionA}_{_marrySelectionB}");
 			_uiLayer.GetNode<Control>("MarriagePanel").Visible = false;
-			// Reset checks?
-			foreach (var node in panel.GetChildren()) if (node is CheckButton cb) cb.ButtonPressed = false;
+			
+			// Unpress the toggle button
+			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+			if (btn != null) btn.ButtonPressed = false;
+			
+			// Reset selections
+			_marrySelectionA = "";
+			_marrySelectionB = "";
+			UpdateMarriageLists(); // Refresh UI to clear checks
 		}
 		else
 		{
 			// Show error? For now print
-			GD.Print("Must select exactly 2 NPCs");
+			GD.Print("Must select 2 NPCs");
+		}
+	}
+
+	private void OnMarrySelectA(string npcId)
+	{
+		if (_marrySelectionA == npcId) _marrySelectionA = ""; // Toggle off
+		else _marrySelectionA = npcId;
+		
+		UpdateMarriageLists();
+	}
+
+	private void OnMarrySelectB(string npcId)
+	{
+		if (_marrySelectionB == npcId) _marrySelectionB = ""; // Toggle off
+		else _marrySelectionB = npcId;
+		
+		UpdateMarriageLists();
+	}
+
+	private void UpdateMarriageLists()
+	{
+		if (_localGameState == null) return;
+		var activeNpcs = _localGameState["active_npcs"]?.ToObject<List<string>>() ?? new();
+		
+		var panel = _uiLayer?.GetNodeOrNull("MarriagePanel");
+		if (panel == null) return;
+		
+		var listA = panel.FindChild("ListA", true, false) as VBoxContainer;
+		var listB = panel.FindChild("ListB", true, false) as VBoxContainer;
+		
+		if (listA == null || listB == null) return;
+
+		// Rebuild List A
+		PopulateMarriageList(listA, activeNpcs, _marrySelectionA, _marrySelectionB, true);
+		
+		// Rebuild List B
+		PopulateMarriageList(listB, activeNpcs, _marrySelectionB, _marrySelectionA, false);
+	}
+
+	private void PopulateMarriageList(VBoxContainer listContainer, List<string> npcs, string mySelection, string otherSelection, bool isListA)
+	{
+		// Ideally we reuse buttons instead of destroy/create every frame, but for low NPC count (10) it's fine
+		foreach (Node child in listContainer.GetChildren()) child.QueueFree();
+
+		var npcStates = _localGameState?["npc_states"] as JObject;
+
+		foreach (var npcId in npcs)
+		{
+			// Check if Love Interest - SKIP
+			if (npcStates != null && npcStates[npcId]?["is_love_interest"]?.Value<bool>() == true)
+			{
+				continue;
+			}
+
+			var btn = new Button();
+			btn.ToggleMode = true;
+			btn.Text = Capitalize(npcId);
+			btn.AddThemeFontOverride("font", _customFont);
+			
+			// Trap Styling for List Items
+			btn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+			btn.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+			// Selected (Pressed) -> Black with White Border
+			btn.AddThemeStyleboxOverride("pressed", CreateTrapStyle(Colors.Black, Colors.White)); 
+			btn.AddThemeStyleboxOverride("disabled", CreateTrapStyle(Colors.Gray, Colors.Black));
+
+			btn.AddThemeColorOverride("font_color", Colors.Black);
+			btn.AddThemeColorOverride("font_hover_color", Colors.Black);
+			btn.AddThemeColorOverride("font_pressed_color", Colors.White); // White text when selected
+			btn.AddThemeColorOverride("font_focus_color", Colors.Black);
+			btn.MouseFilter = Control.MouseFilterEnum.Stop;
+			
+			// Check state
+			btn.ButtonPressed = (npcId == mySelection);
+			
+			// Disable if selected in other list
+			if (npcId == otherSelection)
+			{
+				btn.Disabled = true;
+			}
+			
+			// Connect signal
+			if (isListA) btn.Pressed += () => OnMarrySelectA(npcId);
+			else btn.Pressed += () => OnMarrySelectB(npcId);
+			
+			listContainer.AddChild(btn);
 		}
 	}
 
@@ -1187,7 +1430,8 @@ public partial class GameWorld : Node2D
 			{
 				{ "alive", npc.Alive },
 				{ "converted", npc.Converted },
-				{ "married", npc.Married }
+				{ "married", npc.Married },
+				{ "is_love_interest", npc.IsLoveInterest } // Expose for UI filtering
 			};
 			
 			// Include Position (SERVER AUTHORITY)
@@ -1445,29 +1689,31 @@ public partial class GameWorld : Node2D
 
 		// PRODUCER ACTIONS VISIBILITY
 		var marryBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+		var manageCamsBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 		var cameraPanel = _uiLayer.GetNodeOrNull<Control>("CameraPanel");
 		bool isProducer = (_myRole?.ToLower() == "producer");
 		if (marryBtn != null) marryBtn.Visible = isProducer;
-		if (cameraPanel != null) cameraPanel.Visible = isProducer;
-		
-		if (isProducer && cameraPanel != null)
+		if (manageCamsBtn != null) manageCamsBtn.Visible = isProducer;
+		if (isProducer)
 		{
-			// Update Active Cameras Text
+			// Update Active Cameras Text in HUD
 			var activeCameras = _localGameState?["active_camera_room_ids"]?.ToObject<List<string>>() ?? new List<string>();
-			var infoLabel = cameraPanel.GetNodeOrNull<Label>("CameraContainer/CameraInfo");
-			if (infoLabel != null)
+			if (_activeCamerasLabel != null)
 			{
-				infoLabel.Text = activeCameras.Count > 0 
-					? $"Active: {string.Join(", ", activeCameras)}"
-					: "Active: None";
+				_activeCamerasLabel.Visible = true;
+				_activeCamerasLabel.Text = activeCameras.Count > 0 
+					? $"Active Security Cameras:\n{string.Join(", ", activeCameras)}"
+					: "Active Security Cameras:\nNone";
 			}
 			
-			// Update Call Police Button
-			var policeBtn = cameraPanel.GetNodeOrNull<Button>("CameraContainer/CallPoliceButton");
+			// Update Call Police Button in HUD
 			bool admirerCaught = _localGameState?["admirer_caught"]?.Value<bool>() ?? false;
-			if (policeBtn != null)
+			bool isEliminated = _localGameState?["admirer_eliminated"]?.Value<bool>() ?? false;
+			
+			if (_callPoliceButton != null)
 			{
-				policeBtn.Visible = admirerCaught;
+				// Only show if caught AND not yet eliminated
+				_callPoliceButton.Visible = admirerCaught && !isEliminated;
 			}
 			
 			// Update Camera Select Panel Buttons (if open)
@@ -1483,34 +1729,62 @@ public partial class GameWorld : Node2D
 						btn.ButtonPressed = isActive; // Set check state
 					}
 				}
+
+				// Also update the visual overlay on the editorial asset (rooms greyed)
+				if (_editorialContentNode != null)
+				{
+					// Iterate children that are Area2D rooms and set their is_active property
+					foreach (var child in _editorialContentNode.GetChildren())
+					{
+						if (child is Node roomNode)
+						{
+							// Expect the room node to have an exported `room_name` property
+							var nameProp = roomNode.Get("room_name");
+							string roomName = nameProp.Obj != null ? nameProp.ToString().Replace(" ", "") : roomNode.Name.ToString().Replace(" ", "");
+							bool shouldBeActive = activeCameras.Contains(roomName);
+							// Only set if property exists to avoid errors
+							if (roomNode.HasMethod("set_active"))
+							{
+								roomNode.Call("set_active", shouldBeActive);
+							}
+							else 
+							{
+								// Fallback (shouldn't be needed after fix)
+								try
+								{
+									roomNode.Set("is_active", shouldBeActive);
+									if (roomNode.HasMethod("update_visual")) roomNode.Call("update_visual");
+								}
+								catch (Exception) { /* catch */ }
+							}
+						}
+					}
+				}
 			}
 		}
 
 		if (isProducer)
 		{
 			// Update Marriage Panel List if needed
-			var mPanelBox = _uiLayer.GetNodeOrNull<VBoxContainer>("MarriagePanel/Container");
-			if (mPanelBox != null)
+			var mPanel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
+			if (mPanel != null && mPanel.Visible)
 			{
 				var activeNpcs = _localGameState["active_npcs"]?.ToObject<List<string>>() ?? new();
-				// Simple check: if checkbox count != npc count, rebuild
-				int checkBoxCount = mPanelBox.GetChildren().OfType<CheckButton>().Count();
-				if (checkBoxCount != activeNpcs.Count)
+				var listA = mPanel.FindChild("ListA", true, false) as VBoxContainer;
+				
+				// Rebuild if empty or count mismatch (e.g. new NPC)
+				// FIX: Must filter activeNpcs same way PopulateMarriageList does to avoid infinite update loop
+				var npcStates = _localGameState?["npc_states"] as JObject;
+				int visibleNpcs = 0;
+				foreach (var npc in activeNpcs)
 				{
-					// Remove old checks
-					foreach (var child in mPanelBox.GetChildren().OfType<CheckButton>().ToList()) child.QueueFree();
-					
-					// Add new checks (Insert before Confirm button)
-					int idx = 1; // After Label
-					foreach (var npcId in activeNpcs)
-					{
-						var cb = new CheckButton();
-						cb.Name = npcId; // Store ID in Name
-						cb.Text = Capitalize(npcId);
-						cb.AddThemeFontOverride("font", _customFont);
-						mPanelBox.AddChild(cb);
-						mPanelBox.MoveChild(cb, idx++);
-					}
+					if (npcStates != null && npcStates[npc]?["is_love_interest"]?.Value<bool>() == true) continue;
+					visibleNpcs++;
+				}
+				
+				if (listA != null && listA.GetChildCount() != visibleNpcs)
+				{
+					UpdateMarriageLists();
 				}
 			}
 		}

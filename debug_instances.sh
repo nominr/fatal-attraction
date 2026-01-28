@@ -4,6 +4,11 @@
 GODOT_APP_PATH="/Applications/Godot_mono.app"
 PROJECT_PATH=$(pwd)
 
+# Cleanup existing instances
+echo "Killing existing Godot processes..."
+pkill -f "Godot" || true
+sleep 1
+
 # Check if Godot exists
 if [ ! -d "$GODOT_APP_PATH" ]; then
     echo "Error: Godot.app not found at $GODOT_APP_PATH"
