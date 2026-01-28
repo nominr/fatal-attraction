@@ -1,0 +1,130 @@
+{
+  "default": {
+    "intro_topics": [
+      {
+        "id": "intro_mood",
+        "text": "How are you feeling about the show?",
+        "score": 0,
+        "response": "I'm a bit nervous, but I think it's going well.",
+        "followups": ["followup_confidence", "followup_gossip", "followup_generic"]
+      },
+      {
+        "id": "intro_outfit",
+        "text": "You look great today! Who are you wearing?",
+        "score": 1,
+        "response": "Oh, thank you! It's just something I threw on.",
+        "followups": ["followup_style", "followup_compliment", "followup_dating"]
+      },
+      {
+        "id": "intro_drama",
+        "text": "I heard some rumors about you. Care to comment?",
+        "score": -1,
+        "response": "Excuse me? I don't listen to baseless gossip.",
+        "followups": ["followup_apology", "followup_push", "followup_change_subject"]
+      },
+      {
+        "id": "intro_excited",
+        "text": "What are you most excited for today?",
+        "score": 1,
+        "response": "I really hope to make a connection with someone special.",
+        "followups": ["followup_romance", "followup_strategy", "followup_hope"]
+      },
+      {
+        "id": "intro_pregnant",
+        "text": "Are you pregnant?",
+        "score": -1,
+        "response": "That is incredibly rude! No!",
+        "followups": ["followup_apology", "followup_awkward", "followup_defensive"]
+      },
+      {
+        "id": "intro_weather",
+        "text": "Nice weather we're having.",
+        "score": 0,
+        "response": "I suppose so. Did you have a real question?",
+        "followups": ["followup_work", "followup_hobby", "followup_generic"]
+      }
+    ],
+    "followups": {
+      "followup_confidence": {
+        "text": "Confidence is key! You'll do great.",
+        "score": 1,
+        "response": "Thanks, I needed to hear that!"
+      },
+      "followup_gossip": {
+        "text": "Any tea you want to spill?",
+        "score": 0,
+        "response": "Not right now. My lips are sealed."
+      },
+      "followup_generic": {
+        "text": "Okay, thanks for your time.",
+        "score": 0,
+        "response": "See you later."
+      },
+      "followup_style": {
+        "text": "It really suits you.",
+        "score": 1,
+        "response": "You're too kind!"
+      },
+      "followup_compliment": {
+        "text": "You're the star of the show!",
+        "score": 1,
+        "response": "Aww, stop it!"
+      },
+      "followup_dating": {
+        "text": "Is it to impress anyone special?",
+        "score": 0,
+        "response": "Maybe... we'll see."
+      },
+      "followup_apology": {
+        "text": "I'm sorry, I didn't mean to offend.",
+        "score": 1,
+        "response": "It's fine. Just watch it next time."
+      },
+      "followup_push": {
+        "text": "Come on, the audience wants to know!",
+        "score": -1,
+        "response": "I said no comment! This interview is over."
+      },
+      "followup_change_subject": {
+        "text": "So, how about the food?",
+        "score": 0,
+        "response": "The catering is decent, I guess."
+      },
+      "followup_romance": {
+        "text": "Anyone caught your eye yet?",
+        "score": 1,
+        "response": "There is someone... but I won't say who yet."
+      },
+      "followup_strategy": {
+        "text": "What's your strategy to win?",
+        "score": 0,
+        "response": "Just be myself."
+      },
+      "followup_hope": {
+        "text": "I'm rooting for you!",
+        "score": 1,
+        "response": "Thank you so much!"
+      },
+      "followup_awkward": {
+        "text": "...",
+        "score": -1,
+        "response": "Use your brain next time."
+      },
+      "followup_defensive": {
+        "text": "It was just a question!",
+        "score": -1,
+        "response": "A terrible one."
+      },
+      "followup_work": {
+        "text": "What do you do for work?",
+        "score": 0,
+        "response": "I'm an accountant."
+      },
+      "followup_hobby": {
+        "text": "What do you do for fun?",
+        "score": 1,
+        "response": "I love hiking and painting."
+      }
+    }
+  }
+}

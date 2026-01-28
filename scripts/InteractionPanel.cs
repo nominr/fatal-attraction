@@ -117,6 +117,12 @@ public partial class InteractionPanel : PanelContainer
 		_closeButton.AddThemeFontOverride("font", _customFont);
 		_closeButton.Pressed += OnClosePressed;
 		dialogueVBox.AddChild(_closeButton);
+
+		// Layering and Positioning
+		ZIndex = 95; // High ZIndex to sit above most UI (Producer panels are ~0, GameOver is 99)
+		SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
+		GrowHorizontal = Control.GrowDirection.Both;
+		GrowVertical = Control.GrowDirection.Both;
 	}
 
 	/// <summary>
@@ -169,7 +175,9 @@ public partial class InteractionPanel : PanelContainer
 				var actionButton = new Button();
 				actionButton.Text = actionText;
 				actionButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+				actionButton.CustomMinimumSize = new Vector2(0, 40); // Taller buttons for easier clicking
 				actionButton.AddThemeFontOverride("font", _customFont);
+				actionButton.AddThemeFontSizeOverride("font_size", 20); // Larger text
 				
 				// Capture the actionId for the lambda
 				string capturedActionId = actionId;
@@ -179,9 +187,8 @@ public partial class InteractionPanel : PanelContainer
 			}
 		}
 
-		// Position at center of screen
-		var viewportSize = GetViewport().GetVisibleRect().Size;
-		Position = (viewportSize - Size) / 2;
+		// Reset position to center (force update)
+		SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
 
 		Show();
 	}
@@ -190,8 +197,14 @@ public partial class InteractionPanel : PanelContainer
 	{
 		GD.Print($"Action selected: {actionId} for NPC {_currentNpcId}");
 		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
-		Hide();
-		EmitSignal(SignalName.PanelClosed);
+		
+		// Don't close panel if it's an interview step
+		// "start_interview" or "interview_option_..."
+		if (!actionId.Contains("interview"))
+		{
+			Hide();
+			EmitSignal(SignalName.PanelClosed);
+		}
 	}
 
 	private void OnClosePressed()

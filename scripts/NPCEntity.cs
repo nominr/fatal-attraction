@@ -96,6 +96,9 @@ public partial class NPCEntity : CharacterBody2D
 	// Temporary movement disable (slip on banana)
 	private bool _isSlipping = false;
 	private double _slipTimer = 0.0;
+	
+	// Interview immobilization
+	private bool _isFrozen = false;
 
 	public override void _Ready()
 	{
@@ -169,8 +172,8 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
-		// If slipping, don't move
-		if (_isSlipping) return;
+		// If slipping or frozen (interview), don't move
+		if (_isSlipping || _isFrozen) return;
 
 		// CLIENTS DO NOT RUN AI - they are synced by server
 		if (!Multiplayer.IsServer())
@@ -739,6 +742,19 @@ public partial class NPCEntity : CharacterBody2D
 		{
 			var labelWidth = _interactHint.Size.X;
 			_interactHint.Position = new Vector2(-labelWidth / 2, 70);
+		}
+	}
+
+	/// <summary>
+	/// Freezes the NPC (stops wandering) for interviews or other events.
+	/// </summary>
+	public void SetFrozen(bool frozen)
+	{
+		_isFrozen = frozen;
+		if (frozen)
+		{
+			// Optional: Stop current velocity
+			Velocity = Vector2.Zero;
 		}
 	}
 }

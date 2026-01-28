@@ -384,21 +384,12 @@
               ]
             },
             {
-              "id": "interview",
-              "text": "Interview Katy",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Katy! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -569,21 +560,12 @@
               ]
             },
             {
-              "id": "interview_john",
-              "text": "Interview John",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed John! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -754,21 +736,12 @@
               ]
             },
             {
-              "id": "interview_rebecca",
-              "text": "Interview Rebecca",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Rebecca! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -939,21 +912,12 @@
               ]
             },
             {
-              "id": "interview_marcus",
-              "text": "Interview Marcus",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Marcus! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -1106,21 +1070,12 @@
               ]
             },
             {
-              "id": "interview_sofia",
-              "text": "Interview Sofia",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Sofia! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -1273,21 +1228,12 @@
               ]
             },
             {
-              "id": "interview_amir",
-              "text": "Interview Amir",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Amir! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -1440,21 +1386,12 @@
               ]
             },
             {
-              "id": "interview_bella",
-              "text": "Interview Bella",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Bella! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -1607,21 +1544,12 @@
               ]
             },
             {
-              "id": "interview_chris",
-              "text": "Interview Chris",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Chris! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -1774,21 +1702,12 @@
               ]
             },
             {
-              "id": "interview_diana",
-              "text": "Interview Diana",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Diana! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
@@ -1941,21 +1860,12 @@
               ]
             },
             {
-              "id": "interview_eli",
-              "text": "Interview Eli",
+              "id": "start_interview",
+              "text": "Start Interview",
               "requires": {
                 "role": "producer"
               },
-              "effects": [
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You interviewed Eli! Ratings increased."
-                }
-              ]
+              "effects": []
             }
           ]
         }
