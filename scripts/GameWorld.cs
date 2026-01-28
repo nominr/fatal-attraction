@@ -1179,6 +1179,24 @@ public partial class GameWorld : Node2D
 		string desc = npcConfig?["interactionTree"]?["root"]?["text"]?.Value<string>() 
 			?? "An NPC awaits your action.";
 
+		// INTERVIEW UI OVERRIDE
+		// Check if we are interviewing this NPC
+		var activeInterviews = _localGameState?["active_interviews"] as JObject;
+		// _myRole is e.g. "producer", key in dictionary is "Producer" (Enum strings usually PascalCase?)
+		// Let's check both or normalize. Using Enum.Parse logic earlier means keys are likely Role.ToString().
+		// GameEngine generates keys as Role.ToString() -> "Producer".
+		// _myRole from network might be "producer" (lowercase).
+		
+		string roleKey = Capitalize(_myRole); // Ensure "Producer"
+		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
+		{
+			var interviewInfo = activeInterviews[roleKey];
+			if (interviewInfo["npcId"]?.Value<string>() == npcId)
+			{
+				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+			}
+		}
+
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
 		
 		// Store current interacting NPC ID for proximity tracking
@@ -1241,10 +1259,28 @@ public partial class GameWorld : Node2D
 			
 			// Update Game Engine (Traps, etc.)
 			// Update NPC Quadrants in Game Engine (for Editorial Focus)
+			// AND Freeze NPCs if they are being interviewed
+			
+			// 1. Get set of frozen NPCs (currently in interview)
+			var frozenNpcIds = new HashSet<string>();
+			if (_gameEngine.GameState.ActiveInterviews != null)
+			{
+				foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
+				{
+					if (!string.IsNullOrEmpty(kvp.Value.NpcId))
+						frozenNpcIds.Add(kvp.Value.NpcId);
+				}
+			}
+
 			foreach (var kvp in _npcEntities)
 			{
 				var npcEntity = kvp.Value;
+				var npcId = kvp.Key;
 				var npcData = _gameEngine.GameState.GetNPC(kvp.Key);
+				
+				// Freeze/Unfreeze
+				npcEntity.SetFrozen(frozenNpcIds.Contains(npcId));
+
 				if (npcData != null)
 				{
 					// Quadrants: 0:TL, 1:TR, 2:BL, 3:BR
@@ -1461,6 +1497,19 @@ public partial class GameWorld : Node2D
 		}
 		status["network_players"] = netPlayers;
 
+		// Active Interview State (for UI)
+		var interviews = new JObject();
+		foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
+		{
+			var ctx = kvp.Value;
+			interviews[kvp.Key.ToString()] = new JObject
+			{
+				{ "npcId", ctx.NpcId },
+				{ "lastResponse", ctx.LastResponse }
+			};
+		}
+		status["active_interviews"] = interviews;
+
 		return status.ToString();
 	}
 
@@ -1580,6 +1629,79 @@ public partial class GameWorld : Node2D
 			_goalsMenu.SetRole(_myRole, loveInterest, targets);
 			_goalsMenu.ShowMenu();
 		}
+
+		// Refresh Interaction Panel logic with "Self-Healing" for Interviews
+		// If server says we are in an interview, we ensure the panel is open.
+		var activeInterviews = _localGameState?["active_interviews"] as JObject;
+		bool isInInterview = false;
+		string interviewNpcId = null;
+		
+		if (!string.IsNullOrEmpty(_myRole) && activeInterviews != null)
+		{
+			string roleKey = Capitalize(_myRole); 
+			if (activeInterviews.ContainsKey(roleKey))
+			{
+				var interviewInfo = activeInterviews[roleKey];
+				string nId = interviewInfo["npcId"]?.Value<string>();
+				if (!string.IsNullOrEmpty(nId))
+				{
+					isInInterview = true;
+					interviewNpcId = nId;
+				}
+			}
+		}
+
+		if (isInInterview && interviewNpcId != null)
+		{
+			// If panel is closed or showing wrong NPC, force it open/correct
+			if (!_interactionPanel.Visible || _currentInteractingNpcId != interviewNpcId)
+			{
+				_currentInteractingNpcId = interviewNpcId;
+				RefreshInteractionPanel(); 
+			}
+			else
+			{
+				// Just refresh content
+				RefreshInteractionPanel();
+			}
+		}
+		else if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		{
+			RefreshInteractionPanel();
+		}
+	}
+
+	private void RefreshInteractionPanel()
+	{
+		string npcId = _currentInteractingNpcId;
+		if (string.IsNullOrEmpty(npcId)) return;
+
+		// Get available actions from cached state
+		var allActions = _localGameState?["all_actions"] as JObject;
+		var myActions = allActions?[_myRole.ToLower()] as JObject;
+		var npcActions = myActions?[npcId];
+
+		var npcEntity = _npcEntities.GetValueOrDefault(npcId);
+		string npcName = npcEntity?.NpcName ?? npcId;
+
+		var npcConfig = _localGameState?["npcs"]?[npcId];
+		string desc = npcConfig?["interactionTree"]?["root"]?["text"]?.Value<string>() 
+			?? "An NPC awaits your action.";
+
+		// INTERVIEW UI OVERRIDE
+		var activeInterviews = _localGameState?["active_interviews"] as JObject;
+		string roleKey = Capitalize(_myRole); 
+		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
+		{
+			var interviewInfo = activeInterviews[roleKey];
+			if (interviewInfo["npcId"]?.Value<string>() == npcId)
+			{
+				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+			}
+		}
+
+		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
+		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
 
 	private void SpawnNPCsFromState()
@@ -1774,6 +1896,12 @@ public partial class GameWorld : Node2D
 					UpdateMarriageLists();
 				}
 			}
+		}
+
+		// Refresh Interaction Panel if open (for dynamic content like Interview)
+		if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		{
+			RefreshInteractionPanel();
 		}
 
 
