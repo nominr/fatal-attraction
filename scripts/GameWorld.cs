@@ -38,8 +38,8 @@ public partial class GameWorld : Node2D
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
-    // Editorial asset content node (holds room Area2D children)
-    private Node2D _editorialContentNode;
+	// Editorial asset content node (holds room Area2D children)
+	private Node2D _editorialContentNode;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
@@ -149,13 +149,16 @@ public partial class GameWorld : Node2D
 			GD.PrintErr("TileMapLayer NOT found in scene!");
 		}
 
-		if (Multiplayer.IsServer())
+		if (Multiplayer.MultiplayerPeer != null)
 		{
-			InitializeServer();
-		}
-		else
-		{
-			InitializeClient();
+			if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer())
+			{
+				InitializeServer();
+			}
+			else
+			{
+				InitializeClient();
+			}
 		}
 	}
 
@@ -266,7 +269,7 @@ public partial class GameWorld : Node2D
 	private void OnBodyEnteredRoom(Node body, string roomId)
 	{
 		// GD.Print($"[GameWorld] Body {body.Name} entered {roomId}");
-		if (Multiplayer.IsServer() && body is NPCEntity npcEntity)
+		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer() && body is NPCEntity npcEntity)
 		{
 			// Update GameEngine NPC location
 			var npc = _gameEngine.GameState.GetNPC(npcEntity.NpcId);
@@ -740,10 +743,10 @@ public partial class GameWorld : Node2D
 			var contentNode = assetInstance.GetNodeOrNull("Node2D");
 			if (contentNode != null)
 			{
-                // keep reference to the content node so we can update room visuals later
-                _editorialContentNode = contentNode as Node2D;
+				// keep reference to the content node so we can update room visuals later
+				_editorialContentNode = contentNode as Node2D;
 
-                foreach (var child in contentNode.GetChildren())
+				foreach (var child in contentNode.GetChildren())
 				{
 					if (child.HasSignal("room_clicked"))
 					{
@@ -1238,7 +1241,11 @@ public partial class GameWorld : Node2D
 
 	public override void _Process(double delta)
 	{
-		if (Multiplayer.IsServer() && _gameActive)
+		// Guard against multiplayer peer not being set up yet
+		if (Multiplayer.MultiplayerPeer == null)
+			return;
+		
+		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer() && _gameActive)
 		{
 			// Check for Win Condition
 			if (_gameEngine.GameState.IsGameOver)
@@ -1398,7 +1405,7 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void RequestGameState()
 	{
-		if (!Multiplayer.IsServer()) return;
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 		long senderId = Multiplayer.GetRemoteSenderId();
 		string json = GenerateGameStateJson();
 		RpcId(senderId, MethodName.UpdateGameState, json);
@@ -1406,7 +1413,7 @@ public partial class GameWorld : Node2D
 
 	private void BroadcastGameState()
 	{
-		if (!Multiplayer.IsServer()) return;
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 		string json = GenerateGameStateJson();
 		Rpc(MethodName.UpdateGameState, json);
 	}
@@ -1931,6 +1938,14 @@ public partial class GameWorld : Node2D
 				{
 					// Parse the notification to extract the player's move and result
 					// Format: "Prophet played Rock vs Scissors... and WON!"
+				// Only show the animation if the LOCAL player is the Prophet
+				bool isLocalPlayerProphet = (_myRole?.ToLower() == "prophet");
+				
+				GD.Print($"[RPS Animation Check] My role: '{_myRole}', Is Prophet: {isLocalPlayerProphet}, Message: '{msg}'");
+				
+				if (isLocalPlayerProphet)
+				{
+					GD.Print("[RPS Animation] Showing animation for Prophet player");
 					bool playerWon = msg.Contains("WON");
 					string playerMove = "";
 					
@@ -1949,11 +1964,16 @@ public partial class GameWorld : Node2D
 						_rpsResultOverlay.Show(playerMove, playerWins: playerWon);
 					}
 				}
+				else
+				{
+					GD.Print($"[RPS Animation] Skipping animation - not Prophet (role: '{_myRole}')");
 			}
 		}
+	}
+}
 
-		// Game Over check
-		bool isGameOver = _localGameState["game_over"]?.Value<bool>() ?? false;
+// Game Over check
+bool isGameOver = _localGameState["game_over"]?.Value<bool>() ?? false;
 		if (isGameOver)
 		{
 			// 1. DISABLE PLAYER INPUT
@@ -2091,7 +2111,7 @@ public partial class GameWorld : Node2D
 				bool married = state["married"]?.Value<bool>() ?? false;
 				
 				// Sync Position (If client)
-				if (!Multiplayer.IsServer())
+				if (Multiplayer.MultiplayerPeer != null && !Multiplayer.IsServer())
 				{
 					float? px = state["pos_x"]?.Value<float>();
 					float? py = state["pos_y"]?.Value<float>();
@@ -2202,10 +2222,10 @@ public partial class GameWorld : Node2D
 	private void OnPlayerPositionChanged(long playerId, Vector2 position)
 	{
 		// This is called when the LOCAL player moves on this machine
-		GD.Print($"[GameWorld] OnPlayerPositionChanged: Player {playerId} at {position}, IsServer={Multiplayer.IsServer()}");
+		GD.Print($"[GameWorld] OnPlayerPositionChanged: Player {playerId} at {position}, IsServer={Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer()}");
 		
 		// Send the position update to all other peers
-		if (Multiplayer.IsServer())
+		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer())
 		{
 			// Server: Update own position locally and broadcast to all clients
 			if (_playerControllers.TryGetValue(playerId, out var controller))
@@ -2229,7 +2249,7 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
 	private void SendPlayerPosition(long playerId, Vector2 position)
 	{
-		if (!Multiplayer.IsServer()) return;
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 		
 		GD.Print($"[GameWorld] Server received position from client: Player {playerId} at {position}");
 		
@@ -2274,7 +2294,7 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
 	public void SubmitAction(string npcId, string actionId)
 	{
-		if (!Multiplayer.IsServer()) return;
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 
 		long senderId = Multiplayer.GetRemoteSenderId();
 		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
@@ -2390,7 +2410,7 @@ public partial class GameWorld : Node2D
 		bananaRoot.AddChild(area);
 
 		// Only the server should react to triggers
-		if (Multiplayer.IsServer())
+		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer())
 		{
 			area.BodyEntered += (Node2D body) =>
 			{
@@ -2498,7 +2518,7 @@ public partial class GameWorld : Node2D
 	{
 		GD.Print("[GameWorld] Return to Lobby button pressed");
 		
-		if (Multiplayer.IsServer())
+		if (Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer())
 		{
 			// Server tells all clients to return to lobby, then returns itself
 			Rpc(MethodName.ReturnToLobby);
@@ -2513,7 +2533,7 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
 	private void RequestReturnToLobby()
 	{
-		if (!Multiplayer.IsServer()) return;
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 		GD.Print("[GameWorld] Server received request to return to lobby");
 		// Server broadcasts to all clients (including itself via CallLocal in ReturnToLobby)
 		Rpc(MethodName.ReturnToLobby);
@@ -2541,7 +2561,7 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
 	private void CancelConversionDueToDistance(string playerRole)
 	{
-		if (!Multiplayer.IsServer()) return;
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 		
 		GD.Print($"[GameWorld] Cancelling conversion for {playerRole} due to distance");
 		

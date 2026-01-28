@@ -48,12 +48,22 @@ public partial class NetworkManager : Node
 	public void HostGame(string playerName, int port = DefaultPort)
 	{
 		PlayerName = playerName;
+		
+		// Clean up any existing peer
+		if (Multiplayer.MultiplayerPeer != null)
+		{
+			GD.Print("Cleaning up existing multiplayer peer before hosting...");
+			Multiplayer.MultiplayerPeer.Close();
+			Multiplayer.MultiplayerPeer = null;
+		}
+		
 		var peer = new ENetMultiplayerPeer();
 		var error = peer.CreateServer(port, MaxClients);
 		
 		if (error != Error.Ok)
 		{
 			GD.PrintErr($"Failed to create server: {error}");
+			GD.PrintErr($"Port {port} may already be in use. Try closing other instances or wait a moment.");
 			return;
 		}
 
@@ -66,6 +76,15 @@ public partial class NetworkManager : Node
 	public void JoinGame(string address, string playerName, int port = DefaultPort)
 	{
 		PlayerName = playerName;
+		
+		// Clean up any existing peer
+		if (Multiplayer.MultiplayerPeer != null)
+		{
+			GD.Print("Cleaning up existing multiplayer peer before joining...");
+			Multiplayer.MultiplayerPeer.Close();
+			Multiplayer.MultiplayerPeer = null;
+		}
+		
 		var peer = new ENetMultiplayerPeer();
 		var error = peer.CreateClient(address, port);
 

@@ -1,0 +1,13 @@
+﻿		var notifs = _localGameState["notifications"];
+		if (notifs != null)
+		{
+			foreach (string msg in notifs)
+			{
+				_notificationText.AddText(msg + "\n");
+				
+				// Check for RPS result in notifications to show the overlay
+				if (_rpsResultOverlay != null && msg.Contains("played") && (msg.Contains("WON") || msg.Contains("LOST")))
+				{
+					// Parse the notification to extract the player's move and result
+					// Format: "Prophet played Rock vs Scissors... and WON!"
+				// Only show the ani
