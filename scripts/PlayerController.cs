@@ -64,7 +64,7 @@ public partial class PlayerController : CharacterBody2D
 		
 		// Sprite is scaled 4x (approx 128px height)
 		// Set collision to match height (128) and reduced width (80) for playability
-		shape.Size = new Vector2(80, 128); 
+		shape.Size = new Vector2(60, 120); 
 		collisionShape.Shape = shape;
 		// Position centered (0,0) matches sprite center
 		
@@ -82,16 +82,23 @@ public partial class PlayerController : CharacterBody2D
 		_camera.Enabled = false; // Will be enabled when SetLocalPlayer is called
 		AddChild(_camera);
 
-		// Role label below player (black color)
+		// Role label below player (white color on transparent grey background)
 		_roleLabel = new Label();
 		_roleLabel.Text = PlayerRole;
 		_roleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_roleLabel.Position = new Vector2(-40, -90); // Above sprite
-		_roleLabel.AddThemeColorOverride("font_color", Colors.Black);
+		_roleLabel.AddThemeColorOverride("font_color", Colors.White);
 		_roleLabel.AddThemeFontOverride("font", _customFont);
-		_roleLabel.AddThemeFontSizeOverride("font_size", 24);
-		_roleLabel.CustomMinimumSize = new Vector2(80, 20);
+		_roleLabel.AddThemeFontSizeOverride("font_size", 28);
+		// Add transparent grey background
+		var bgStyle = new StyleBoxFlat();
+		bgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
+		bgStyle.SetCornerRadiusAll(4);
+		bgStyle.SetContentMarginAll(4);
+		_roleLabel.AddThemeStyleboxOverride("normal", bgStyle);
 		AddChild(_roleLabel);
+		// Center the label over the player based on text width
+		CallDeferred(MethodName.CenterRoleLabel);
+		// Size will auto-adjust based on text content
 	}
 
 
@@ -277,6 +284,19 @@ public partial class PlayerController : CharacterBody2D
 		{
 			_lastSentPosition = Position;
 			EmitSignal(SignalName.PositionChanged, _playerId, Position);
+		}
+	}
+
+	/// <summary>
+	/// Center the role label horizontally over the player based on its actual width.
+	/// Called deferred to ensure the label has been sized.
+	/// </summary>
+	private void CenterRoleLabel()
+	{
+		if (_roleLabel != null)
+		{
+			var labelWidth = _roleLabel.Size.X;
+			_roleLabel.Position = new Vector2(-labelWidth / 2, -115);
 		}
 	}
 }

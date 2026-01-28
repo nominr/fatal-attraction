@@ -360,34 +360,52 @@ public partial class NPCEntity : CharacterBody2D
 		LoadSpriteForNPC();
 		AddChild(_sprite);
 
-		// Name label above the NPC (black color)
+		// Name label above the NPC (white color on transparent grey background)
 		_nameLabel = new Label();
 		_nameLabel.Text = NpcName;
-		_nameLabel.Position = new Vector2(-50, -90); // Above sprite
 		_nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_nameLabel.AddThemeColorOverride("font_color", Colors.Black);
+		_nameLabel.AddThemeColorOverride("font_color", Colors.White);
 		_nameLabel.AddThemeFontOverride("font", _customFont);
 		_nameLabel.AddThemeFontSizeOverride("font_size", 28);
-		_nameLabel.CustomMinimumSize = new Vector2(100, 20);
+		// Add transparent grey background
+		var bgStyle = new StyleBoxFlat();
+		bgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
+		bgStyle.SetCornerRadiusAll(4);
+		bgStyle.SetContentMarginAll(4);
+		_nameLabel.AddThemeStyleboxOverride("normal", bgStyle);
 		AddChild(_nameLabel);
+		// Center the label over the NPC based on text width
+		CallDeferred(MethodName.CenterNameLabel);
+		// Size will auto-adjust based on text content
 
 		// Status indicators (hidden by default)
-		_convertedIndicator = CreateStatusIndicator(Colors.Purple, new Vector2(20, -20));
-		_deadOverlay = CreateStatusIndicator(Colors.Black.Lerp(Colors.Transparent, 0.3f), Vector2.Zero);
-		_deadOverlay.Scale = new Vector2(1.2f, 1.2f);
-		_marriedIndicator = CreateStatusIndicator(Colors.Pink, new Vector2(-20, -20));
+		// Converted (Halo) - Above head (approx -90)
+		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -65));
+		
+		// Married (Heart) - Above head (approx -90)
+		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
 
-		// Interact hint below NPC (black color)
+		// Dead Overlay (Darkens sprite)
+		_deadOverlay = CreateDeadOverlay();
+
+		// Interact hint below NPC (white color on transparent grey background)
 		_interactHint = new Label();
 		_interactHint.Text = "Click to interact";
-		_interactHint.Position = new Vector2(-60, 70); // Below sprite
 		_interactHint.HorizontalAlignment = HorizontalAlignment.Center;
-		_interactHint.AddThemeColorOverride("font_color", Colors.Black);
+		_interactHint.AddThemeColorOverride("font_color", Colors.White);
 		_interactHint.AddThemeFontOverride("font", _customFont);
 		_interactHint.AddThemeFontSizeOverride("font_size", 24);
-		_interactHint.CustomMinimumSize = new Vector2(120, 20);
+		// Add transparent grey background
+		var interactBgStyle = new StyleBoxFlat();
+		interactBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
+		interactBgStyle.SetCornerRadiusAll(4);
+		interactBgStyle.SetContentMarginAll(4);
+		_interactHint.AddThemeStyleboxOverride("normal", interactBgStyle);
 		_interactHint.Visible = false;
 		AddChild(_interactHint);
+		// Center the label over the NPC based on text width
+		CallDeferred(MethodName.CenterInteractHint);
+		// Size will auto-adjust based on text content
 	}
 
 	private void LoadSpriteForNPC()
@@ -444,21 +462,38 @@ public partial class NPCEntity : CharacterBody2D
 		}
 	}
 
-	private Sprite2D CreateStatusIndicator(Color color, Vector2 offset)
+	private Sprite2D CreateStatusIndicator(string texturePath, Vector2 offset)
+	{
+		var indicator = new Sprite2D();
+		var texture = ResourceLoader.Load<Texture2D>(texturePath);
+		if (texture != null)
+		{
+			indicator.Texture = texture;
+			// Scale sprites to match character pixel grid (4x)
+			indicator.Scale = new Vector2(4.0f, 4.0f); 
+		}
+		indicator.TextureFilter = TextureFilterEnum.Nearest;
+		indicator.Position = offset;
+		indicator.Visible = false;
+		AddChild(indicator);
+		return indicator;
+	}
+
+	private Sprite2D CreateDeadOverlay()
 	{
 		var indicator = new Sprite2D();
 		var texture = new GradientTexture2D();
-		texture.Width = 16;
-		texture.Height = 16;
+		texture.Width = 32;
+		texture.Height = 32;
 		texture.Fill = GradientTexture2D.FillEnum.Radial;
 		texture.FillFrom = new Vector2(0.5f, 0.5f);
 		texture.FillTo = new Vector2(1f, 0.5f);
 		var gradient = new Gradient();
-		gradient.SetColor(0, color);
-		gradient.SetColor(1, color.Darkened(0.5f));
+		gradient.SetColor(0, Colors.Black.Lerp(Colors.Transparent, 0.3f));
+		gradient.SetColor(1, Colors.Black.Lerp(Colors.Transparent, 0.8f));
 		texture.Gradient = gradient;
 		indicator.Texture = texture;
-		indicator.Position = offset;
+		indicator.Scale = new Vector2(4.0f, 4.0f); // Cover the whole sprite
 		indicator.Visible = false;
 		AddChild(indicator);
 		return indicator;
@@ -469,7 +504,7 @@ public partial class NPCEntity : CharacterBody2D
 		// Create collision shape matching player controller (80x128 rectangle)
 		_collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		shape.Size = new Vector2(80, 128);
+		shape.Size = new Vector2(60, 120);
 		_collisionShape.Shape = shape;
 		AddChild(_collisionShape);
 		
@@ -627,6 +662,33 @@ public partial class NPCEntity : CharacterBody2D
 		if (_sprite != null)
 		{
 			_sprite.RotationDegrees = 90;
+		}
+	}
+
+	/// <summary>
+	/// Center the name label horizontally over the NPC based on its actual width.
+	/// Called deferred to ensure the label has been sized.
+	/// </summary>
+	private void CenterNameLabel()
+	{
+		if (_nameLabel != null)
+		{
+			var labelWidth = _nameLabel.Size.X;
+			// Position much higher (-140) to be above the status icons which are at -90
+			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -120);
+		}
+	}
+
+	/// <summary>
+	/// Center the interact hint horizontally over the NPC based on its actual width.
+	/// Called deferred to ensure the label has been sized.
+	/// </summary>
+	private void CenterInteractHint()
+	{
+		if (_interactHint != null)
+		{
+			var labelWidth = _interactHint.Size.X;
+			_interactHint.Position = new Vector2(-labelWidth / 2, 70);
 		}
 	}
 

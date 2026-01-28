@@ -38,8 +38,8 @@ public partial class GameWorld : Node2D
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
-    // Editorial asset content node (holds room Area2D children)
-    private Node2D _editorialContentNode;
+	// Editorial asset content node (holds room Area2D children)
+	private Node2D _editorialContentNode;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
@@ -293,12 +293,23 @@ public partial class GameWorld : Node2D
 		// HUD Container
 		var hudContainer = new VBoxContainer();
 		hudContainer.Position = new Vector2(20, 20);
-		_uiLayer.AddChild(hudContainer);
+		hudContainer.AddThemeConstantOverride("separation", 5);
+		// Add transparent grey background to HUD
+		var hudPanel = new PanelContainer();
+		hudPanel.Position = new Vector2(20, 20);
+		var hudBgStyle = new StyleBoxFlat();
+		hudBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
+		hudBgStyle.SetCornerRadiusAll(4);
+		hudBgStyle.SetContentMarginAll(8);
+		hudPanel.AddThemeStyleboxOverride("panel", hudBgStyle);
+		hudPanel.AddChild(hudContainer);
+		_uiLayer.AddChild(hudPanel);
 
 		_timerLabel = new Label();
 		_timerLabel.Text = "Time: 05:00";
 		_timerLabel.AddThemeFontOverride("font", _customFont);
 		_timerLabel.AddThemeFontSizeOverride("font_size", 26);
+		_timerLabel.AddThemeColorOverride("font_color", Colors.White);
 		hudContainer.AddChild(_timerLabel);
 		
 		_roleLabel = new Label();
@@ -306,6 +317,7 @@ public partial class GameWorld : Node2D
 		_roleLabel.Visible = false;
 		_roleLabel.AddThemeFontOverride("font", _customFont);
 		_roleLabel.AddThemeFontSizeOverride("font_size", 26);
+		_roleLabel.AddThemeColorOverride("font_color", Colors.White);
 		hudContainer.AddChild(_roleLabel);
 
 		// Eliminated Status Label (Top Center - for non-Admirers)
@@ -344,6 +356,7 @@ public partial class GameWorld : Node2D
 		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
 		_convertedLabel.AddThemeFontOverride("font", _customFont);
 		_convertedLabel.AddThemeFontSizeOverride("font_size", 26);
+		_convertedLabel.AddThemeColorOverride("font_color", Colors.White);
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		hudContainer.AddChild(_convertedLabel);
 
@@ -727,10 +740,10 @@ public partial class GameWorld : Node2D
 			var contentNode = assetInstance.GetNodeOrNull("Node2D");
 			if (contentNode != null)
 			{
-                // keep reference to the content node so we can update room visuals later
-                _editorialContentNode = contentNode as Node2D;
+				// keep reference to the content node so we can update room visuals later
+				_editorialContentNode = contentNode as Node2D;
 
-                foreach (var child in contentNode.GetChildren())
+				foreach (var child in contentNode.GetChildren())
 				{
 					if (child.HasSignal("room_clicked"))
 					{
@@ -2185,6 +2198,7 @@ public partial class GameWorld : Node2D
 		label.Text = $"{name.ToUpper()}: {val:F1}/{max:F0}";
 		label.AddThemeFontOverride("font", _customFont);
 		label.AddThemeFontSizeOverride("font_size", 26);
+		label.AddThemeColorOverride("font_color", Colors.White);
 		return label;
 	}
 
