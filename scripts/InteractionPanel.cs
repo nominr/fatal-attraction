@@ -25,6 +25,7 @@ public partial class InteractionPanel : PanelContainer
 	// Current state
 	private string _currentNpcId;
 	private Font _customFont;
+	private string _lastContentSignature = "";
 
 	public override void _Ready()
 	{
@@ -66,6 +67,7 @@ public partial class InteractionPanel : PanelContainer
 		var portraitRect = new ColorRect();
 		portraitRect.CustomMinimumSize = new Vector2(100, 100);
 		portraitRect.Color = Colors.Gray;
+		portraitRect.MouseFilter = Control.MouseFilterEnum.Ignore; // Don't block
 		portraitPanel.AddChild(portraitRect);
 		_portraitRect = portraitRect;
 
@@ -74,6 +76,7 @@ public partial class InteractionPanel : PanelContainer
 		_npcNameLabel.HorizontalAlignment = HorizontalAlignment.Center;
 		_npcNameLabel.AddThemeFontOverride("font", _customFont);
 		_npcNameLabel.AddThemeFontSizeOverride("font_size", 18);
+		_npcNameLabel.MouseFilter = Control.MouseFilterEnum.Ignore; // Don't block
 		portraitVBox.AddChild(_npcNameLabel);
 
 		// RIGHT SIDE: Dialogue and Actions
@@ -88,10 +91,12 @@ public partial class InteractionPanel : PanelContainer
 		_npcDescLabel.CustomMinimumSize = new Vector2(0, 80);
 		_npcDescLabel.AddThemeFontOverride("font", _customFont);
 		_npcDescLabel.AddThemeFontSizeOverride("font_size", 16);
+		_npcDescLabel.MouseFilter = Control.MouseFilterEnum.Ignore; // Don't block
 		dialogueVBox.AddChild(_npcDescLabel);
 
 		// Separator
 		var separator = new HSeparator();
+		separator.MouseFilter = Control.MouseFilterEnum.Ignore;
 		dialogueVBox.AddChild(separator);
 
 		// Actions label
@@ -99,16 +104,22 @@ public partial class InteractionPanel : PanelContainer
 		actionsLabel.Text = "What will you do?";
 		actionsLabel.AddThemeFontOverride("font", _customFont);
 		actionsLabel.AddThemeFontSizeOverride("font_size", 14);
+		actionsLabel.MouseFilter = Control.MouseFilterEnum.Ignore;
 		dialogueVBox.AddChild(actionsLabel);
 
+		// Scroll container for actions
 		// Scroll container for actions
 		var scrollContainer = new ScrollContainer();
 		scrollContainer.CustomMinimumSize = new Vector2(0, 100);
 		scrollContainer.SizeFlagsVertical = SizeFlags.ExpandFill;
+		scrollContainer.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled; // Prevent horizontal scrolling
+		scrollContainer.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks to pass
 		dialogueVBox.AddChild(scrollContainer);
 
 		_actionsContainer = new VBoxContainer();
 		_actionsContainer.AddThemeConstantOverride("separation", 8);
+		_actionsContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill; // Ensure full width
+		_actionsContainer.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks to pass
 		scrollContainer.AddChild(_actionsContainer);
 
 		// Close button
@@ -130,6 +141,22 @@ public partial class InteractionPanel : PanelContainer
 	/// </summary>
 	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions)
 	{
+		// Generate Content Signature to prevent unnecessary rebuilds (which cause flickering)
+		var actionIds = new List<string>();
+		if (actions != null)
+		{
+			foreach (var a in actions) 
+				actionIds.Add(a["id"]?.Value<string>() ?? "null");
+		}
+		string newSignature = $"{npcId}|{npcDescription}|{string.Join(",", actionIds)}";
+
+		// If nothing changed and panel is already visible, just return
+		if (Visible && _lastContentSignature == newSignature)
+		{
+			return;
+		}
+
+		_lastContentSignature = newSignature;
 		_currentNpcId = npcId;
 		_npcNameLabel.Text = npcName;
 		_npcDescLabel.Text = npcDescription;

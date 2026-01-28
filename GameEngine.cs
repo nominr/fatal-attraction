@@ -273,6 +273,8 @@ namespace FatalAttraction.Engine
 				var interviewData = _gameState.InterviewData;
 				foreach (var qId in interviewCtx.AvailableQuestionIds)
 				{
+					/// REMOVED: finish_interview button logic
+					
 					JToken qData = null;
 					if (interviewCtx.CurrentStage == "Intro")
 					{
@@ -617,6 +619,7 @@ namespace FatalAttraction.Engine
 				_gameState.AddNotification($"Interview started with {npc.Name}!");
 				return (true, null);
 			}
+			// 0. (Removed explicit finish button block)
 
 			if (optionId.StartsWith("interview_option_"))
 			{
@@ -670,7 +673,12 @@ namespace FatalAttraction.Engine
 				}
 				else // Followup Done
 				{
-					ApplyInterviewResult(ctx, playerRole);
+					// Apply Score IMMEDIATELY so it counts even if user walks away
+					ApplyInterviewResult(ctx, playerRole, clearAndFinish: false); // Don't clear active status yet
+					
+					// Set to Finished state so text persists but no buttons shown
+					ctx.CurrentStage = "Finished";
+					ctx.AvailableQuestionIds = new List<string>(); // Empty list = no buttons
 					return (true, null);
 				}
 			}
@@ -906,7 +914,16 @@ namespace FatalAttraction.Engine
 			return (true, null);
 		}
 
-		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole)
+		public void EndActiveInteraction(Role playerRole)
+		{
+			if (_gameState.ActiveInterviews.ContainsKey(playerRole))
+			{
+				_gameState.ActiveInterviews.Remove(playerRole);
+				// _gameState.AddNotification("Interaction cleared.");
+			}
+		}
+
+		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
 		{
 			// Add score to Ratings (if > 0)
 			// User request: "-1 ratings points" for bad, so we apply delta directly.
@@ -924,7 +941,10 @@ namespace FatalAttraction.Engine
 			 _gameState.AddNotification($"Interview finished. Score: {ctx.CurrentScore}. {resultMsg}");
 			 
 			 // Clear interview
-			 _gameState.ActiveInterviews.Remove(playerRole);
+			 if (clearAndFinish)
+			 {
+				_gameState.ActiveInterviews.Remove(playerRole);
+			 }
 		}
 
 		private void ApplyActionEffects(JToken option, Role playerRole, string npcId, bool success)
@@ -995,6 +1015,14 @@ namespace FatalAttraction.Engine
 		{
 			GameState = new GameState(configPath);
 			InteractionResolver = new InteractionResolver(GameState);
+		}
+
+		public void EndActiveInteraction(Role role)
+		{
+			if (GameState.ActiveInterviews.ContainsKey(role))
+			{
+				GameState.ActiveInterviews.Remove(role);
+			}
 		}
 
 		public (string npcId, string prompt) GetCurrentNPCPrompt()
