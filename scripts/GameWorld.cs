@@ -371,7 +371,7 @@ public partial class GameWorld : Node2D
 		_activeCamerasLabel = new Label();
 		_activeCamerasLabel.Text = "Active Security Cameras:\nNone";
 		_activeCamerasLabel.AddThemeFontOverride("font", _customFont);
-		_activeCamerasLabel.AddThemeFontSizeOverride("font_size", 20);
+		_activeCamerasLabel.AddThemeFontSizeOverride("font_size", 26);
 		_activeCamerasLabel.Visible = false;
 		_producerStatsContainer.AddChild(_activeCamerasLabel);
 
@@ -487,7 +487,7 @@ public partial class GameWorld : Node2D
 		mTitle.Text = "Select 2 NPCs to Marry:";
 		mTitle.HorizontalAlignment = HorizontalAlignment.Center;
 		mTitle.AddThemeFontOverride("font", _customFont);
-		mTitle.AddThemeFontSizeOverride("font_size", 18);
+		mTitle.AddThemeFontSizeOverride("font_size", 23);
 		mVBoxMain.AddChild(mTitle);
 
 		// Columns Container
@@ -508,6 +508,7 @@ public partial class GameWorld : Node2D
 		lblA.Text = "Partner 1";
 		lblA.HorizontalAlignment = HorizontalAlignment.Center;
 		lblA.AddThemeFontOverride("font", _customFont);
+		lblA.AddThemeFontSizeOverride("font_size", 21);
 		colA.AddChild(lblA);
 		// ScrollContainer for list A
 		var scrollA = new ScrollContainer();
@@ -530,6 +531,7 @@ public partial class GameWorld : Node2D
 		lblB.Text = "Partner 2";
 		lblB.HorizontalAlignment = HorizontalAlignment.Center;
 		lblB.AddThemeFontOverride("font", _customFont);
+		lblB.AddThemeFontSizeOverride("font_size", 21);
 		colB.AddChild(lblB);
 		// ScrollContainer for list B
 		var scrollB = new ScrollContainer();
@@ -549,6 +551,7 @@ public partial class GameWorld : Node2D
 		mConfirm.Text = "CONFIRM MARRIAGE";
 		mConfirm.CustomMinimumSize = new Vector2(0, 50);
 		mConfirm.AddThemeFontOverride("font", _customFont);
+		mConfirm.AddThemeFontSizeOverride("font_size", 21);
 		
 		mConfirm.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
 		mConfirm.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
@@ -1010,6 +1013,7 @@ public partial class GameWorld : Node2D
 			btn.ToggleMode = true;
 			btn.Text = Capitalize(npcId);
 			btn.AddThemeFontOverride("font", _customFont);
+			btn.AddThemeFontSizeOverride("font_size", 21);
 			
 			// Trap Styling for List Items
 			btn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
