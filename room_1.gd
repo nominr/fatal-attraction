@@ -28,6 +28,12 @@ func _ready() -> void:
 	
 	update_visual()
 
+func set_active(val: bool):
+	if is_active != val:
+		print("Room ", room_name, " set_active: ", val)
+		is_active = val
+		update_visual()
+
 func _on_mouse_entered():
 	print("Mouse Enter: ", room_name)
 	is_hovered = true
@@ -52,6 +58,6 @@ func update_visual():
 func _on_room_input_event(_viewport, event, _shape_idx):
 	if event is InputEventMouseButton and event.pressed:
 		print("CLICKED:", room_name)
-		is_active = !is_active # Toggle state
-		update_visual()
+		# Emit click and let authoritative game state (server) toggle active cameras.
+		# This prevents local UI from desynchronizing and greying more than two rooms.
 		room_clicked.emit(room_name)

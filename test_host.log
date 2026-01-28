@@ -1,0 +1,444 @@
+Godot Engine v4.5.1.stable.mono.official.f62fdbde1 - https://godotengine.org
+Metal 3.1 - Forward+ - Using Device #0: Apple - Apple M3 (Apple9)
+
+Start clicked - transitioning to Info scene
+Skip clicked - transitioning to Lobby scene
+[Lobby] Checking local IP addresses...
+[Lobby] Found IP: fe80:0:0:0:8ac5:b6c5:9aef:f307
+[Lobby] Found IP: fe80:0:0:0:ce81:b1c:bd2c:69e
+[Lobby] Found IP: fe80:0:0:0:3b43:a4ac:b7fa:a5bd
+[Lobby] Found IP: fe80:0:0:0:ad2c:5233:6547:3fec
+[Lobby] Found IP: fe80:0:0:0:7885:aff:fe5f:bec1
+[Lobby] Found IP: fe80:0:0:0:7885:aff:fe5f:bec1
+[Lobby] Found IP: fe80:0:0:0:8cb:7250:d17b:3db3
+[Lobby] Found IP: 168.4.103.26
+[Lobby] Found IP: 127.0.0.1
+[Lobby] Found IP: 0:0:0:0:0:0:0:1
+[Lobby] Found IP: fe80:0:0:0:0:0:0:1
+[Lobby] IP Label updated: Your IP: 168.4.103.26
+Server started. Waiting for players...
+[Auto] Hosting as Producer
+Server sending StartGame RPC to 0 peers.
+StartGame RPC received from 1 on peer 1
+Lobby: GameStarted signal received. Transitioning scene...
+
+=== RUNNING MURDER DETECTION TESTS ===
+Loading config from: data/game_configuration.json
+
+--- Testing Room: Room1 ---
+Producer Active Cameras: Room1
+NPC 'John' is in 'Room1'
+[DEBUG] Kill attempt on john. NPC Room: 'Room1'. Active Cams: Room1
+Action Result: Success=False, Reason='Invalid action'
+[PASS] Murder CAUGHT in Room1
+
+--- Testing Room: Room2 ---
+Producer Active Cameras: Room2
+NPC 'John' is in 'Room2'
+[DEBUG] Kill attempt on john. NPC Room: 'Room2'. Active Cams: Room2
+Action Result: Success=False, Reason='Invalid action'
+[PASS] Murder CAUGHT in Room2
+
+--- Testing Room: Room3 ---
+Producer Active Cameras: Room3
+NPC 'John' is in 'Room3'
+[DEBUG] Kill attempt on john. NPC Room: 'Room3'. Active Cams: Room3
+Action Result: Success=False, Reason='Invalid action'
+[PASS] Murder CAUGHT in Room3
+
+--- Testing Room: Room4 ---
+Producer Active Cameras: Room4
+NPC 'John' is in 'Room4'
+[DEBUG] Kill attempt on john. NPC Room: 'Room4'. Active Cams: Room4
+Action Result: Success=False, Reason='Invalid action'
+[PASS] Murder CAUGHT in Room4
+
+--- Testing Room: Room5 ---
+Producer Active Cameras: Room5
+NPC 'John' is in 'Room5'
+[DEBUG] Kill attempt on john. NPC Room: 'Room5'. Active Cams: Room5
+Action Result: Success=False, Reason='Invalid action'
+[PASS] Murder CAUGHT in Room5
+
+--- Testing Room: Hallways ---
+Producer Active Cameras: Hallways
+NPC 'John' is in 'Hallways'
+[DEBUG] Kill attempt on john. NPC Room: 'Hallways'. Active Cams: Hallways
+Action Result: Success=False, Reason='Invalid action'
+[PASS] Murder CAUGHT in Hallways
+
+=== TESTS COMPLETE: 6 PASS, 0 FAIL ===
+[GameWorld] Connected signals for Room1 (using existing collision shapes)
+[GameWorld] Connected signals for Room2 (using existing collision shapes)
+[GameWorld] Connected signals for Room3 (using existing collision shapes)
+[GameWorld] Connected signals for Room4 (using existing collision shapes)
+[GameWorld] Connected signals for Room5 (using existing collision shapes)
+[GameWorld] Connected signals for Hallways (using existing collision shapes)
+Room Ready: Room 1
+Created poly for Room 1
+Room Ready: Room 2
+Created poly for Room 2
+Room Ready: Room 3
+Created poly for Room 3
+Room Ready: Room 4
+Created poly for Room 4
+Room Ready: Room 5
+Created poly for Room 5
+Room Ready: Hallways
+Created poly for Hallways
+TileMapLayer found! Original Pos: (11, -46)
+TileMapLayer scaled to (4, 4) and positioned at (500, 200)
+[GameWorld] Aligned Room1 to World: Pos (456, 384) (was (0, 0)), Scale (4, 4)
+[GameWorld] Aligned Room2 to World: Pos (456, 384) (was (0, 0)), Scale (4, 4)
+[GameWorld] Aligned Room3 to World: Pos (456, 384) (was (0, 0)), Scale (4, 4)
+[GameWorld] Aligned Room4 to World: Pos (164, 720) (was (-73, 84)), Scale (4, 4)
+[GameWorld] Aligned Room5 to World: Pos (456, 384) (was (0, 0)), Scale (4, 4)
+[GameWorld] Aligned Hallways to World: Pos (456, 384) (was (0, 0)), Scale (4, 4)
+Loaded NPC sprite for katy: res://assets/sprite-0001.png
+NPCEntity: Set collision layer=4, mask=1
+Loaded NPC sprite for john: res://assets/sprite-0002.png
+NPCEntity: Set collision layer=4, mask=1
+Loaded NPC sprite for rebecca: res://assets/sprite-0003.png
+NPCEntity: Set collision layer=4, mask=1
+WARNING: Case mismatch opening requested file '/Users/famoco/Desktop/fatal-attraction/assets/sprite-0004.png.import', stored as '/Users/famoco/Desktop/fatal-attraction/assets/Sprite-0004.png.import' in the filesystem. This file will not open when exported to other case-sensitive platforms.
+     at: open_internal (drivers/unix/file_access_unix.cpp:113)
+     C# backtrace (most recent call first):
+         [0] Godot.GodotObject Godot.NativeCalls.godot_icall_3_1180(nint, nint, string, string, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:10851)
+         [1] Godot.Resource Godot.ResourceLoader.Load(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/ResourceLoader.cs:120)
+         [2] T Godot.ResourceLoader.Load<T>(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Extensions/ResourceLoaderExtensions.cs:27)
+         [3] T Godot.GD.Load<T>(string) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/GD.cs:129)
+         [4] void NPCEntity.LoadSpriteForNPC() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:416)
+         [5] void NPCEntity.SetupVisuals() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:357)
+         [6] void NPCEntity._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:123)
+         [7] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [8] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [9] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [10] bool Godot.CollisionObject2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CollisionObject2D.cs:712)
+         [11] bool Godot.PhysicsBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/PhysicsBody2D.cs:122)
+         [12] bool Godot.CharacterBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CharacterBody2D.cs:797)
+         [13] bool NPCEntity.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/NPCEntity_ScriptMethods.generated.cs:228)
+         [14] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+         [15] void Godot.NativeInterop.NativeFuncs.godotsharp_method_bind_ptrcall(nint, nint, System.Void**, System.Void*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Godot.SourceGenerators.Internal/Godot.SourceGenerators.Internal.UnmanagedCallbacksGenerator/Godot.NativeInterop.NativeFuncs.generated.cs:380)
+         [16] void Godot.NativeCalls.godot_icall_3_864(nint, nint, nint, Godot.NativeInterop.godot_bool, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:7676)
+         [17] void Godot.Node.AddChild(Godot.Node, bool, Godot.Node+InternalMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:834)
+         [18] void GameWorld.SpawnNPCs() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:857)
+         [19] void GameWorld.InitializeServer() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:797)
+         [20] void GameWorld._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:134)
+         [21] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [22] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [23] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [24] bool GameWorld.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/GameWorld_ScriptMethods.generated.cs:468)
+         [25] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+Loaded NPC sprite for marcus: res://assets/sprite-0004.png
+NPCEntity: Set collision layer=4, mask=1
+WARNING: Case mismatch opening requested file '/Users/famoco/Desktop/fatal-attraction/assets/sprite-0005.png.import', stored as '/Users/famoco/Desktop/fatal-attraction/assets/Sprite-0005.png.import' in the filesystem. This file will not open when exported to other case-sensitive platforms.
+     at: open_internal (drivers/unix/file_access_unix.cpp:113)
+     C# backtrace (most recent call first):
+         [0] Godot.GodotObject Godot.NativeCalls.godot_icall_3_1180(nint, nint, string, string, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:10851)
+         [1] Godot.Resource Godot.ResourceLoader.Load(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/ResourceLoader.cs:120)
+         [2] T Godot.ResourceLoader.Load<T>(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Extensions/ResourceLoaderExtensions.cs:27)
+         [3] T Godot.GD.Load<T>(string) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/GD.cs:129)
+         [4] void NPCEntity.LoadSpriteForNPC() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:416)
+         [5] void NPCEntity.SetupVisuals() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:357)
+         [6] void NPCEntity._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:123)
+         [7] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [8] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [9] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [10] bool Godot.CollisionObject2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CollisionObject2D.cs:712)
+         [11] bool Godot.PhysicsBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/PhysicsBody2D.cs:122)
+         [12] bool Godot.CharacterBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CharacterBody2D.cs:797)
+         [13] bool NPCEntity.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/NPCEntity_ScriptMethods.generated.cs:228)
+         [14] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+         [15] void Godot.NativeInterop.NativeFuncs.godotsharp_method_bind_ptrcall(nint, nint, System.Void**, System.Void*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Godot.SourceGenerators.Internal/Godot.SourceGenerators.Internal.UnmanagedCallbacksGenerator/Godot.NativeInterop.NativeFuncs.generated.cs:380)
+         [16] void Godot.NativeCalls.godot_icall_3_864(nint, nint, nint, Godot.NativeInterop.godot_bool, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:7676)
+         [17] void Godot.Node.AddChild(Godot.Node, bool, Godot.Node+InternalMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:834)
+         [18] void GameWorld.SpawnNPCs() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:857)
+         [19] void GameWorld.InitializeServer() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:797)
+         [20] void GameWorld._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:134)
+         [21] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [22] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [23] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [24] bool GameWorld.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/GameWorld_ScriptMethods.generated.cs:468)
+         [25] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+Loaded NPC sprite for sofia: res://assets/sprite-0005.png
+NPCEntity: Set collision layer=4, mask=1
+WARNING: Case mismatch opening requested file '/Users/famoco/Desktop/fatal-attraction/assets/sprite-0006.png.import', stored as '/Users/famoco/Desktop/fatal-attraction/assets/Sprite-0006.png.import' in the filesystem. This file will not open when exported to other case-sensitive platforms.
+     at: open_internal (drivers/unix/file_access_unix.cpp:113)
+     C# backtrace (most recent call first):
+         [0] Godot.GodotObject Godot.NativeCalls.godot_icall_3_1180(nint, nint, string, string, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:10851)
+         [1] Godot.Resource Godot.ResourceLoader.Load(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/ResourceLoader.cs:120)
+         [2] T Godot.ResourceLoader.Load<T>(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Extensions/ResourceLoaderExtensions.cs:27)
+         [3] T Godot.GD.Load<T>(string) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/GD.cs:129)
+         [4] void NPCEntity.LoadSpriteForNPC() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:416)
+         [5] void NPCEntity.SetupVisuals() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:357)
+         [6] void NPCEntity._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:123)
+         [7] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [8] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [9] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [10] bool Godot.CollisionObject2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CollisionObject2D.cs:712)
+         [11] bool Godot.PhysicsBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/PhysicsBody2D.cs:122)
+         [12] bool Godot.CharacterBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CharacterBody2D.cs:797)
+         [13] bool NPCEntity.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/NPCEntity_ScriptMethods.generated.cs:228)
+         [14] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+         [15] void Godot.NativeInterop.NativeFuncs.godotsharp_method_bind_ptrcall(nint, nint, System.Void**, System.Void*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Godot.SourceGenerators.Internal/Godot.SourceGenerators.Internal.UnmanagedCallbacksGenerator/Godot.NativeInterop.NativeFuncs.generated.cs:380)
+         [16] void Godot.NativeCalls.godot_icall_3_864(nint, nint, nint, Godot.NativeInterop.godot_bool, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:7676)
+         [17] void Godot.Node.AddChild(Godot.Node, bool, Godot.Node+InternalMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:834)
+         [18] void GameWorld.SpawnNPCs() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:857)
+         [19] void GameWorld.InitializeServer() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:797)
+         [20] void GameWorld._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:134)
+         [21] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [22] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [23] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [24] bool GameWorld.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/GameWorld_ScriptMethods.generated.cs:468)
+         [25] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+Loaded NPC sprite for amir: res://assets/sprite-0006.png
+NPCEntity: Set collision layer=4, mask=1
+WARNING: Case mismatch opening requested file '/Users/famoco/Desktop/fatal-attraction/assets/sprite-0007.png.import', stored as '/Users/famoco/Desktop/fatal-attraction/assets/Sprite-0007.png.import' in the filesystem. This file will not open when exported to other case-sensitive platforms.
+     at: open_internal (drivers/unix/file_access_unix.cpp:113)
+     C# backtrace (most recent call first):
+         [0] Godot.GodotObject Godot.NativeCalls.godot_icall_3_1180(nint, nint, string, string, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:10851)
+         [1] Godot.Resource Godot.ResourceLoader.Load(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/ResourceLoader.cs:120)
+         [2] T Godot.ResourceLoader.Load<T>(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Extensions/ResourceLoaderExtensions.cs:27)
+         [3] T Godot.GD.Load<T>(string) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/GD.cs:129)
+         [4] void NPCEntity.LoadSpriteForNPC() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:416)
+         [5] void NPCEntity.SetupVisuals() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:357)
+         [6] void NPCEntity._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:123)
+         [7] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [8] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [9] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [10] bool Godot.CollisionObject2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CollisionObject2D.cs:712)
+         [11] bool Godot.PhysicsBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/PhysicsBody2D.cs:122)
+         [12] bool Godot.CharacterBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CharacterBody2D.cs:797)
+         [13] bool NPCEntity.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/NPCEntity_ScriptMethods.generated.cs:228)
+         [14] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+         [15] void Godot.NativeInterop.NativeFuncs.godotsharp_method_bind_ptrcall(nint, nint, System.Void**, System.Void*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Godot.SourceGenerators.Internal/Godot.SourceGenerators.Internal.UnmanagedCallbacksGenerator/Godot.NativeInterop.NativeFuncs.generated.cs:380)
+         [16] void Godot.NativeCalls.godot_icall_3_864(nint, nint, nint, Godot.NativeInterop.godot_bool, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:7676)
+         [17] void Godot.Node.AddChild(Godot.Node, bool, Godot.Node+InternalMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:834)
+         [18] void GameWorld.SpawnNPCs() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:857)
+         [19] void GameWorld.InitializeServer() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:797)
+         [20] void GameWorld._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:134)
+         [21] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [22] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [23] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [24] bool GameWorld.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/GameWorld_ScriptMethods.generated.cs:468)
+         [25] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+Loaded NPC sprite for bella: res://assets/sprite-0007.png
+NPCEntity: Set collision layer=4, mask=1
+WARNING: Case mismatch opening requested file '/Users/famoco/Desktop/fatal-attraction/assets/sprite-0008.png.import', stored as '/Users/famoco/Desktop/fatal-attraction/assets/Sprite-0008.png.import' in the filesystem. This file will not open when exported to other case-sensitive platforms.
+     at: open_internal (drivers/unix/file_access_unix.cpp:113)
+     C# backtrace (most recent call first):
+         [0] Godot.GodotObject Godot.NativeCalls.godot_icall_3_1180(nint, nint, string, string, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:10851)
+         [1] Godot.Resource Godot.ResourceLoader.Load(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/ResourceLoader.cs:120)
+         [2] T Godot.ResourceLoader.Load<T>(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Extensions/ResourceLoaderExtensions.cs:27)
+         [3] T Godot.GD.Load<T>(string) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/GD.cs:129)
+         [4] void NPCEntity.LoadSpriteForNPC() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:416)
+         [5] void NPCEntity.SetupVisuals() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:357)
+         [6] void NPCEntity._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:123)
+         [7] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [8] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [9] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [10] bool Godot.CollisionObject2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CollisionObject2D.cs:712)
+         [11] bool Godot.PhysicsBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/PhysicsBody2D.cs:122)
+         [12] bool Godot.CharacterBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CharacterBody2D.cs:797)
+         [13] bool NPCEntity.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/NPCEntity_ScriptMethods.generated.cs:228)
+         [14] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+         [15] void Godot.NativeInterop.NativeFuncs.godotsharp_method_bind_ptrcall(nint, nint, System.Void**, System.Void*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Godot.SourceGenerators.Internal/Godot.SourceGenerators.Internal.UnmanagedCallbacksGenerator/Godot.NativeInterop.NativeFuncs.generated.cs:380)
+         [16] void Godot.NativeCalls.godot_icall_3_864(nint, nint, nint, Godot.NativeInterop.godot_bool, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:7676)
+         [17] void Godot.Node.AddChild(Godot.Node, bool, Godot.Node+InternalMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:834)
+         [18] void GameWorld.SpawnNPCs() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:857)
+         [19] void GameWorld.InitializeServer() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:797)
+         [20] void GameWorld._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:134)
+         [21] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [22] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [23] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [24] bool GameWorld.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/GameWorld_ScriptMethods.generated.cs:468)
+         [25] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+Loaded NPC sprite for chris: res://assets/sprite-0008.png
+NPCEntity: Set collision layer=4, mask=1
+WARNING: Case mismatch opening requested file '/Users/famoco/Desktop/fatal-attraction/assets/sprite-0009.png.import', stored as '/Users/famoco/Desktop/fatal-attraction/assets/Sprite-0009.png.import' in the filesystem. This file will not open when exported to other case-sensitive platforms.
+     at: open_internal (drivers/unix/file_access_unix.cpp:113)
+     C# backtrace (most recent call first):
+         [0] Godot.GodotObject Godot.NativeCalls.godot_icall_3_1180(nint, nint, string, string, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:10851)
+         [1] Godot.Resource Godot.ResourceLoader.Load(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/ResourceLoader.cs:120)
+         [2] T Godot.ResourceLoader.Load<T>(string, string, Godot.ResourceLoader+CacheMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Extensions/ResourceLoaderExtensions.cs:27)
+         [3] T Godot.GD.Load<T>(string) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/GD.cs:129)
+         [4] void NPCEntity.LoadSpriteForNPC() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:416)
+         [5] void NPCEntity.SetupVisuals() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:357)
+         [6] void NPCEntity._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/NPCEntity.cs:123)
+         [7] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [8] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [9] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [10] bool Godot.CollisionObject2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CollisionObject2D.cs:712)
+         [11] bool Godot.PhysicsBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/PhysicsBody2D.cs:122)
+         [12] bool Godot.CharacterBody2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CharacterBody2D.cs:797)
+         [13] bool NPCEntity.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/NPCEntity_ScriptMethods.generated.cs:228)
+         [14] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+         [15] void Godot.NativeInterop.NativeFuncs.godotsharp_method_bind_ptrcall(nint, nint, System.Void**, System.Void*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Godot.SourceGenerators.Internal/Godot.SourceGenerators.Internal.UnmanagedCallbacksGenerator/Godot.NativeInterop.NativeFuncs.generated.cs:380)
+         [16] void Godot.NativeCalls.godot_icall_3_864(nint, nint, nint, Godot.NativeInterop.godot_bool, int) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/NativeCalls.cs:7676)
+         [17] void Godot.Node.AddChild(Godot.Node, bool, Godot.Node+InternalMode) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:834)
+         [18] void GameWorld.SpawnNPCs() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:857)
+         [19] void GameWorld.InitializeServer() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:797)
+         [20] void GameWorld._Ready() (/Users/famoco/Desktop/fatal-attraction/scripts/GameWorld.cs:134)
+         [21] bool Godot.Node.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node.cs:2660)
+         [22] bool Godot.CanvasItem.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/CanvasItem.cs:1758)
+         [23] bool Godot.Node2D.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Generated/GodotObjects/Node2D.cs:557)
+         [24] bool GameWorld.InvokeGodotClassMethod(Godot.NativeInterop.godot_string_name&, Godot.NativeInterop.NativeVariantPtrArgs, Godot.NativeInterop.godot_variant&) (/Users/famoco/Desktop/fatal-attraction/.godot/mono/temp/obj/Debug/Godot.SourceGenerators/Godot.SourceGenerators.ScriptMethodsGenerator/GameWorld_ScriptMethods.generated.cs:468)
+         [25] Godot.NativeInterop.godot_bool Godot.Bridge.CSharpInstanceBridge.Call(nint, Godot.NativeInterop.godot_string_name*, Godot.NativeInterop.godot_variant**, int, Godot.NativeInterop.godot_variant_call_error*, Godot.NativeInterop.godot_variant*) (/root/godot/modules/mono/glue/GodotSharp/GodotSharp/Core/Bridge/CSharpInstanceBridge.cs:24)
+Loaded NPC sprite for diana: res://assets/sprite-0009.png
+NPCEntity: Set collision layer=4, mask=1
+Loaded NPC sprite for eli: res://assets/sprite-0010.png
+NPCEntity: Set collision layer=4, mask=1
+SetRole called: role=Producer
+SetLocalPlayer called: isLocal=True, _sprite exists=False
+Camera reference is null!
+[GameWorld] Connected PositionChanged signal for local player 1
+[GameWorld] Spawning player 1 as Producer, sprite=1, isLocal=True, pos=(100, 700)
+Loaded player sprite for Producer: res://assets/producer-sprite.png
+PlayerController: Set collision layer=2, mask=1
+SetLocalPlayer called: isLocal=True, _sprite exists=True
+Camera enabled and made current for local player 1
+[GameWorld] OnPlayerPositionChanged: Player 1 at (155.13414, 700), IsServer=True
+[GameWorld] Server updated own position for player 1
+[GameWorld] Server broadcasting position to all clients
+[GameWorld] Server updated NPC Sofia (ID: sofia) location to: Room1
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Room1
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Room1
+[GameWorld] Server updated NPC Eli (ID: eli) location to: Room1
+[GameWorld] Server updated NPC Katy (ID: katy) location to: Room2
+[GameWorld] Server updated NPC John (ID: john) location to: Room3
+[GameWorld] Server updated NPC Marcus (ID: marcus) location to: Room3
+[GameWorld] Server updated NPC Chris (ID: chris) location to: Room3
+[GameWorld] Server updated NPC Rebecca (ID: rebecca) location to: Room4
+[GameWorld] Server updated NPC Diana (ID: diana) location to: Hallways
+katy heading to corridor 0
+amir heading to corridor 0
+sofia heading to corridor 2
+Mouse Enter: Hallways
+Mouse Enter: Room 1
+CLICKED:Room 1
+Room Room 1 set_active: true
+Mouse Enter: Hallways
+bella heading to corridor 2
+CLICKED:Hallways
+Room Hallways set_active: true
+Mouse Enter: Room 4
+Mouse Enter: Room 4
+CLICKED:Room 4
+Room Room 1 set_active: false
+Room Room 4 set_active: true
+Mouse Enter: Room 4
+Mouse Enter: Room 4
+Mouse Enter: Room 4
+Mouse Enter: Hallways
+Mouse Enter: Room 2
+CLICKED:Room 2
+Room Room 2 set_active: true
+Room Hallways set_active: false
+Mouse Enter: Hallways
+eli heading to corridor 0
+Mouse Enter: Room 5
+rebecca heading to corridor 1
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+john heading to corridor 1
+[GameWorld] Server updated NPC Sofia (ID: sofia) location to: Hallways
+Body entered Sofia: Player_1
+Local player entered Sofia range, showing hint
+[GameWorld] Server updated NPC Sofia (ID: sofia) location to: Hallways
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+[GameWorld] Server updated NPC Katy (ID: katy) location to: Hallways
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+[GameWorld] Server updated NPC Katy (ID: katy) location to: Hallways
+CLICKED:Room 5
+Room Room 4 set_active: false
+Room Room 5 set_active: true
+Mouse Enter: Room 4
+Mouse Enter: Hallways
+CLICKED:Hallways
+Room Room 2 set_active: false
+Room Hallways set_active: true
+Mouse Enter: Hallways
+Mouse Enter: Room 1
+CLICKED:Room 1
+Room Room 1 set_active: true
+Room Room 5 set_active: false
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+Mouse Enter: Hallways
+Mouse Enter: Room 4
+CLICKED:Room 4
+Room Room 4 set_active: true
+Room Hallways set_active: false
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+Mouse Enter: Room 3
+CLICKED:Room 3
+Room Room 1 set_active: false
+Room Room 3 set_active: true
+Mouse Enter: Room 4
+Mouse Enter: Hallways
+Mouse Enter: Room 2
+CLICKED:Room 2
+Room Room 2 set_active: true
+Room Room 4 set_active: false
+Mouse Enter: Hallways
+john heading to corridor 2
+CLICKED:Hallways
+Room Room 3 set_active: false
+Room Hallways set_active: true
+Mouse Enter: Room 5
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+CLICKED:Room 5
+Room Room 2 set_active: false
+Room Room 5 set_active: true
+Mouse Enter: Room 4
+CLICKED:Room 4
+Room Room 4 set_active: true
+Room Hallways set_active: false
+Mouse Enter: Room 3
+Mouse Enter: Room 3
+CLICKED:Room 3
+Room Room 3 set_active: true
+Room Room 5 set_active: false
+Mouse Enter: Room 3
+Mouse Enter: Room 3
+Mouse Enter: Room 4
+[GameWorld] Server updated NPC Eli (ID: eli) location to: Hallways
+Mouse Enter: Hallways
+CLICKED:Hallways
+Room Room 4 set_active: false
+Room Hallways set_active: true
+[GameWorld] Server updated NPC Eli (ID: eli) location to: Hallways
+Mouse Enter: Room 1
+[GameWorld] Server updated NPC Eli (ID: eli) location to: Hallways
+[GameWorld] Server updated NPC Eli (ID: eli) location to: Hallways
+CLICKED:Room 1
+Room Room 1 set_active: true
+Room Room 3 set_active: false
+Mouse Enter: Room 2
+CLICKED:Room 2
+Room Room 2 set_active: true
+Room Hallways set_active: false
+Mouse Enter: Room 1
+CLICKED:Room 1
+Room Room 1 set_active: false
+chris heading to corridor 2
+Mouse Enter: Hallways
+diana heading to corridor 3
+CLICKED:Hallways
+Room Hallways set_active: true
+Mouse Enter: Room 4
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+Mouse Enter: Hallways
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+CLICKED:Hallways
+Room Hallways set_active: false
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+Mouse Enter: Room 2
+CLICKED:Room 2
+Room Room 2 set_active: false
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+[GameWorld] Server updated NPC Bella (ID: bella) location to: Hallways
+[GameWorld] Server updated NPC Amir (ID: amir) location to: Hallways
+Body exited Sofia: Player_1
