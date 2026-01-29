@@ -29,11 +29,15 @@ public partial class InteractionPanel : PanelContainer
 	// Current state
 	private string _currentNpcId;
 	private Font _customFont;
+	private string _lastNpcId;
+	private string _lastDescription;
+	private int _lastActionCount;
 	private string _lastContentSignature = "";
 
 	public override void _Ready()
 	{
 		SetupUI();
+		MouseFilter = MouseFilterEnum.Stop; // Block clicks from passing through
 		Hide(); // Hidden by default
 	}
 
@@ -228,37 +232,6 @@ public partial class InteractionPanel : PanelContainer
 	/// </summary>
 	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions)
 	{
-		GD.Print($"[InteractionPanel] ShowForNPC called. ID: {npcId}, Name: {npcName}, Desc: '{npcDescription}'");
-		// Generate Content Signature to prevent unnecessary rebuilds (which cause flickering)
-		var actionIds = new List<string>();
-		if (actions != null)
-		{
-			foreach (var a in actions) 
-				actionIds.Add(a["id"]?.Value<string>() ?? "null");
-		}
-		string newSignature = $"{npcId}|{npcDescription}|{string.Join(",", actionIds)}";
-
-		// If nothing changed and panel is already visible, just return
-		if (Visible && _lastContentSignature == newSignature)
-		{
-			return;
-		}
-
-		_lastContentSignature = newSignature;
-		_currentNpcId = npcId;
-		_npcNameLabel.Text = npcName;
-		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
-		_npcDescLabel.Text = npcDescription;
-
-		// Portrait sprite is already loaded, could be customized per NPC later
-		// For now, it uses the default sprite-portrait.png
-
-		// Clear previous actions
-		foreach (Node child in _actionsContainer.GetChildren())
-		{
-			child.QueueFree();
-		}
-
 		// Count visible actions (non-RPS moves)
 		int visibleActionCount = 0;
 		if (actions != null)
@@ -271,6 +244,29 @@ public partial class InteractionPanel : PanelContainer
 					visibleActionCount++;
 				}
 			}
+		}
+
+		// Check if we need to rebuild (same NPC and action count = no rebuild needed)
+		if (_lastNpcId == npcId && _lastDescription == npcDescription && _lastActionCount == visibleActionCount && Visible)
+		{
+			// No changes needed, skip rebuild to avoid recreating buttons
+			return;
+		}
+
+		_currentNpcId = npcId;
+		_lastNpcId = npcId;
+		_lastDescription = npcDescription;
+		_lastActionCount = visibleActionCount;
+		_npcNameLabel.Text = npcName;
+		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
+
+		// Portrait sprite is already loaded, could be customized per NPC later
+		// For now, it uses the default sprite-portrait.png
+
+		// Clear previous actions immediately with Free() not QueueFree()
+		foreach (Node child in _actionsContainer.GetChildren())
+		{
+			child.Free();
 		}
 
 		// Switch container type based on button count (more than 2 buttons = vertical)
@@ -288,7 +284,7 @@ public partial class InteractionPanel : PanelContainer
 
 		// Replace the old container with the new one
 		_actionsScrollContainer.RemoveChild(oldContainer);
-		oldContainer.QueueFree();
+		oldContainer.Free();
 		_actionsScrollContainer.AddChild(_actionsContainer);
 
 		// Create action buttons
@@ -349,11 +345,19 @@ public partial class InteractionPanel : PanelContainer
 	{
 		GD.Print($"Action selected: {actionId} for NPC {_currentNpcId}");
 		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
+		Hide();
+		_lastNpcId = null;
+		_lastDescription = null;
+		_lastActionCount = 0;
+		EmitSignal(SignalName.PanelClosed);
 	}
 
 	private void OnClosePressed()
 	{
 		Hide();
+		_lastNpcId = null;
+		_lastDescription = null;
+		_lastActionCount = 0;
 		EmitSignal(SignalName.PanelClosed);
 	}
 
@@ -365,6 +369,9 @@ public partial class InteractionPanel : PanelContainer
 			if (keyEvent.Pressed && keyEvent.Keycode == Key.Escape)
 			{
 				Hide();
+				_lastNpcId = null;
+				_lastDescription = null;
+				_lastActionCount = 0;
 				EmitSignal(SignalName.PanelClosed);
 				GetViewport().SetInputAsHandled();
 			}

@@ -120,36 +120,36 @@ tile_set = SubResource("TileSet_13lyd")
 [node name="Room1" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Room1"]
-position = Vector2(10, -20)
+position = Vector2(11, 34)
 shape = SubResource("RectangleShape2D_5og86")
 
 [node name="Room2" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Room2"]
-position = Vector2(379, -22.25)
+position = Vector2(378, 35)
 shape = SubResource("RectangleShape2D_2ifvn")
 
 [node name="Room3" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Room3"]
-position = Vector2(554.5, 258.5)
+position = Vector2(555, 308)
 shape = SubResource("RectangleShape2D_g8ckf")
 
 [node name="Room4" type="Area2D" parent="."]
 position = Vector2(-73, 84)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Room4"]
-position = Vector2(292, 206.5)
+position = Vector2(294, 261)
 shape = SubResource("RectangleShape2D_yms0u")
 
 [node name="Room5" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Room5"]
-position = Vector2(-38, 355)
+position = Vector2(-38, 406)
 shape = SubResource("RectangleShape2D_rrjg7")
 
 [node name="Hallways" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hallways"]
-position = Vector2(188.875, 130.5)
+position = Vector2(186, 179)
 shape = SubResource("RectangleShape2D_pexic")
