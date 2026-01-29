@@ -30,11 +30,13 @@ public partial class NPCEntity : CharacterBody2D
 	private Sprite2D _convertedIndicator;
 	private Sprite2D _deadOverlay;
 	private Sprite2D _marriedIndicator;
+	private Sprite2D _targetIndicator;
 
 	// Interaction range
 	private Area2D _interactionArea;
 	private bool _playerInRange = false;
 	private Label _interactHint;
+	private Label _punchHint;
 
 	// Room and corridor definitions
 	private struct Room
@@ -102,6 +104,9 @@ public partial class NPCEntity : CharacterBody2D
 
 	public override void _Ready()
 	{
+		// Enable Y-sort for proper overlap rendering (NPCs further down screen render in front)
+		YSortEnabled = true;
+		
 		// Load custom font
 		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
 		
@@ -172,19 +177,34 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
+		// Debug: Always log frozen state for target NPCs
+		if ((NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus") && Multiplayer.IsServer())
+		{
+			GD.Print($"[NPCEntity] UpdateWandering for {NpcId}: _isFrozen={_isFrozen}, _isSlipping={_isSlipping}");
+		}
+		
 		// If slipping or frozen (interview), don't move
-		if (_isSlipping || _isFrozen) return;
+		if (_isSlipping || _isFrozen)
+		{
+			if (_isFrozen && Multiplayer.IsServer())
+			{
+				// Debug: Log when frozen NPC tries to move
+				GD.Print($"[NPCEntity] {NpcId} is frozen, skipping movement");
+			}
+			return;
+		}
 
 		// CLIENTS DO NOT RUN AI - they are synced by server
-	if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer())
-	{
-		if (_hasReceivedFirstSync)
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer())
 		{
-			// Interpolate towards target
-			// Use a factor that depends on delta to be frame-rate independent
-			// A factor of 10.0f * delta gives quick but smooth catch-up
-			Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
-		}
+			if (_hasReceivedFirstSync)
+			{
+				// Interpolate towards target
+				// Use a factor that depends on delta to be frame-rate independent
+				// A factor of 10.0f * delta gives quick but smooth catch-up
+				Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
+			}
+			return; // Clients only interpolate, they don't run AI
 		}
 
 		// Dead NPCs don't wander
@@ -408,6 +428,7 @@ public partial class NPCEntity : CharacterBody2D
 	{
 		// Main NPC sprite - load from file based on NPC ID
 		_sprite = new Sprite2D();
+		_sprite.YSortEnabled = true; // Participate in Y-sort
 		LoadSpriteForNPC();
 		AddChild(_sprite);
 
@@ -429,12 +450,35 @@ public partial class NPCEntity : CharacterBody2D
 		CallDeferred(MethodName.CenterNameLabel);
 		// Size will auto-adjust based on text content
 
+		// Punch hint above NPC name (for Admirer targets)
+		_punchHint = new Label();
+		_punchHint.Text = "Press P to Punch";
+		_punchHint.HorizontalAlignment = HorizontalAlignment.Center;
+		_punchHint.AddThemeColorOverride("font_color", Colors.Yellow);
+		_punchHint.AddThemeFontOverride("font", _customFont);
+		_punchHint.AddThemeFontSizeOverride("font_size", 22);
+		// Add transparent grey background
+		var punchBgStyle = new StyleBoxFlat();
+		punchBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f);
+		punchBgStyle.SetCornerRadiusAll(4);
+		punchBgStyle.SetContentMarginAll(4);
+		_punchHint.AddThemeStyleboxOverride("normal", punchBgStyle);
+		_punchHint.Visible = false;
+		AddChild(_punchHint);
+		CallDeferred(MethodName.CenterPunchHint);
+
 		// Status indicators (hidden by default)
 		// Converted (Halo) - Above head (approx -90)
 		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -65));
 		
 		// Married (Heart) - Above head (approx -90)
 		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
+
+		// Target indicator (for Admirer targets) - DISABLED to avoid visual confusion with camera UI
+		// _targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -65));
+		_targetIndicator = new Sprite2D(); // Create dummy sprite to avoid null reference
+		_targetIndicator.Visible = false;
+		AddChild(_targetIndicator);
 
 		// Dead Overlay (Darkens sprite)
 		_deadOverlay = CreateDeadOverlay();
@@ -525,7 +569,8 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		indicator.TextureFilter = TextureFilterEnum.Nearest;
 		indicator.Position = offset;
-		indicator.Visible = false;
+		indicator.YSortEnabled = true; // Participate in parent's Y-sortPC
+		indicator.ZIndex = 1; // Render above the NPC sprite but respect parent layering
 		AddChild(indicator);
 		return indicator;
 	}
@@ -651,12 +696,17 @@ public partial class NPCEntity : CharacterBody2D
 	/// <summary>
 	/// Update the visual state of this NPC based on game state
 	/// </summary>
-	public void UpdateState(bool alive, bool converted, bool married)
+	public void UpdateState(bool alive, bool converted, bool married, bool isTarget = false)
 	{
 		_isAlive = alive;
 		_deadOverlay.Visible = !alive;
 		_convertedIndicator.Visible = converted;
 		_marriedIndicator.Visible = married;
+		_targetIndicator.Visible = isTarget;
+		if (!alive && _punchHint != null)
+		{
+			_punchHint.Visible = false;
+		}
 		
 		// Dim the sprite if dead
 		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
@@ -673,6 +723,32 @@ public partial class NPCEntity : CharacterBody2D
 		
 		// Disable interaction if dead
 		InputPickable = alive;
+	}
+
+	/// <summary>
+	/// Show or hide the punch hint label.
+	/// </summary>
+	public void SetPunchHintVisible(bool visible)
+	{
+		if (_punchHint != null)
+		{
+			_punchHint.Visible = visible;
+		}
+	}
+
+	/// <summary>
+	/// Flash the NPC red briefly to indicate damage.
+	/// </summary>
+	public void FlashDamage(double seconds = 0.5)
+	{
+		if (_sprite == null) return;
+		_sprite.Modulate = Colors.Red;
+		var timer = GetTree().CreateTimer(Math.Max(0.1, seconds));
+		timer.Timeout += () =>
+		{
+			if (!IsInstanceValid(this) || _sprite == null) return;
+			_sprite.Modulate = _isAlive ? Colors.White : Colors.DarkGray;
+		};
 	}
 
 	/// <summary>
@@ -732,6 +808,19 @@ public partial class NPCEntity : CharacterBody2D
 	}
 
 	/// <summary>
+	/// Center the punch hint horizontally over the NPC based on its actual width.
+	/// Called deferred to ensure the label has been sized.
+	/// </summary>
+	private void CenterPunchHint()
+	{
+		if (_punchHint != null)
+		{
+			var labelWidth = _punchHint.Size.X;
+			_punchHint.Position = new Vector2(-labelWidth / 2, -195);
+		}
+	}
+
+	/// <summary>
 	/// Center the interact hint horizontally over the NPC based on its actual width.
 	/// Called deferred to ensure the label has been sized.
 	/// </summary>
@@ -749,11 +838,18 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	public void SetFrozen(bool frozen)
 	{
+		GD.Print($"[NPCEntity] SetFrozen called on {NpcId}: {frozen} (was {_isFrozen})");
+		if (!frozen && (NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus"))
+		{
+			// Print where unfreeze is coming from
+			GD.Print($"[NPCEntity] WARNING: UNFREEZING target NPC {NpcId}");
+		}
 		_isFrozen = frozen;
 		if (frozen)
 		{
 			// Optional: Stop current velocity
 			Velocity = Vector2.Zero;
+			GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
 		}
 	}
 }

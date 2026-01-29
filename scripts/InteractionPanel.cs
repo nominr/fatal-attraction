@@ -31,10 +31,14 @@ public partial class InteractionPanel : PanelContainer
 	private bool _isInterview; // Added to track interview state
 	private Font _customFont;
 	private string _lastContentSignature = "";
+	private string _lastNpcId;
+	private string _lastDescription;
+	private int _lastActionCount;
 
 	public override void _Ready()
 	{
 		SetupUI();
+		MouseFilter = MouseFilterEnum.Stop; // Block clicks from passing through
 		Hide(); // Hidden by default
 	}
 
@@ -276,6 +280,29 @@ public partial class InteractionPanel : PanelContainer
 			}
 		}
 
+		// Check if we need to rebuild (same NPC and action count = no rebuild needed)
+		if (_lastNpcId == npcId && _lastDescription == npcDescription && _lastActionCount == visibleActionCount && Visible)
+		{
+			// No changes needed, skip rebuild to avoid recreating buttons
+			return;
+		}
+
+		_currentNpcId = npcId;
+		_lastNpcId = npcId;
+		_lastDescription = npcDescription;
+		_lastActionCount = visibleActionCount;
+		_npcNameLabel.Text = npcName;
+		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
+
+		// Portrait sprite is already loaded, could be customized per NPC later
+		// For now, it uses the default sprite-portrait.png
+
+		// Clear previous actions immediately with Free() not QueueFree()
+		foreach (Node child in _actionsContainer.GetChildren())
+		{
+			child.Free();
+		}
+
 		// Switch container type based on button count (more than 2 buttons = vertical)
 		Container oldContainer = _actionsContainer;
 		if (visibleActionCount > 2)
@@ -291,7 +318,7 @@ public partial class InteractionPanel : PanelContainer
 
 		// Replace the old container with the new one
 		_actionsScrollContainer.RemoveChild(oldContainer);
-		oldContainer.QueueFree();
+		oldContainer.Free();
 		_actionsScrollContainer.AddChild(_actionsContainer);
 
 		// Create action buttons
@@ -360,13 +387,19 @@ public partial class InteractionPanel : PanelContainer
 		if (!_isInterview && actionId != "start_interview")
 		{
 			Hide();
-			EmitSignal(SignalName.PanelClosed);
+			_lastNpcId = null;
+		_lastDescription = null;
+		_lastActionCount = 0;
+		EmitSignal(SignalName.PanelClosed);
 		}
 	}
 
 	private void OnClosePressed()
 	{
 		Hide();
+		_lastNpcId = null;
+		_lastDescription = null;
+		_lastActionCount = 0;
 		EmitSignal(SignalName.PanelClosed);
 	}
 
@@ -378,6 +411,9 @@ public partial class InteractionPanel : PanelContainer
 			if (keyEvent.Pressed && keyEvent.Keycode == Key.Escape)
 			{
 				Hide();
+				_lastNpcId = null;
+				_lastDescription = null;
+				_lastActionCount = 0;
 				EmitSignal(SignalName.PanelClosed);
 				GetViewport().SetInputAsHandled();
 			}
