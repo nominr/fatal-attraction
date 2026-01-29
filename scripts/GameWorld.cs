@@ -34,7 +34,7 @@ public partial class GameWorld : Node2D
 	private PlayerController _localPlayer;
 	
 	// UI Components
-	private InteractionPanel _interactionPanel;
+	private NPCDialogueUI _npcDialogueUI;
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
@@ -110,24 +110,24 @@ public partial class GameWorld : Node2D
 		SetupUI();
 		// TileMap is now defined in GameWorld.tscn scene file
 		
-		// Debug: Check if TileMapLayer loaded from scene and scale it
-		var tileMapLayer = GetNodeOrNull("TileMapLayer");
-		if (tileMapLayer != null && tileMapLayer is Node2D tileMapNode)
+		// Debug: Check if MapContainer loaded from scene and scale it
+		var mapContainer = GetNodeOrNull("MapContainer");
+		if (mapContainer != null && mapContainer is Node2D mapContainerNode)
 		{
-			GD.Print($"TileMapLayer found! Original Pos: {tileMapNode.Position}");
+			GD.Print($"MapContainer found! Original Pos: {mapContainerNode.Position}");
 			
 			// Store original position for relative calculations
-			Vector2 originalTileMapPos = tileMapNode.Position;
+			Vector2 originalMapPos = mapContainerNode.Position;
 			Vector2 targetPos = new Vector2(500, 200);
 			Vector2 targetScale = new Vector2(4.0f, 4.0f);
 			
-			// Scale and Move TileMap
-			tileMapNode.Scale = targetScale;
-			tileMapNode.Position = targetPos;
-			tileMapNode.ZIndex = -10;
+			// Scale and Move MapContainer
+			mapContainerNode.Scale = targetScale;
+			mapContainerNode.Position = targetPos;
+			mapContainerNode.ZIndex = -10;
 			
 			// CRITICAL FIX: Set Z-index on all child TileMapLayers to prevent camera tiles from appearing over NPCs
-			foreach (var child in tileMapNode.GetChildren())
+			foreach (var child in mapContainerNode.GetChildren())
 			{
 				if (child is Node2D childLayer)
 				{
@@ -136,10 +136,32 @@ public partial class GameWorld : Node2D
 				}
 			} 
 			
-			GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
+			// Hack for Layer1 to be above base layer (effectively -9 relative to world if sibling is -10? No, they share parent Z unless relative)
+			// Wait, parent is -10. Children inherit? Godot Z-Index is relative if 'Z as Relative' is true.
+			// If parent is -10, and child is 0, child is -10.
+			// If child is +1, child is -9.
+			// So keeping Layer1 at +1 (set in scene) works!
+			// But the loop above sets EVERYTHING to -10. We must ensure Layer1 is higher.
+			var layer1 = mapContainerNode.GetNodeOrNull<Node2D>("Layer1");
+			if (layer1 != null)
+			{
+				layer1.ZIndex = 1; // Relative to parent (-10), so -9 global. Or just 1 deeper than sibling?
+				// Actually, if we set loop ZIndex = -10, that makes it -20 global?
+				// Wait, the loop sets `childLayer.ZIndex = -10`.
+				// If parent is -10. Child becomes -20.
+				// We want MapContainer to be background (-10).
+				// Children should probably be 0 (inherit) or adjusted.
+				// If I let loop run, Layer1 becomes -10 (which is -20 global).
+				// We want Layer1 to be ABOVE base layer.
+				// If base layer is -10 (via loop), Layer1 should be -9 (via loop + 1).
+				// So I will override it.
+				layer1.ZIndex = 1; 
+			}
+			
+			GD.Print($"MapContainer scaled to {mapContainerNode.Scale} and positioned at {mapContainerNode.Position}");
 			
 			// ALIGN ROOM AREAS TO MATCH SCALED WORLD
-			// The Areas in the scene are 1x scale and relative to the original TileMap layout.
+			// The Areas in the scene are 1x scale and relative to the original Map layout.
 			// We must transform them to match the new world coordinates.
 			string[] roomNames = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
 			foreach (var rName in roomNames)
@@ -147,9 +169,9 @@ public partial class GameWorld : Node2D
 				var area = GetNodeOrNull<Area2D>(rName);
 				if (area != null)
 				{
-					// Calculate relative position to the ORIGINAL TileMap position
+					// Calculate relative position to the ORIGINAL Map position
 					// (Assuming user aligned them in editor)
-					Vector2 relPos = area.Position - originalTileMapPos;
+					Vector2 relPos = area.Position - originalMapPos;
 					
 					// Apply Scale
 					// New Relative Pos = Old Rel Pos * Scale
@@ -159,13 +181,13 @@ public partial class GameWorld : Node2D
 					area.Position = targetPos + newRelPos;
 					area.Scale = targetScale;
 					
-					GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {relPos + originalTileMapPos}), Scale {area.Scale}");
+					GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {relPos + originalMapPos}), Scale {area.Scale}");
 				}
 			}
 		}
 		else
 		{
-			GD.PrintErr("TileMapLayer NOT found in scene!");
+			GD.PrintErr("MapContainer NOT found in scene!");
 		}
 
 		if (Multiplayer.IsServer())
@@ -454,11 +476,12 @@ public partial class GameWorld : Node2D
 		_notificationMargin.AddChild(_notificationText);
 		_notificationText.AddThemeFontSizeOverride("normal_font_size", 22);
 
-		// Interaction Panel
-		_interactionPanel = new InteractionPanel();
-		_interactionPanel.ActionSelected += OnActionSelected;
-		_interactionPanel.PanelClosed += OnInteractionPanelClosed;
-		_uiLayer.AddChild(_interactionPanel);
+		// NPCDialogue UI
+		var scene = GD.Load<PackedScene>("res://scenes/npc_dialogue_scene.tscn");
+		_npcDialogueUI = scene.Instantiate<NPCDialogueUI>();
+		_npcDialogueUI.ActionSelected += OnActionSelected;
+		_npcDialogueUI.PanelClosed += OnInteractionPanelClosed;
+		_uiLayer.AddChild(_npcDialogueUI);
 
 		// Prophet Trap Button
 		var trapButton = new Button();
@@ -1266,7 +1289,7 @@ public partial class GameWorld : Node2D
 		
 		// Store current interacting NPC ID for proximity tracking
 		_currentInteractingNpcId = npcId;
-		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -1412,7 +1435,7 @@ public partial class GameWorld : Node2D
 	public override void _PhysicsProcess(double delta)
 	{
 		// If interaction panel is visible, check if player is still in range of NPC
-		if (_interactionPanel != null && _interactionPanel.Visible && _currentInteractingNpcId != null)
+		if (_npcDialogueUI != null && _npcDialogueUI.Visible && _currentInteractingNpcId != null)
 		{
 			// Try to find local player if not set
 			if (_localPlayer == null)
@@ -1432,7 +1455,7 @@ public partial class GameWorld : Node2D
 				if (distance > 150)
 				{
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
-					_interactionPanel.Hide();
+					_npcDialogueUI.Visible = false;
 					_currentInteractingNpcId = null;
 				}
 			}
@@ -1755,14 +1778,14 @@ public partial class GameWorld : Node2D
 		if (isInInterview && interviewNpcId != null)
 		{
 			// If panel is closed or showing wrong NPC, force it open/correct
-			if (!_interactionPanel.Visible || _currentInteractingNpcId != interviewNpcId)
+			if (!_npcDialogueUI.Visible || _currentInteractingNpcId != interviewNpcId)
 			{
 				_currentInteractingNpcId = interviewNpcId;
 				RefreshInteractionPanel(); 
 			}
 			// Don't refresh every frame - InteractionPanel now caches and checks if rebuild is needed
 		}
-		else if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		else if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
 			// Only refresh if game state actually changed
 			int currentHash = _localGameState?.GetHashCode() ?? 0;
@@ -1804,7 +1827,7 @@ public partial class GameWorld : Node2D
 		}
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
-		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
 
 	private void SpawnNPCsFromState()
@@ -2002,7 +2025,7 @@ public partial class GameWorld : Node2D
 		}
 
 		// Refresh Interaction Panel if open (for dynamic content like Interview)
-		if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
 			RefreshInteractionPanel();
 		}

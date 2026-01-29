@@ -30,7 +30,8 @@ public partial class NPCEntity : CharacterBody2D
 	private Sprite2D _convertedIndicator;
 	private Sprite2D _deadOverlay;
 	private Sprite2D _marriedIndicator;
-	private Sprite2D _targetIndicator;
+	// _targetIndicator removed
+
 
 	// Interaction range
 	private Area2D _interactionArea;
@@ -440,12 +441,8 @@ public partial class NPCEntity : CharacterBody2D
 		
 		// Married (Heart) - Above head (approx -90)
 		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
+		// _targetIndicator removed
 
-		// Target indicator (for Admirer targets) - DISABLED to avoid visual confusion with camera UI
-		// _targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -65));
-		_targetIndicator = new Sprite2D(); // Create dummy sprite to avoid null reference
-		_targetIndicator.Visible = false;
-		AddChild(_targetIndicator);
 
 		// Dead Overlay (Darkens sprite)
 		_deadOverlay = CreateDeadOverlay();
@@ -669,7 +666,9 @@ public partial class NPCEntity : CharacterBody2D
 		_deadOverlay.Visible = !alive;
 		_convertedIndicator.Visible = converted;
 		_marriedIndicator.Visible = married;
-		_targetIndicator.Visible = isTarget;
+		// _targetIndicator removed
+
+
 		
 		// Dim the sprite if dead
 		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
