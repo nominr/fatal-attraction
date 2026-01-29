@@ -176,19 +176,34 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
+		// Debug: Always log frozen state for target NPCs
+		if ((NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus") && Multiplayer.IsServer())
+		{
+			GD.Print($"[NPCEntity] UpdateWandering for {NpcId}: _isFrozen={_isFrozen}, _isSlipping={_isSlipping}");
+		}
+		
 		// If slipping or frozen (interview), don't move
-		if (_isSlipping || _isFrozen) return;
+		if (_isSlipping || _isFrozen)
+		{
+			if (_isFrozen && Multiplayer.IsServer())
+			{
+				// Debug: Log when frozen NPC tries to move
+				GD.Print($"[NPCEntity] {NpcId} is frozen, skipping movement");
+			}
+			return;
+		}
 
 		// CLIENTS DO NOT RUN AI - they are synced by server
-	if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer())
-	{
-		if (_hasReceivedFirstSync)
+		if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer())
 		{
-			// Interpolate towards target
-			// Use a factor that depends on delta to be frame-rate independent
-			// A factor of 10.0f * delta gives quick but smooth catch-up
-			Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
-		}
+			if (_hasReceivedFirstSync)
+			{
+				// Interpolate towards target
+				// Use a factor that depends on delta to be frame-rate independent
+				// A factor of 10.0f * delta gives quick but smooth catch-up
+				Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
+			}
+			return; // Clients only interpolate, they don't run AI
 		}
 
 		// Dead NPCs don't wander
@@ -762,11 +777,18 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	public void SetFrozen(bool frozen)
 	{
+		GD.Print($"[NPCEntity] SetFrozen called on {NpcId}: {frozen} (was {_isFrozen})");
+		if (!frozen && (NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus"))
+		{
+			// Print where unfreeze is coming from
+			GD.Print($"[NPCEntity] WARNING: UNFREEZING target NPC {NpcId}");
+		}
 		_isFrozen = frozen;
 		if (frozen)
 		{
 			// Optional: Stop current velocity
 			Velocity = Vector2.Zero;
+			GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
 		}
 	}
 }

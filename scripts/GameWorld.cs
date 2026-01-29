@@ -58,6 +58,23 @@ public partial class GameWorld : Node2D
 	private bool _notificationCollapsed = false;
 	private MarginContainer _notificationMargin;
 	private Vector2 _notificationPanelExpandedPosition;
+	private int _lastNotificationCount = 0; // Track which notifications have been displayed
+
+	// Bomb Target Selection UI
+	private Control _bombTargetOverlay;
+	private string _selectedBombTarget = null;
+	private Node2D _targetRedDot = null;
+	private HashSet<string> _bombFrozenNpcs = new HashSet<string>();
+	private Label _bombCounterLabel;
+	private int _bombsRemaining = 3;
+	private Control _bombSliderOverlay;
+	private bool _bombOperationActive = false;
+	private float _sliderPosition = 0f;
+	private float _sliderDirection = 1f;
+	private bool _sliderMoving = true;
+	private const float SLIDER_SPEED = 500f; // pixels per second (increased from 200)
+	private List<Vector2> _targetZones = new List<Vector2>(); // x position and width
+	private BombSlider _sliderControl;
 
 
 	private Font _customFont;
@@ -379,6 +396,15 @@ public partial class GameWorld : Node2D
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		hudContainer.AddChild(_convertedLabel);
 
+		// Bomb Counter (Admirer only)
+		_bombCounterLabel = new Label();
+		_bombCounterLabel.Text = $"BOMBS LEFT: {_bombsRemaining}";
+		_bombCounterLabel.AddThemeFontOverride("font", _customFont);
+		_bombCounterLabel.AddThemeFontSizeOverride("font_size", 26);
+		_bombCounterLabel.AddThemeColorOverride("font_color", Colors.White);
+		_bombCounterLabel.Visible = false; // Only relevant for Admirer
+		hudContainer.AddChild(_bombCounterLabel);
+
 		_metersContainer = new VBoxContainer();
 		_metersContainer = new VBoxContainer();
 		hudContainer.AddChild(_metersContainer);
@@ -501,6 +527,46 @@ public partial class GameWorld : Node2D
 		// Ideally we verify role in UpdateUI.
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
+
+		// Admirer Bomb Button
+		var bombButton = new Button();
+		bombButton.Text = "Throw Bomb";
+		bombButton.AddThemeFontOverride("font", _customFont);
+		bombButton.AddThemeFontSizeOverride("font_size", 26);
+		bombButton.Position = new Vector2(20, 600);
+		bombButton.CustomMinimumSize = new Vector2(180, 60);
+		
+		// Add Bomb Icon
+		var bombTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_bomb-nobg.png");
+		bombButton.Icon = bombTexture;
+		bombButton.ExpandIcon = true;
+		bombButton.IconAlignment = HorizontalAlignment.Left;
+		bombButton.AddThemeConstantOverride("h_separation", 10);
+		bombButton.AddThemeConstantOverride("icon_max_width", 60);
+
+		// Style settings (same as trap button)
+		var bombNormalStyle = CreateTrapStyle(Colors.White, Colors.Black);
+		var bombHoverStyle = CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black);
+		var bombPressedStyle = CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black);
+		var bombDisabledStyle = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
+		bombDisabledStyle.SetBorderWidthAll(0);
+
+		bombButton.AddThemeStyleboxOverride("normal", bombNormalStyle);
+		bombButton.AddThemeStyleboxOverride("hover", bombHoverStyle);
+		bombButton.AddThemeStyleboxOverride("pressed", bombPressedStyle);
+		bombButton.AddThemeStyleboxOverride("disabled", bombDisabledStyle);
+		
+		// Black text that stays black
+		bombButton.AddThemeColorOverride("font_color", new Color(0, 0, 0, 1));
+		bombButton.AddThemeColorOverride("font_hover_color", new Color(0, 0, 0, 1));
+		bombButton.AddThemeColorOverride("font_pressed_color", new Color(0, 0, 0, 1));
+		bombButton.AddThemeColorOverride("font_focus_color", new Color(0, 0, 0, 1));
+		bombButton.AddThemeColorOverride("font_disabled_color", new Color(0, 0, 0, 1));
+		
+		bombButton.Pressed += OnBombButtonPressed;
+		_uiLayer.AddChild(bombButton);
+		bombButton.Name = "BombButton";
+		bombButton.Visible = false;
 
 		// RPS Result Overlay
 		_rpsResultOverlay = new RPSResultOverlay();
@@ -1225,6 +1291,24 @@ public partial class GameWorld : Node2D
 
 	private void OnNPCClicked(string npcId)
 	{
+		// Don't allow interactions when in bomb mode - show "too close" message
+		if (_bombOperationActive)
+		{
+			GD.Print("[BOMB] NPC clicked during bomb mode - player too close");
+			// Check if this is one of the target NPCs
+			var targetNPCs = new[] { "john", "rebecca", "marcus" };
+			if (targetNPCs.Contains(npcId))
+			{
+				// Add notification
+				if (_gameEngine != null)
+				{
+					_gameEngine.GameState.AddNotification("Too close to activate bomb.");
+					BroadcastGameState();
+				}
+			}
+			return;
+		}
+		
 		GD.Print($"GameWorld received OnNPCClicked for {npcId}. Current Role: '{_myRole}'");
 		if (string.IsNullOrEmpty(_myRole)) 
 		{
@@ -1299,6 +1383,493 @@ public partial class GameWorld : Node2D
 		}
 		OnActionSelected("global", "set_trap");
 	}
+
+	private void OnBombButtonPressed()
+	{
+		ShowBombTargetSelection();
+	}
+	
+	
+	private void ShowBombTargetSelection()
+	{
+		// Create overlay if it doesn't exist
+		if (_bombTargetOverlay == null)
+		{
+			_bombTargetOverlay = new Control();
+			_bombTargetOverlay.Name = "BombTargetOverlay";
+			_bombTargetOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+			_bombTargetOverlay.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks through to NPCs
+			
+			// Top instruction label (smaller, inside overlay with transparent background)
+			var instructionPanel = new PanelContainer();
+			var bgStyle = new StyleBoxFlat();
+			bgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.7f); // Transparent grey
+			bgStyle.ContentMarginLeft = 10;
+			bgStyle.ContentMarginRight = 10;
+			bgStyle.ContentMarginTop = 5;
+			bgStyle.ContentMarginBottom = 5;
+			instructionPanel.AddThemeStyleboxOverride("panel", bgStyle);
+			instructionPanel.Position = new Vector2(GetViewportRect().Size.X / 2 - 120, 50);
+			
+			var instructionLabel = new Label();
+			instructionLabel.Name = "InstructionLabel";
+			instructionLabel.Text = "Choose your target.";
+			instructionLabel.AddThemeFontSizeOverride("font_size", 24);
+			instructionLabel.AddThemeColorOverride("font_color", Colors.White);
+			instructionLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			instructionPanel.AddChild(instructionLabel);
+			_bombTargetOverlay.AddChild(instructionPanel);
+			
+			// Close button (top right)
+			var closeButton = new Button();
+			closeButton.Name = "CloseButton";
+			closeButton.Text = "Close";
+			closeButton.Position = new Vector2(GetViewportRect().Size.X - 120, 20);
+			closeButton.CustomMinimumSize = new Vector2(100, 50);
+			closeButton.AddThemeFontSizeOverride("font_size", 20);
+			closeButton.Pressed += OnBombTargetClose;
+			_bombTargetOverlay.AddChild(closeButton);
+			
+			_uiLayer.AddChild(_bombTargetOverlay);
+		}
+		
+		// Show the overlay
+		_bombTargetOverlay.Visible = true;
+		_selectedBombTarget = null;
+		_bombOperationActive = true;
+		GD.Print($"[BOMB] _bombOperationActive set to true in ShowBombTargetSelection");
+		
+		// Pause all target NPCs
+		PauseTargetNPCs(true);
+		
+		// Enable click detection on target NPCs
+		EnableTargetNPCClicks(true);
+	}
+	
+	private void OnBombTargetClose()
+	{
+		// Stop the entire bomb operation
+		_bombOperationActive = false;
+		
+		if (_bombTargetOverlay != null)
+		{
+			_bombTargetOverlay.Visible = false;
+		}
+		
+		if (_bombSliderOverlay != null)
+		{
+			_bombSliderOverlay.Visible = false;
+		}
+		
+		// Unpause target NPCs
+		PauseTargetNPCs(false);
+		
+		// Disable click detection
+		EnableTargetNPCClicks(false);
+		
+		// Remove red dot if exists
+		if (_targetRedDot != null && IsInstanceValid(_targetRedDot))
+		{
+			_targetRedDot.QueueFree();
+			_targetRedDot = null;
+		}
+		
+		_selectedBombTarget = null;
+	}
+	
+	private void ShowBombSlider()
+	{
+		GD.Print("[GameWorld] ShowBombSlider called");
+		
+		// Reset slider state
+		_sliderPosition = 0f;
+		_sliderDirection = 1f;
+		_sliderMoving = true;
+		
+		// Generate random target zones (3-5 zones)
+		_targetZones.Clear();
+		var random = new Random();
+		int numZones = random.Next(3, 6); // 3 to 5 zones
+		const float barWidth = 400f;
+		
+		for (int i = 0; i < numZones; i++)
+		{
+			float zoneX = (float)(random.NextDouble() * (barWidth - 20)); // Leave room for zone width
+			float zoneWidth = (float)(random.Next(10, 20)); // Zone width 10-20 pixels (reduced)
+			_targetZones.Add(new Vector2(zoneX, zoneWidth));
+		}
+		
+		// Create slider overlay if it doesn't exist
+		if (_bombSliderOverlay == null)
+		{
+			_bombSliderOverlay = new Control();
+			_bombSliderOverlay.Name = "BombSliderOverlay";
+			_bombSliderOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+			_bombSliderOverlay.MouseFilter = Control.MouseFilterEnum.Stop;
+			
+			// Panel at bottom left of screen (away from notifications)
+			var panel = new PanelContainer();
+			panel.Name = "SliderPanel";
+			var viewportSize = GetViewportRect().Size;
+			panel.Position = new Vector2(230, viewportSize.Y - 200);
+			panel.CustomMinimumSize = new Vector2(600, 120);
+			
+			// Panel styling - transparent grey background like HUD
+			var panelStyle = new StyleBoxFlat();
+			panelStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f);
+			panelStyle.SetCornerRadiusAll(4);
+			panelStyle.SetContentMarginAll(15);
+			panel.AddThemeStyleboxOverride("panel", panelStyle);
+			
+			var vbox = new VBoxContainer();
+			vbox.AddThemeConstantOverride("separation", 10);
+			panel.AddChild(vbox);
+			
+			// Title label
+			var titleLabel = new Label();
+			titleLabel.Text = "Choose your target.";
+			titleLabel.AddThemeFontOverride("font", _customFont);
+			titleLabel.AddThemeFontSizeOverride("font_size", 24);
+			titleLabel.AddThemeColorOverride("font_color", Colors.White);
+			titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			vbox.AddChild(titleLabel);
+			
+			// Instruction label
+			var instructionLabel = new Label();
+			instructionLabel.Text = "Stop the slider in the target zone!";
+			instructionLabel.AddThemeFontOverride("font", _customFont);
+			instructionLabel.AddThemeFontSizeOverride("font_size", 26);
+			instructionLabel.AddThemeColorOverride("font_color", Colors.White);
+			instructionLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			vbox.AddChild(instructionLabel);
+			
+			// Custom slider container (centered)
+			var sliderHBox = new HBoxContainer();
+			sliderHBox.Alignment = BoxContainer.AlignmentMode.Center;
+			_sliderControl = new BombSlider();
+			_sliderControl.Name = "SliderContainer";
+			_sliderControl.CustomMinimumSize = new Vector2(400, 40);
+			sliderHBox.AddChild(_sliderControl);
+			vbox.AddChild(sliderHBox);
+			
+			// Buttons container
+			var buttonBox = new HBoxContainer();
+			buttonBox.Alignment = BoxContainer.AlignmentMode.Center;
+			buttonBox.AddThemeConstantOverride("separation", 20);
+			vbox.AddChild(buttonBox);
+			
+			// Stop button (renamed from Throw)
+			var stopButton = new Button();
+			stopButton.Name = "StopButton";
+			stopButton.Text = "Stop";
+			stopButton.AddThemeFontOverride("font", _customFont);
+			stopButton.AddThemeFontSizeOverride("font_size", 24);
+			stopButton.CustomMinimumSize = new Vector2(120, 40);
+			
+			// Apply trap-style button styling
+			stopButton.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+			stopButton.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+			stopButton.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+			stopButton.AddThemeColorOverride("font_color", Colors.Black);
+			stopButton.AddThemeColorOverride("font_hover_color", Colors.Black);
+			stopButton.AddThemeColorOverride("font_pressed_color", Colors.Black);
+			
+			stopButton.Pressed += OnBombStop;
+			buttonBox.AddChild(stopButton);
+			
+			// Close button
+			var closeButton = new Button();
+			closeButton.Name = "CloseButton";
+			closeButton.Text = "Close";
+			closeButton.AddThemeFontOverride("font", _customFont);
+			closeButton.AddThemeFontSizeOverride("font_size", 24);
+			closeButton.CustomMinimumSize = new Vector2(120, 40);
+			
+			// Apply trap-style button styling
+			closeButton.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
+			closeButton.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+			closeButton.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
+			closeButton.AddThemeColorOverride("font_color", Colors.Black);
+			closeButton.AddThemeColorOverride("font_hover_color", Colors.Black);
+			closeButton.AddThemeColorOverride("font_pressed_color", Colors.Black);
+			
+			closeButton.Pressed += OnBombTargetClose;
+			buttonBox.AddChild(closeButton);
+			
+			_bombSliderOverlay.AddChild(panel);
+			_uiLayer.AddChild(_bombSliderOverlay);
+		}
+		
+		// Show the slider
+		_bombSliderOverlay.Visible = true;
+		_bombOperationActive = true;
+	}
+	
+	private void OnBombStop()
+	{
+		if (!_bombOperationActive || string.IsNullOrEmpty(_selectedBombTarget))
+		{
+			GD.Print("[GameWorld] Cannot throw bomb - operation not active or no target");
+			return;
+		}
+		
+		if (_bombsRemaining <= 0)
+		{
+			GD.Print("[GameWorld] No bombs remaining");
+			return;
+		}
+		
+		// Stop the slider movement
+		_sliderMoving = false;
+		
+		// Check if stopped in a target zone (with extended hitbox - 10 pixels beyond edges)
+		const float HITBOX_EXTENSION = 10f;
+		bool inTargetZone = false;
+		foreach (var zone in _targetZones)
+		{
+			float zoneStart = zone.X - HITBOX_EXTENSION;
+			float zoneEnd = zone.X + zone.Y + HITBOX_EXTENSION;
+			if (_sliderPosition >= zoneStart && _sliderPosition <= zoneEnd)
+			{
+				inTargetZone = true;
+				break;
+			}
+		}
+		
+		GD.Print($"[GameWorld] Slider stopped at {_sliderPosition}, in target zone: {inTargetZone}");
+		
+		// Decrement bomb counter
+		_bombsRemaining--;
+		if (_bombCounterLabel != null)
+		{
+			_bombCounterLabel.Text = $"BOMBS LEFT: {_bombsRemaining}";
+		}
+		
+		// Hide bomb button if no bombs left
+		if (_bombsRemaining <= 0)
+		{
+			var bombBtn = _uiLayer.GetNodeOrNull<Button>("BombButton");
+			if (bombBtn != null)
+			{
+				bombBtn.Visible = false;
+			}
+		}
+		
+		if (inTargetZone)
+		{
+			// Successful hit - kill the NPC (same as punch effect)
+			GD.Print($"[GameWorld] Bomb hit! Killing NPC {_selectedBombTarget}");
+			RpcId(1, MethodName.BombKillNPC, _selectedBombTarget);
+		}
+		else
+		{
+			// Missed - show unsuccessful message
+			GD.Print("[GameWorld] Bomb missed!");
+			if (_gameEngine != null)
+			{
+				_gameEngine.GameState.AddNotification("Bomb unsuccessful.");
+				BroadcastGameState();
+			}
+		}
+		
+		// Clean up
+		OnBombTargetClose();
+	}
+	
+	private void OnDrawSliderBar()
+	{
+		// This method is no longer needed - drawing is handled by BombSlider class
+	}
+	
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void BombKillNPC(string targetNpcId)
+	{
+		if (!Multiplayer.IsServer()) return;
+		
+		GD.Print($"[GameWorld] BombKillNPC called for {targetNpcId}");
+		
+		// Get the NPC and mark it as eliminated
+		var npc = _gameEngine.GameState.GetNPC(targetNpcId);
+		if (npc != null)
+		{
+			npc.Alive = false;
+			GD.Print($"[GameWorld] NPC {targetNpcId} marked as eliminated by bomb");
+			
+			// Apply immobilization effect visually
+			if (_npcEntities.TryGetValue(targetNpcId, out var npcEntity))
+			{
+				npcEntity.SetFrozen(true);
+				GD.Print($"[GameWorld] NPC {targetNpcId} frozen (immobilized)");
+			}
+			
+			_gameEngine.GameState.AddNotification($"Bomb successful! {npc.Name} has been eliminated!");
+			BroadcastGameState();
+		}
+		else
+		{
+			GD.PrintErr($"[GameWorld] Could not find NPC {targetNpcId} for bomb kill");
+		}
+	}
+	
+	private void PauseTargetNPCs(bool pause)
+	{
+		GD.Print($"[GameWorld] PauseTargetNPCs called with pause={pause}");
+		
+		// Get target NPCs from game state
+		if (_gameEngine?.GameState?.NPCs == null)
+		{
+			GD.Print("[GameWorld] ERROR: GameState or NPCs is null");
+			return;
+		}
+		
+		// Freeze john, rebecca, and marcus specifically
+		string[] targetIds = { "john", "rebecca", "marcus" };
+		
+		foreach (var targetId in targetIds)
+		{
+			if (pause)
+			{
+				_bombFrozenNpcs.Add(targetId);
+			}
+			else
+			{
+				_bombFrozenNpcs.Remove(targetId);
+			}
+			
+			if (_npcEntities.TryGetValue(targetId, out var npcEntity))
+			{
+				GD.Print($"[GameWorld] Setting {targetId} frozen to {pause}");
+				npcEntity.SetFrozen(pause);
+				
+				// Broadcast to all clients
+				if (Multiplayer.IsServer())
+				{
+					Rpc(MethodName.RpcFreezeNPC, targetId, pause);
+				}
+			}
+			else
+			{
+				GD.Print($"[GameWorld] WARNING: No NPC entity found for {targetId}");
+			}
+		}
+	}
+	
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	public void RpcFreezeNPC(string npcId, bool frozen)
+	{
+		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
+		{
+			GD.Print($"[GameWorld] RPC: Setting {npcId} frozen to {frozen}");
+			npcEntity.SetFrozen(frozen);
+		}
+	}
+	
+	private bool IsNPCVisible(NPCEntity npc)
+	{
+		// Check if NPC node is in tree and visible
+		if (npc == null || !IsInstanceValid(npc)) return false;
+		
+		// Simple visibility check: if the NPC is in the tree and not hidden, consider it visible
+		// A more sophisticated check could use camera bounds, but for now we'll check if it's spawned
+		return npc.Visible && npc.IsInsideTree();
+	}
+	
+	private void EnableTargetNPCClicks(bool enable)
+	{
+		// Get target NPCs from game state
+		if (_gameEngine?.GameState?.NPCs == null) return;
+		
+		var targetNpcIds = new HashSet<string>();
+		foreach (var npc in _gameEngine.GameState.NPCs.Values)
+		{
+			if (npc.IsTarget)
+			{
+				targetNpcIds.Add(npc.Id);
+			}
+		}
+		
+		foreach (var npcEntity in _npcEntities.Values)
+		{
+			if (targetNpcIds.Contains(npcEntity.NpcId))
+			{
+				// This is a target NPC - enable clicking
+				if (enable)
+				{
+					npcEntity.InputPickable = true;
+					npcEntity.InputEvent += (viewport, inputEvent, shapeIdx) => OnTargetNPCClicked(npcEntity, inputEvent);
+				}
+				else
+				{
+					npcEntity.InputPickable = false;
+				}
+			}
+		}
+	}
+	
+	private void OnTargetNPCClicked(NPCEntity npcEntity, InputEvent inputEvent)
+	{
+		if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
+		{
+			if (_bombTargetOverlay == null || !_bombTargetOverlay.Visible) return;
+			
+			GD.Print($"[BOMB] Target NPC clicked: {npcEntity.NpcId}");
+			
+			// Check if player is too close to the clicked NPC
+			var myId = Multiplayer.GetUniqueId();
+			if (_playerControllers.TryGetValue(myId, out var localPlayer))
+			{
+				const float INTERACTION_RANGE = 250f; // Match the visual interaction range
+				float distanceToNPC = localPlayer.Position.DistanceTo(npcEntity.Position);
+				GD.Print($"[BOMB] Distance to clicked target {npcEntity.NpcId}: {distanceToNPC}");
+				
+				if (distanceToNPC <= INTERACTION_RANGE)
+				{
+					GD.Print("[BOMB] Too close to target NPC - cannot select");
+					// Add notification
+					if (_gameEngine != null)
+					{
+						_gameEngine.GameState.AddNotification("Too close to activate bomb.");
+						BroadcastGameState();
+					}
+					return; // Don't proceed with target selection
+				}
+			}
+			
+			_selectedBombTarget = npcEntity.NpcId;
+			
+			// Remove old red dot if exists
+			if (_targetRedDot != null && IsInstanceValid(_targetRedDot))
+			{
+				_targetRedDot.QueueFree();
+			}
+			
+			// Create red dot on the NPC
+			_targetRedDot = new Node2D();
+			_targetRedDot.Name = "RedDot";
+			_targetRedDot.ZIndex = 100; // Above everything
+			
+			var circle = new Sprite2D();
+			var circleTexture = new GradientTexture2D();
+			var gradient = new Gradient();
+			gradient.SetColor(0, new Color(1, 0, 0, 1)); // Red center
+			gradient.SetColor(1, new Color(1, 0, 0, 0.5f)); // Transparent edge
+			circleTexture.Gradient = gradient;
+			circleTexture.Fill = GradientTexture2D.FillEnum.Radial;
+			circleTexture.Width = 64;
+			circleTexture.Height = 64;
+			circle.Texture = circleTexture;
+			circle.Scale = new Vector2(0.5f, 0.5f);
+			_targetRedDot.AddChild(circle);
+			
+			// Position on NPC
+			_targetRedDot.Position = npcEntity.Position + new Vector2(0, -40); // Above NPC head
+			AddChild(_targetRedDot);
+			
+			// Hide target selection overlay and show slider
+			_bombTargetOverlay.Visible = false;
+			ShowBombSlider();
+		}
+	}
 	
 	private void OnInteractionPanelClosed()
 	{
@@ -1331,6 +1902,32 @@ public partial class GameWorld : Node2D
 
 	public override void _Process(double delta)
 	{
+		// Update bomb slider animation
+		if (_bombSliderOverlay != null && _bombSliderOverlay.Visible && _sliderMoving)
+		{
+			const float barWidth = 400f;
+			_sliderPosition += _sliderDirection * SLIDER_SPEED * (float)delta;
+			
+			// Bounce at edges
+			if (_sliderPosition >= barWidth)
+			{
+				_sliderPosition = barWidth;
+				_sliderDirection = -1f;
+			}
+			else if (_sliderPosition <= 0)
+			{
+				_sliderPosition = 0;
+				_sliderDirection = 1f;
+			}
+			
+			// Update the slider control
+			if (_sliderControl != null)
+			{
+				_sliderControl.SliderPosition = _sliderPosition;
+				_sliderControl.TargetZones = _targetZones;
+			}
+		}
+		
 		if (Multiplayer.IsServer() && _gameActive)
 		{
 			// Check for Win Condition
@@ -1358,6 +1955,12 @@ public partial class GameWorld : Node2D
 					if (!string.IsNullOrEmpty(kvp.Value.NpcId))
 						frozenNpcIds.Add(kvp.Value.NpcId);
 				}
+			}
+			
+			// Add bomb-frozen NPCs to the frozen set
+			foreach (var npcId in _bombFrozenNpcs)
+			{
+				frozenNpcIds.Add(npcId);
 			}
 
 			foreach (var kvp in _npcEntities)
@@ -1407,10 +2010,7 @@ public partial class GameWorld : Node2D
 				}
 			}
 		}
-	}
-	
-	public override void _PhysicsProcess(double delta)
-	{
+
 		// If interaction panel is visible, check if player is still in range of NPC
 		if (_interactionPanel != null && _interactionPanel.Visible && _currentInteractingNpcId != null)
 		{
@@ -1876,12 +2476,24 @@ public partial class GameWorld : Node2D
 		// _roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
 
 		bool isProphet = (_myRole?.ToLower() == "prophet");
+		bool isAdmirer = (_myRole?.ToLower() == "admirer");
 
-		// Update Trap Button Visibility
-		// Update Trap Button Visibility
+		// Update Trap Button Visibility (Prophet only)
 		if (_uiLayer.GetNodeOrNull<Button>("TrapButton") is Button trapBtn)
 		{
 			trapBtn.Visible = isProphet;
+		}
+
+		// Update Bomb Button Visibility (Admirer only)
+		if (_uiLayer.GetNodeOrNull<Button>("BombButton") is Button bombBtn)
+		{
+			bombBtn.Visible = isAdmirer && _bombsRemaining > 0;
+		}
+		
+		// Update Bomb Counter Visibility (Admirer only)
+		if (_bombCounterLabel != null)
+		{
+			_bombCounterLabel.Visible = isAdmirer;
 		}
 
 		// Prophet conversion progress
@@ -2140,8 +2752,11 @@ public partial class GameWorld : Node2D
 		var notifs = _localGameState["notifications"];
 		if (notifs != null)
 		{
-			foreach (string msg in notifs)
+			var notifList = notifs.ToObject<List<string>>();
+			// Only add new notifications (those we haven't shown yet)
+			for (int i = _lastNotificationCount; i < notifList.Count; i++)
 			{
+				string msg = notifList[i];
 				_notificationText.AddText(msg + "\n");
 				
 				// Check for RPS result in notifications to show the overlay
@@ -2174,6 +2789,7 @@ public partial class GameWorld : Node2D
 					}
 				}
 			}
+			_lastNotificationCount = notifList.Count;
 		}
 
 		// Game Over check
@@ -2252,9 +2868,9 @@ public partial class GameWorld : Node2D
 
 		if (admirerEliminated)
 		{
-			bool isAdmirer = (_myRole?.ToLower() == "admirer");
+			bool isLocalAdmirer = (_myRole?.ToLower() == "admirer");
 			
-			if (isAdmirer)
+			if (isLocalAdmirer)
 			{
 				// I AM ELIMINATED
 				if (gameOverOverlay != null) 
