@@ -1,0 +1,70 @@
+[gd_scene load_steps=3 format=3 uid="uid://c0mja64827pmu"]
+
+[ext_resource type="Texture2D" uid="uid://ceskaldtv0kyj" path="res://assets/editorial-focus.png" id="1_rmabs"]
+[ext_resource type="Script" uid="uid://dkacfyed7du6p" path="res://room_1.gd" id="2_7iqg5"]
+
+[node name="editorialRoomAsset" type="Node2D"]
+position = Vector2(-60, -25)
+
+[node name="Node2D" type="Node2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="Node2D"]
+texture_filter = 1
+position = Vector2(640, 360)
+scale = Vector2(10, 10)
+texture = ExtResource("1_rmabs")
+
+[node name="ButtonRoom1" type="Area2D" parent="Node2D"]
+script = ExtResource("2_7iqg5")
+room_name = "Room 1"
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom1"]
+position = Vector2(-14, 1)
+polygon = PackedVector2Array(504, 239, 504, 299, 634, 299, 634, 239, 543, 239)
+
+[node name="ButtonRoom2" type="Area2D" parent="Node2D"]
+script = ExtResource("2_7iqg5")
+room_name = "Room 2"
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom2"]
+position = Vector2(-33, 10)
+polygon = PackedVector2Array(683, 220, 683, 290, 763, 290, 763, 220, 696, 220)
+
+[node name="ButtonRoom3" type="Area2D" parent="Node2D"]
+script = ExtResource("2_7iqg5")
+room_name = "Room 3"
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom3"]
+position = Vector2(-185, 220)
+polygon = PackedVector2Array(685, 220, 685, 280, 735, 280, 735, 220, 701, 220)
+
+[node name="ButtonRoom4" type="Area2D" parent="Node2D"]
+script = ExtResource("2_7iqg5")
+room_name = "Room 4"
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom4"]
+position = Vector2(-191, 220)
+polygon = PackedVector2Array(901, 160, 901, 250, 741, 250, 741, 160)
+
+[node name="ButtonRoom5" type="Area2D" parent="Node2D"]
+script = ExtResource("2_7iqg5")
+room_name = "Room 5"
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom5"]
+position = Vector2(-14, 217)
+polygon = PackedVector2Array(814, 163, 814, 223, 744, 223, 744, 163)
+
+[node name="ButtonHallway" type="Area2D" parent="Node2D"]
+script = ExtResource("2_7iqg5")
+room_name = "Hallways"
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonHallway"]
+position = Vector2(-20, 220)
+polygon = PackedVector2Array(500, 100, 820, 100, 820, 140, 500, 140)
+
+[connection signal="input_event" from="Node2D/ButtonRoom1" to="Node2D/ButtonRoom1" method="_on_room_input_event"]
+[connection signal="input_event" from="Node2D/ButtonRoom2" to="Node2D/ButtonRoom2" method="_on_room_input_event"]
+[connection signal="input_event" from="Node2D/ButtonRoom3" to="Node2D/ButtonRoom3" method="_on_room_input_event"]
+[connection signal="input_event" from="Node2D/ButtonRoom4" to="Node2D/ButtonRoom4" method="_on_room_input_event"]
+[connection signal="input_event" from="Node2D/ButtonRoom5" to="Node2D/ButtonRoom5" method="_on_room_input_event"]
+[connection signal="input_event" from="Node2D/ButtonHallway" to="Node2D/ButtonHallway" method="_on_room_input_event"]

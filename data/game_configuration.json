@@ -1,0 +1,1947 @@
+{
+  "game": {
+    "id": "fatal_attraction",
+    "version": "0.1"
+  },
+  "roles": {
+    "admirer": {
+      "displayName": "Admirer",
+      "powers": {
+        "kill_npc": {
+          "displayName": "Kill NPCs",
+          "constraints": {
+            "mustBeNonConvert": true
+          },
+          "uiHint": "Kill button"
+        },
+        "unconvert_target": {
+          "displayName": "Unconvert targets",
+          "resolution": {
+            "type": "chance",
+            "baseChance": 0.55
+          },
+          "constraints": {
+            "mustBeTarget": true
+          }
+        },
+        "unconvert_love_interest": {
+          "displayName": "Unconvert love interest",
+          "resolution": {
+            "type": "chance",
+            "baseChance": 0.55
+          },
+          "constraints": {
+            "mustBeLoveInterest": true
+          }
+        }
+      },
+      "goals": {
+        "kill_targets": {
+          "displayName": "Kill targets",
+          "constraints": {
+            "mustBeNonConvert": true
+          }
+        },
+        "marry_love_interest": {
+          "displayName": "Marry love interest",
+          "constraints": {
+            "mustBeNonConvert": true
+          }
+        }
+      },
+      "meters": {
+        "love": {
+          "displayName": "Love",
+          "min": 0,
+          "max": 10,
+          "start": 0,
+          "notes": "Raise by talking to interest"
+        }
+      }
+    },
+    "prophet": {
+      "displayName": "Prophet",
+      "powers": {
+        "convert_npc": {
+          "displayName": "Convert NPCs",
+          "resolution": {
+            "type": "rps"
+          },
+          "constraints": {
+            "coolOff": true
+          }
+        },
+        "increase_chaos": {
+          "displayName": "Increase Chaos",
+          "constraints": {
+            "coolOff": true
+          }
+        },
+        "prank": {
+          "displayName": "Prank Character",
+          "resolution": {
+            "type": "immediate"
+          }
+        },
+        "set_trap": {
+          "displayName": "Set Trap",
+          "resolution": {
+            "type": "delayed"
+          }
+        }
+      },
+      "goals": {
+        "convert_quota": {
+          "displayName": "Convert a set number of people"
+        },
+        "chaos_threshold": {
+          "displayName": "Achieve high chaos"
+        }
+      },
+      "meters": {
+        "chaos": {
+          "displayName": "Chaos",
+          "min": 0,
+          "max": 10,
+          "start": 0,
+          "segments": [
+            {
+              "name": "hard",
+              "from": 0,
+              "to": 3
+            },
+            {
+              "name": "normal",
+              "from": 3,
+              "to": 7
+            },
+            {
+              "name": "easy",
+              "from": 7,
+              "to": 10
+            }
+          ]
+        }
+      }
+    },
+    "producer": {
+      "displayName": "Producer",
+      "powers": {
+        "unconvert_npc": {
+          "displayName": "Unconvert NPCs",
+          "resolution": {
+            "type": "chance",
+            "baseChance": 0.75
+          }
+        },
+        "marry_npc": {
+          "displayName": "Marry NPCs",
+          "effects": [
+            {
+              "meter": "ratings",
+              "delta": 1
+            }
+          ]
+        },
+        "cleanup_prank": {
+          "displayName": "Clean-Up Pranks",
+          "effects": [
+            {
+              "meter": "chaos",
+              "delta": -1
+            }
+          ]
+        },
+        "report_admirer": {
+          "displayName": "Report Admirer",
+          "notes": "Admirer becomes observer"
+        }
+      },
+      "goals": {
+        "high_ratings": {
+          "displayName": "High Ratings"
+        },
+        "catch_admirer": {
+          "displayName": "Catch Admirer"
+        }
+      },
+      "meters": {
+        "ratings": {
+          "displayName": "Ratings",
+          "min": 0,
+          "max": 10,
+          "start": 0
+        }
+      }
+    }
+  },
+  "systems": {
+    "editorial_attention": {
+      "displayName": "Editorial Attention",
+      "focusTokensPerTurn": 1,
+      "decay": true,
+      "focusOptions": {
+        "sudden_deaths": {
+          "displayName": "Sudden NPC deaths",
+          "detectionMultiplier": 2.0
+        },
+        "romantic_escalations": {
+          "displayName": "Romantic escalations",
+          "detectionMultiplier": 1.5
+        },
+        "chaos_spikes": {
+          "displayName": "Chaos spikes",
+          "detectionMultiplier": 1.5
+        },
+        "public_areas": {
+          "displayName": "Public areas",
+          "detectionMultiplier": 1.25
+        }
+      }
+    }
+  },
+  "npcs": {
+    "katy": {
+      "id": "katy",
+      "name": "Katy",
+      "role": "love_interest",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Katy walks up to you, smiling warmly.",
+          "options": [
+            {
+              "id": "flirt",
+              "text": "Flirt with Katy",
+              "requires": {
+                "role": "admirer"
+              },
+              "effects": [
+                {
+                  "meter": "love",
+                  "delta": 2,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You flirted with Katy! Love increased significantly!"
+                }
+              ]
+            },
+            {
+              "id": "marry",
+              "text": "Marry Katy",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "nonConverted"
+              },
+              "marry_admirer_love": true,
+              "effects": [
+                {
+                  "notification": "You proposed to Katy! Love story achieved!"
+                },
+                {
+                  "npc": "katy",
+                  "field": "married",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "unconvert",
+              "text": "Unconvert Katy",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "Success! Katy is unconverted."
+                },
+                {
+                  "npc": "katy",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Katy."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_katy_producer",
+              "text": "Unconvert Katy",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "Success! Katy is unconverted."
+                },
+                {
+                  "npc": "katy",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Katy."
+                }
+              ]
+            },
+            {
+              "id": "prank_katy",
+              "text": "Prank Katy",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Katy! Chaos increased."
+                },
+                {
+                  "npc": "katy",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_katy",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "katy",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "convert_katy",
+              "text": "Try to convert Katy",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Katy!"
+                },
+                {
+                  "npc": "katy",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Katy resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "john": {
+      "id": "john",
+      "name": "John",
+      "role": "generic",
+      "isTarget": true,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "John approaches you, looking suspicious.",
+          "options": [
+            {
+              "id": "kill",
+              "text": "Kill John",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "nonConverted"
+              },
+              "effects": [
+                {
+                  "notification": "John has been eliminated. Target down!"
+                },
+                {
+                  "npc": "john",
+                  "field": "alive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "convert",
+              "text": "Try to convert John",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted John!"
+                },
+                {
+                  "npc": "john",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "John resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "prank_john",
+              "text": "Prank John",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked John! Chaos increased."
+                },
+                {
+                  "npc": "john",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_john",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "john",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "unconvert_john_admirer",
+              "text": "Unconvert John",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted John!"
+                },
+                {
+                  "npc": "john",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert John."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_john",
+              "text": "Unconvert John",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted John!"
+                },
+                {
+                  "npc": "john",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert John."
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "rebecca": {
+      "id": "rebecca",
+      "name": "Rebecca",
+      "role": "generic",
+      "isTarget": true,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Rebecca glances at you with curiosity.",
+          "options": [
+            {
+              "id": "kill_rebecca",
+              "text": "Kill Rebecca",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "nonConverted"
+              },
+              "effects": [
+                {
+                  "notification": "Rebecca has been eliminated. Target down!"
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "alive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "convert_rebecca",
+              "text": "Try to convert Rebecca",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Rebecca!"
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Rebecca resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "prank_rebecca",
+              "text": "Prank Rebecca",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Rebecca! Chaos increased."
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_rebecca",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "unconvert_rebecca_admirer",
+              "text": "Unconvert Rebecca",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Rebecca!"
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Rebecca."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_rebecca",
+              "text": "Unconvert Rebecca",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Rebecca!"
+                },
+                {
+                  "npc": "rebecca",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Rebecca."
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "marcus": {
+      "id": "marcus",
+      "name": "Marcus",
+      "role": "generic",
+      "isTarget": true,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Marcus walks over with a confident smile.",
+          "options": [
+            {
+              "id": "kill_marcus",
+              "text": "Kill Marcus",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "nonConverted"
+              },
+              "effects": [
+                {
+                  "notification": "Marcus has been eliminated. Target down!"
+                },
+                {
+                  "npc": "marcus",
+                  "field": "alive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "convert_marcus",
+              "text": "Try to convert Marcus",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Marcus to your cause!"
+                },
+                {
+                  "npc": "marcus",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Marcus refused your offer."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_marcus_admirer",
+              "text": "Unconvert Marcus",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Marcus!"
+                },
+                {
+                  "npc": "marcus",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Marcus."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_marcus",
+              "text": "Unconvert Marcus",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Marcus!"
+                },
+                {
+                  "npc": "marcus",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Marcus."
+                }
+              ]
+            },
+            {
+              "id": "prank_marcus",
+              "text": "Prank Marcus",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Marcus! Chaos increased."
+                },
+                {
+                  "npc": "marcus",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_marcus",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "marcus",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "sofia": {
+      "id": "sofia",
+      "name": "Sofia",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Sofia approaches with an intriguing expression.",
+          "options": [
+            {
+              "id": "convert_sofia",
+              "text": "Try to convert Sofia",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Sofia to your movement!"
+                },
+                {
+                  "npc": "sofia",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Sofia is resistant to your ideas."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_sofia_admirer",
+              "text": "Unconvert Sofia",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Sofia!"
+                },
+                {
+                  "npc": "sofia",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Sofia."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_sofia",
+              "text": "Unconvert Sofia",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Sofia!"
+                },
+                {
+                  "npc": "sofia",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Sofia."
+                }
+              ]
+            },
+            {
+              "id": "prank_sofia",
+              "text": "Prank Sofia",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Sofia! Chaos increased."
+                },
+                {
+                  "npc": "sofia",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_sofia",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "sofia",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "amir": {
+      "id": "amir",
+      "name": "Amir",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Amir greets you with a nod.",
+          "options": [
+            {
+              "id": "convert_amir",
+              "text": "Try to convert Amir",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Amir to your cause!"
+                },
+                {
+                  "npc": "amir",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Amir resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_amir_admirer",
+              "text": "Unconvert Amir",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Amir!"
+                },
+                {
+                  "npc": "amir",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Amir."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_amir",
+              "text": "Unconvert Amir",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Amir!"
+                },
+                {
+                  "npc": "amir",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Amir."
+                }
+              ]
+            },
+            {
+              "id": "prank_amir",
+              "text": "Prank Amir",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Amir! Chaos increased."
+                },
+                {
+                  "npc": "amir",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_amir",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "amir",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "bella": {
+      "id": "bella",
+      "name": "Bella",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Bella smiles politely as you approach.",
+          "options": [
+            {
+              "id": "convert_bella",
+              "text": "Try to convert Bella",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Bella!"
+                },
+                {
+                  "npc": "bella",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Bella resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_bella_admirer",
+              "text": "Unconvert Bella",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Bella!"
+                },
+                {
+                  "npc": "bella",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Bella."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_bella",
+              "text": "Unconvert Bella",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Bella!"
+                },
+                {
+                  "npc": "bella",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Bella."
+                }
+              ]
+            },
+            {
+              "id": "prank_bella",
+              "text": "Prank Bella",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Bella! Chaos increased."
+                },
+                {
+                  "npc": "bella",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_bella",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "bella",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "chris": {
+      "id": "chris",
+      "name": "Chris",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Chris watches you with interest.",
+          "options": [
+            {
+              "id": "convert_chris",
+              "text": "Try to convert Chris",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Chris!"
+                },
+                {
+                  "npc": "chris",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Chris resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_chris_admirer",
+              "text": "Unconvert Chris",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Chris!"
+                },
+                {
+                  "npc": "chris",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Chris."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_chris",
+              "text": "Unconvert Chris",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Chris!"
+                },
+                {
+                  "npc": "chris",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Chris."
+                }
+              ]
+            },
+            {
+              "id": "prank_chris",
+              "text": "Prank Chris",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Chris! Chaos increased."
+                },
+                {
+                  "npc": "chris",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_chris",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "chris",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "diana": {
+      "id": "diana",
+      "name": "Diana",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Diana waves hello cheerfully.",
+          "options": [
+            {
+              "id": "convert_diana",
+              "text": "Try to convert Diana",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Diana!"
+                },
+                {
+                  "npc": "diana",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Diana resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_diana_admirer",
+              "text": "Unconvert Diana",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Diana!"
+                },
+                {
+                  "npc": "diana",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Diana."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_diana",
+              "text": "Unconvert Diana",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Diana!"
+                },
+                {
+                  "npc": "diana",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Diana."
+                }
+              ]
+            },
+            {
+              "id": "prank_diana",
+              "text": "Prank Diana",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Diana! Chaos increased."
+                },
+                {
+                  "npc": "diana",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_diana",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "diana",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    },
+    "eli": {
+      "id": "eli",
+      "name": "Eli",
+      "role": "generic",
+      "isTarget": false,
+      "convertedStatus": false,
+      "married": false,
+      "interactionTree": {
+        "root": {
+          "text": "Eli stands thoughtfully, waiting to chat.",
+          "options": [
+            {
+              "id": "convert_eli",
+              "text": "Try to convert Eli",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Eli!"
+                },
+                {
+                  "npc": "eli",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Eli resisted your conversion."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_eli_admirer",
+              "text": "Unconvert Eli",
+              "requires": {
+                "role": "admirer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.30
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Eli!"
+                },
+                {
+                  "npc": "eli",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Eli."
+                }
+              ]
+            },
+            {
+              "id": "unconvert_eli",
+              "text": "Unconvert Eli",
+              "requires": {
+                "role": "producer",
+                "npcStatus": "converted"
+              },
+              "resolution": {
+                "type": "chance",
+                "successChance": 0.75
+              },
+              "effects_on_success": [
+                {
+                  "notification": "You unconverted Eli!"
+                },
+                {
+                  "npc": "eli",
+                  "field": "convertedStatus",
+                  "value": false
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Failed to unconvert Eli."
+                }
+              ]
+            },
+            {
+              "id": "prank_eli",
+              "text": "Prank Eli",
+              "requires": {
+                "role": "prophet"
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You pranked Eli! Chaos increased."
+                },
+                {
+                  "npc": "eli",
+                  "field": "prankActive",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cleanup_eli",
+              "text": "Clean up mess",
+              "requires": {
+                "role": "producer",
+                "npcPrankActive": true
+              },
+              "effects": [
+                {
+                  "meter": "chaos",
+                  "delta": -1,
+                  "clampMin": 0
+                },
+                {
+                  "meter": "ratings",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
+                },
+                {
+                  "npc": "eli",
+                  "field": "prankActive",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "start_interview",
+              "text": "Start Interview",
+              "requires": {
+                "role": "producer"
+              },
+              "effects": []
+            }
+          ]
+        }
+      }
+    }
+  },
+  "gameRules": {
+    "turnsPerGame": 15,
+    "maxPlayers": 3,
+    "npcsPerTurn": 3,
+    "winConditions": {
+      "admirer": {
+        "primary": {
+          "goal": "marry_love_interest",
+          "requirement": {
+            "npcStatus": "nonConverted",
+            "npcMarried": true,
+            "npcsKilled": 3
+          }
+        }
+      },
+      "prophet": {
+        "primary": {
+          "goal": "chaos_and_converts",
+          "requirement": {
+            "meter": "chaos",
+            "minValue": 10,
+            "npcsConverted": 5
+          }
+        },
+        "secondary": {
+          "goal": "convert_quota",
+          "requirement": {
+            "npcsConverted": 5
+          }
+        }
+      },
+      "producer": {
+        "primary": {
+          "goal": "high_ratings",
+          "requirement": {
+            "meter": "ratings",
+            "minValue": 10
+          }
+        },
+        "secondary": {
+          "goal": "catch_admirer",
+          "requirement": {
+            "admirerReported": true
+          }
+        }
+      }
+    }
+  },
+  "demoClient": {
+    "mode": "turn_based_text",
+    "input": "single_keyboard",
+    "autoNextTurn": true,
+    "npcPool": [
+      "katy",
+      "john",
+      "rebecca",
+      "marcus",
+      "sofia",
+      "amir",
+      "bella",
+      "chris",
+      "diana",
+      "eli"
+    ],
+    "npcPerTurn": 3,
+    "notifications": {
+      "meterUpdate": "You {verb} the {meter} meter ({value}/{max}).",
+      "impactNotice": "{actor} impacted {meter}: {delta} (now {value}/{max}).",
+      "turnStart": "--- TURN {turn} START ---",
+      "turnEnd": "--- TURN {turn} END ---"
+    }
+  }
+}

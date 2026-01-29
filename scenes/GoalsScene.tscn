@@ -1,0 +1,86 @@
+[gd_scene load_steps=4 format=3 uid="uid://dmfgnhd5kstfu"]
+
+[ext_resource type="Script" uid="uid://c3qr3o6ggxwdb" path="res://scripts/GoalsMenu.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://dlclg3hpvwnkg" path="res://assets/phone-menu.png" id="2_phone"]
+[ext_resource type="Theme" path="res://themes/pixer_theme.tres" id="3_theme"]
+
+[node name="GoalsScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("1_script")
+
+[node name="DarkOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="PhoneContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PhonePanel" type="Control" parent="PhoneContainer"]
+custom_minimum_size = Vector2(100, 300)
+layout_mode = 2
+
+[node name="PhoneImage" type="TextureRect" parent="PhoneContainer/PhonePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_phone")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MarginContainer" type="MarginContainer" parent="PhoneContainer/PhonePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 60
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 45
+
+[node name="ContentVBox" type="VBoxContainer" parent="PhoneContainer/PhonePanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="PhoneContainer/PhonePanel/MarginContainer/ContentVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "YOUR GOALS"
+horizontal_alignment = 1
+
+[node name="GoalsText" type="RichTextLabel" parent="PhoneContainer/PhonePanel/MarginContainer/ContentVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+
+[node name="CloseButton" type="Button" parent="PhoneContainer/PhonePanel"]
+layout_mode = 0
+offset_left = 31.0
+offset_top = 204.0
+offset_right = 70.0
+offset_bottom = 229.0
+theme_override_font_sizes/font_size = 14
+text = "Close"

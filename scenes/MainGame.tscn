@@ -1,0 +1,121 @@
+[gd_scene load_steps=2 format=3 uid="uid://c7qkx8ywsxfdi"]
+
+[ext_resource type="Script" uid="uid://cey7wwtydnuo5" path="res://scripts/MainGame.cs" id="1_mainscript"]
+
+[node name="MainGame" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mainscript")
+
+[node name="GoalPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="GoalPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="GoalText" type="RichTextLabel" parent="GoalPanel/MarginContainer"]
+layout_mode = 2
+bbcode_enabled = true
+scroll_following = true
+
+[node name="StartButton" type="Button" parent="GoalPanel"]
+layout_mode = 2
+text = "START GAME"
+
+[node name="HUD" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 120.0
+grow_horizontal = 2
+
+[node name="TurnLabel" type="Label" parent="HUD"]
+layout_mode = 2
+text = "Turn: 1/15"
+horizontal_alignment = 1
+
+[node name="RoleLabel" type="Label" parent="HUD"]
+layout_mode = 2
+text = "Current Player: ADMIRER"
+horizontal_alignment = 1
+
+[node name="MetersContainer" type="VBoxContainer" parent="HUD"]
+layout_mode = 2
+
+[node name="EditorialPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 294.0
+offset_top = 185.0
+offset_right = 274.0
+offset_bottom = 165.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="EditorialPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="EditorialPanel/MarginContainer"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="EditorialPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Editorial Attention"
+horizontal_alignment = 1
+
+[node name="OptionsContainer" type="VBoxContainer" parent="EditorialPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="NPCContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NotificationPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -300.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="NotificationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="NotificationText" type="RichTextLabel" parent="NotificationPanel/MarginContainer"]
+custom_minimum_size = Vector2(380, 280)
+layout_mode = 2
+bbcode_enabled = true
+scroll_following = true

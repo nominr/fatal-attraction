@@ -11,13 +11,23 @@ config_version=5
 [application]
 
 config/name="fatal attraction"
-run/main_scene="uid://xr5pw6ai5suc"
-config/features=PackedStringArray("4.5", "Forward Plus")
+run/main_scene="res://scenes/TitleScene.tscn"
+config/features=PackedStringArray("4.5", "C#", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+NetworkManager="*res://scripts/NetworkManager.cs"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
 
 [dotnet]
 
-project/assembly_name="fatal attraction"
+project/assembly_name="FatalAttraction"
 
 [input]
 
