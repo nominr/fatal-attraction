@@ -297,6 +297,9 @@ public partial class GameWorld : Node2D
 		// Add transparent grey background to HUD
 		var hudPanel = new PanelContainer();
 		hudPanel.Position = new Vector2(20, 20);
+		// Ensure HUD doesn't block clicks in empty areas, but let buttons inside work
+		hudPanel.MouseFilter = Control.MouseFilterEnum.Pass;
+		
 		var hudBgStyle = new StyleBoxFlat();
 		hudBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
 		hudBgStyle.SetCornerRadiusAll(4);
@@ -483,12 +486,32 @@ public partial class GameWorld : Node2D
 		mVBoxMain.MouseFilter = Control.MouseFilterEnum.Pass;
 		mPanel.AddChild(mVBoxMain);
 
+		// Header Row (Title + Close Button)
+		var headerHBox = new HBoxContainer();
+		headerHBox.Name = "HeaderHBox";
+		mVBoxMain.AddChild(headerHBox);
+
 		var mTitle = new Label();
 		mTitle.Text = "Select 2 NPCs to Marry:";
 		mTitle.HorizontalAlignment = HorizontalAlignment.Center;
+		mTitle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; // Center title
 		mTitle.AddThemeFontOverride("font", _customFont);
 		mTitle.AddThemeFontSizeOverride("font_size", 23);
-		mVBoxMain.AddChild(mTitle);
+		headerHBox.AddChild(mTitle);
+
+		var mCloseInfoBtn = new Button();
+		mCloseInfoBtn.Text = "X";
+		mCloseInfoBtn.AddThemeFontOverride("font", _customFont);
+		mCloseInfoBtn.Flat = true;
+		mCloseInfoBtn.CustomMinimumSize = new Vector2(30, 30);
+		mCloseInfoBtn.Pressed += () => 
+		{
+			// Close Panel Logic
+			mPanel.Visible = false;
+			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+			if (btn != null) btn.ButtonPressed = false; 
+		};
+		headerHBox.AddChild(mCloseInfoBtn);
 
 		// Columns Container
 		var columnsHBox = new HBoxContainer();
@@ -1255,7 +1278,48 @@ public partial class GameWorld : Node2D
 	private void OnInteractionPanelClosed()
 	{
 		_currentInteractingNpcId = null;
-		GD.Print("Interaction panel closed, cleared current NPC");
+		GD.Print("Interaction panel closed, requesting end of interaction");
+		
+		// If on client, tell server to clear the active interview/interaction state
+		if (!Multiplayer.IsServer())
+		{
+			RpcId(1, MethodName.RequestEndInteraction);
+		}
+		else
+		{
+			// If we are server (hosting player), do it directly
+			EndInteractionForSelf();
+		}
+	}
+
+	private void EndInteractionForSelf()
+	{
+		// Hosting player end interaction
+		if (_gameActive && _gameEngine != null)
+		{
+			// Assuming host is Producer for now, or lookup?
+			// _networkManager.Players[1] -> Role
+			// Simplify: Just try to end for all local player roles if possible, or use _myRole
+			if (Enum.TryParse<Role>(_myRole, true, out var role))
+			{
+				_gameEngine.EndActiveInteraction(role);
+			}
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+	private void RequestEndInteraction()
+	{
+		if (!Multiplayer.IsServer()) return;
+
+		var senderId = Multiplayer.GetRemoteSenderId();
+		string roleStr = _networkManager.Players.ContainsKey(senderId) ? _networkManager.Players[senderId].Role : "Observer";
+		
+		if (Enum.TryParse<Role>(roleStr, true, out var role))
+		{
+			GD.Print($"[GameWorld] Ending interaction for {role} (Peer {senderId})");
+			_gameEngine.EndActiveInteraction(role);
+		}
 	}
 
 	public override void _Process(double delta)
@@ -1362,7 +1426,7 @@ public partial class GameWorld : Node2D
 				{
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
 					_interactionPanel.Hide();
-					_currentInteractingNpcId = null;
+					OnInteractionPanelClosed(); // Ensure we notify server to clear state
 				}
 			}
 		}
@@ -1430,6 +1494,33 @@ public partial class GameWorld : Node2D
 					}
 				}
 			}
+		}
+
+
+		// Check Producer Panels Auto-Close on Move
+		CheckProducerPanelsOnMove();
+	}
+
+	private void CheckProducerPanelsOnMove()
+	{
+		if (_localPlayer == null || _localPlayer.Velocity.LengthSquared() < 100) return; // Not moving significantly
+
+		// Check Marriage Panel
+		var mPanel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
+		if (mPanel != null && mPanel.Visible)
+		{
+			mPanel.Visible = false;
+			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+			if (btn != null) btn.SetPressedNoSignal(false);
+		}
+
+		// Check Camera Panel
+		var cPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
+		if (cPanel != null && cPanel.Visible)
+		{
+			cPanel.Visible = false;
+			var btn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
+			if (btn != null) btn.SetPressedNoSignal(false);
 		}
 	}
 
@@ -2597,7 +2688,7 @@ public partial class GameWorld : Node2D
 
 		var vbox = new VBoxContainer();
 		vbox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-		vbox.MouseFilter = Control.MouseFilterEnum.Ignore;
+		vbox.MouseFilter = Control.MouseFilterEnum.Ignore; // CRITICAL: Container must ignore mouse to let button handle it
 		vbox.AddThemeConstantOverride("separation", 5);
 		btn.AddChild(vbox);
 
@@ -2610,6 +2701,7 @@ public partial class GameWorld : Node2D
 		}
 		tex.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
 		tex.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		tex.MouseFilter = Control.MouseFilterEnum.Ignore; // CRITICAL: Don't block button click
 		vbox.AddChild(tex);
 
 		// Name at bottom
@@ -2619,6 +2711,7 @@ public partial class GameWorld : Node2D
 		lbl.AddThemeFontSizeOverride("font_size", 18);
 		lbl.AddThemeColorOverride("font_color", Colors.White);
 		lbl.HorizontalAlignment = HorizontalAlignment.Center;
+		lbl.MouseFilter = Control.MouseFilterEnum.Ignore; // CRITICAL: Don't block button click
 		vbox.AddChild(lbl);
 
 		// Hover effect: Darken asset
