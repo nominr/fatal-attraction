@@ -1,8 +1,8 @@
 [gd_scene load_steps=7 format=3 uid="uid://bq7wexc07an7k"]
 
 [ext_resource type="Script" uid="uid://dkn1bk8316qd6" path="res://scripts/TitleScene.cs" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://544kmabvjppk" path="res://assets/Title_BG_1.png" id="2_bg1"]
-[ext_resource type="Texture2D" uid="uid://cyh5kjbnbpfhl" path="res://assets/fatal_attraction_logo (1).png" id="4_logo"]
+[ext_resource type="Texture2D" uid="uid://b6ommpjbl6hlm" path="res://assets/End-BG2.png" id="3_yjbx8"]
+[ext_resource type="Texture2D" uid="uid://doxlef78xgt53" path="res://assets/fatal_attraction_logo.png" id="4_yjbx8"]
 [ext_resource type="Theme" path="res://themes/pixer_theme.tres" id="5_theme"]
 
 [sub_resource type="Animation" id="Animation_1"]
@@ -47,7 +47,7 @@ tracks/2/keys = {
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
 _data = {
-"logo_slide_in": SubResource("Animation_1")
+&"logo_slide_in": SubResource("Animation_1")
 }
 
 [node name="TitleScene" type="Control"]
@@ -67,13 +67,14 @@ autostart = true
 [node name="Background" type="Sprite2D" parent="."]
 position = Vector2(640, 360)
 scale = Vector2(2, 2)
-texture = ExtResource("2_bg1")
+texture = ExtResource("3_yjbx8")
 
 [node name="Logo" type="Sprite2D" parent="."]
 modulate = Color(1, 1, 1, 0)
+texture_filter = 1
 position = Vector2(640, 100)
-scale = Vector2(0.2, 0.2)
-texture = ExtResource("4_logo")
+scale = Vector2(5, 5)
+texture = ExtResource("4_yjbx8")
 
 [node name="StartLabel" type="Label" parent="."]
 modulate = Color(1, 1, 1, 0)
@@ -96,7 +97,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-autoplay = "logo_slide_in"
 libraries = {
-"": SubResource("AnimationLibrary_1")
+&"": SubResource("AnimationLibrary_1")
 }
+autoplay = "logo_slide_in"

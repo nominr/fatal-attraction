@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cyh5kjbnbpfhl"
-path="res://.godot/imported/fatal_attraction_logo (1).png-8f76d8b4f849e48d0b7dc73971e37e18.ctex"
+uid="uid://doxlef78xgt53"
+path="res://.godot/imported/fatal_attraction_logo.png-948502c2518a2317580c16f09d4f5504.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/fatal_attraction_logo (1).png"
-dest_files=["res://.godot/imported/fatal_attraction_logo (1).png-8f76d8b4f849e48d0b7dc73971e37e18.ctex"]
+source_file="res://assets/fatal_attraction_logo.png"
+dest_files=["res://.godot/imported/fatal_attraction_logo.png-948502c2518a2317580c16f09d4f5504.ctex"]
 
 [params]
 
