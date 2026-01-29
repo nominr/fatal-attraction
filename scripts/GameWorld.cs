@@ -128,19 +128,22 @@ public partial class GameWorld : Node2D
 				var area = GetNodeOrNull<Area2D>(rName);
 				if (area != null)
 				{
-					// Calculate relative position to the ORIGINAL TileMap position
-					// (Assuming user aligned them in editor)
-					Vector2 relPos = area.Position - originalTileMapPos;
-					
-					// Apply Scale
-					// New Relative Pos = Old Rel Pos * Scale
-					Vector2 newRelPos = relPos * targetScale;
-					
-					// Apply Global Offset (TargetPos)
-					area.Position = targetPos + newRelPos;
-					area.Scale = targetScale;
-					
-					GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {relPos + originalTileMapPos}), Scale {area.Scale}");
+					// Calculate relative position.
+				// NOTE: We assume Area2Ds were placed relative to world origin (0,0) which was the intended
+				// top-left of the map, even if the TileMapLayer itself ended up at (11, -46) in the scene.
+				// Subtracting originalTileMapPos (11, -46) introduces a shift that gets scaled x4, causing misalignment.
+				// So we use area.Position directly as the relative offset from "Map Top-Left".
+				Vector2 relPos = area.Position; 
+				
+				// Apply Scale
+				// New Relative Pos = Old Rel Pos * Scale
+				Vector2 newRelPos = relPos * targetScale;
+				
+				// Apply Global Offset (TargetPos)
+				area.Position = targetPos + newRelPos;
+				area.Scale = targetScale;
+				
+				GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {area.Position}), Scale {area.Scale}");
 				}
 			}
 		}
@@ -196,71 +199,45 @@ public partial class GameWorld : Node2D
 
 	private string GetRoomIdAtPosition(Vector2 pos)
 	{
-		// ROBUST DETECTION STRATEGY:
-		// 1. Prioritize specific rooms (Room1-Room5) over Hallways.
-		// 2. Use expanded bounds (margin) to catch players standing near walls or in misaligned areas.
-		// 3. If multiple rooms match (due to expansion), pick the one with the CLOSEST CENTER.
+		// PHYSICS ENGINE DETECTION STRATEGY:
+		// Use the physics engine to determine exactly which room Area2D contains the point.
 		
-		string[] specificAndHallway = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
-		
-		string bestRoomId = null;
-		float minDistanceSq = float.MaxValue;
-		
-		// Scaled margin to forgive alignment issues (e.g. 150px in world space -> ~37px in unscaled)
-		// Since we convert to local space, we use unscaled margin.
-		// Visual tiles are ~32px. 37px is roughly 1 tile margin.
-		// Wait, if misalignment is ~160px (global) -> 40px local.
-		float marginX = 80.0f; // Generous horizontal margin
-		float marginY = 50.0f; // Generous vertical margin
-		
-		foreach (var rName in specificAndHallway)
+		var spaceState = GetWorld2D().DirectSpaceState;
+		var query = new PhysicsPointQueryParameters2D
 		{
-			var area = GetNodeOrNull<Area2D>(rName);
-			if (area != null)
-			{
-				foreach (var child in area.GetChildren())
-				{
-					if (child is CollisionShape2D shape && shape.Shape is RectangleShape2D rect)
-					{
-						var dim = rect.Size / 2;
-						var localPos = area.ToLocal(pos) - shape.Position;
-						
-						// Check overlaps with expansion
-						float dx = Math.Abs(localPos.X);
-						float dy = Math.Abs(localPos.Y);
-						
-						// Strict check for Hallways (don't expand hallways, they are the fallback)
-						float expansionX = (rName == "Hallways") ? 0 : marginX;
-						float expansionY = (rName == "Hallways") ? 0 : marginY;
+			Position = pos,
+			CollideWithAreas = true,
+			CollideWithBodies = false,
+			CollisionMask = int.MaxValue // Check all layers, we verify names manually
+		};
 
-						if (dx <= (dim.X + expansionX) && dy <= (dim.Y + expansionY))
-						{
-							// Calculate distance to center (squared) for tie-breaking
-							// Prefer the room we are deeper inside
-							// Actually, prefer the room with closer CENTER to the point
-							float distSq = localPos.LengthSquared();
-							
-							// Bias AGAINST Hallways in tie-breaker
-							if (rName == "Hallways") distSq += 100000f; 
-							
-							if (distSq < minDistanceSq)
-							{
-								minDistanceSq = distSq;
-								bestRoomId = rName;
-							}
-						}
-					}
+		var results = spaceState.IntersectPoint(query);
+		
+		string bestId = null;
+		
+		// Priority: Specific Rooms > Hallways
+		foreach (var result in results)
+		{
+			var collider = result["collider"].As<Node>();
+			if (collider is Area2D area)
+			{
+				string name = area.Name;
+				// Check if it's one of our monitored rooms
+				if (name == "Room1" || name == "Room2" || name == "Room3" || 
+					name == "Room4" || name == "Room5")
+				{
+					// Found a specific room, return immediately (highest priority)
+					return name;
+				}
+				else if (name == "Hallways")
+				{
+					// Found Hallways, keep as candidate but keep searching for specific room
+					bestId = "Hallways";
 				}
 			}
 		}
-		
-		if (bestRoomId != null) 
-		{
-			// GD.Print($"[GameWorld] Resolved {pos} to {bestRoomId}");
-			return bestRoomId;
-		}
 
-		return null;
+		return bestId;
 	}
 
 	private void OnBodyEnteredRoom(Node body, string roomId)
@@ -1503,7 +1480,7 @@ public partial class GameWorld : Node2D
 
 	private void CheckProducerPanelsOnMove()
 	{
-		if (_localPlayer == null || _localPlayer.Velocity.LengthSquared() < 100) return; // Not moving significantly
+		if (!GodotObject.IsInstanceValid(_localPlayer) || _localPlayer.Velocity.LengthSquared() < 100) return; // Not moving significantly
 
 		// Check Marriage Panel
 		var mPanel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");

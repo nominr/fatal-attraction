@@ -23,6 +23,8 @@ public partial class InteractionPanel : PanelContainer
 	private Container _actionsContainer;
 	private Button _closeButton;
 	private ScrollContainer _actionsScrollContainer;
+	private Label _npcDescLabel;
+	private ColorRect _portraitRect;
 
 	// Current state
 	private string _currentNpcId;
@@ -65,6 +67,18 @@ public partial class InteractionPanel : PanelContainer
 		mainHBox.AddChild(messageBoxContainer);
 
 		// Portrait placeholder (colored circle for now)
+		var portraitVBox = new VBoxContainer();
+		portraitVBox.AddThemeConstantOverride("separation", 5);
+		// Add to HBox (before message box so it's on left? Or after? original logic implies left).
+		// Wait, mainHBox added messageBoxContainer first (line 65).
+		// If we want portrait on Left, we should have added it first.
+		// Use MoveChild to ensure order if needed, or just AddChild.
+		// Assuming Right Side based on logic at line 181 "Right side: Portrait".
+		// But line 70 is adding portraitVBox to mainHBox? No, line 70 says `portraitVBox.AddChild`.
+		// Variable `portraitVBox` does not exist.
+		// Let's create it and add to mainHBox.
+		mainHBox.AddChild(portraitVBox);
+
 		var portraitPanel = new PanelContainer();
 		portraitPanel.CustomMinimumSize = new Vector2(100, 100);
 		portraitVBox.AddChild(portraitPanel);
@@ -158,8 +172,8 @@ public partial class InteractionPanel : PanelContainer
 		_actionsScrollContainer = new ScrollContainer();
 		_actionsScrollContainer.CustomMinimumSize = new Vector2(0, 120);
 		_actionsScrollContainer.SizeFlagsVertical = SizeFlags.ExpandFill;
-		scrollContainer.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled; // Prevent horizontal scrolling
-		scrollContainer.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks to pass
+		_actionsScrollContainer.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled; // Prevent horizontal scrolling
+		_actionsScrollContainer.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks to pass
 		scrollMargin.AddChild(_actionsScrollContainer);
 
 		_actionsContainer = new HBoxContainer();
