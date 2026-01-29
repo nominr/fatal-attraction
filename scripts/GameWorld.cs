@@ -44,6 +44,7 @@ public partial class GameWorld : Node2D
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
 	private string _currentConversionNpcId = null;
+	private int _lastGameStateHash = 0; // Track when game state changes to prevent unnecessary refreshes
 	private bool _goalsShownAtStart = false;
 	
 	private Label _timerLabel;
@@ -52,6 +53,11 @@ public partial class GameWorld : Node2D
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
 	private RPSResultOverlay _rpsResultOverlay;
+	private PanelContainer _notificationPanel;
+	private Button _collapseNotificationButton;
+	private bool _notificationCollapsed = false;
+	private MarginContainer _notificationMargin;
+	private Vector2 _notificationPanelExpandedPosition;
 
 
 	private Font _customFont;
@@ -87,6 +93,9 @@ public partial class GameWorld : Node2D
 
 	public override void _Ready()
 	{
+		// Enable Y-sort for proper NPC/player overlap rendering
+		YSortEnabled = true;
+		
 		// RUN DEBUG TESTS
 		FatalAttraction.Tests.MurderTest.RunTests();
 
@@ -115,7 +124,17 @@ public partial class GameWorld : Node2D
 			// Scale and Move TileMap
 			tileMapNode.Scale = targetScale;
 			tileMapNode.Position = targetPos;
-			tileMapNode.ZIndex = -10; 
+			tileMapNode.ZIndex = -10;
+			
+			// CRITICAL FIX: Set Z-index on all child TileMapLayers to prevent camera tiles from appearing over NPCs
+			foreach (var child in tileMapNode.GetChildren())
+			{
+				if (child is Node2D childLayer)
+				{
+					childLayer.ZIndex = -10;
+					GD.Print($"Set ZIndex=-10 on child layer: {childLayer.Name}");
+				}
+			} 
 			
 			GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
 			
@@ -385,25 +404,54 @@ public partial class GameWorld : Node2D
 
 		// Notification Panel (bottom right)
 		var viewportSize = GetViewportRect().Size; // Use actual viewport to avoid clipping on smaller windows
-		var notifPanel = new PanelContainer();
-		notifPanel.CustomMinimumSize = new Vector2(380, 280);
-		notifPanel.Position = new Vector2(
-			Mathf.Max(20, viewportSize.X - notifPanel.CustomMinimumSize.X - 30),
-			Mathf.Max(20, viewportSize.Y - notifPanel.CustomMinimumSize.Y - 30));
-		_uiLayer.AddChild(notifPanel);
+		_notificationPanel = new PanelContainer();
+		_notificationPanel.CustomMinimumSize = new Vector2(380, 280);
+		_notificationPanelExpandedPosition = new Vector2(
+			Mathf.Max(20, viewportSize.X - _notificationPanel.CustomMinimumSize.X - 30),
+			Mathf.Max(20, viewportSize.Y - _notificationPanel.CustomMinimumSize.Y - 30));
+		_notificationPanel.Position = _notificationPanelExpandedPosition;
+		_uiLayer.AddChild(_notificationPanel);
 
-		var notifMargin = new MarginContainer();
-		notifMargin.AddThemeConstantOverride("margin_left", 10);
-		notifMargin.AddThemeConstantOverride("margin_top", 10);
-		notifMargin.AddThemeConstantOverride("margin_right", 10);
-		notifMargin.AddThemeConstantOverride("margin_bottom", 10);
-		notifPanel.AddChild(notifMargin);
+		// Container for notification content with collapse button
+		var notifContainer = new VBoxContainer();
+		notifContainer.AddThemeConstantOverride("separation", 5);
+		_notificationPanel.AddChild(notifContainer);
+
+		// Top bar with collapse button
+		var topBar = new HBoxContainer();
+		topBar.AddThemeConstantOverride("separation", 5);
+		topBar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+		notifContainer.AddChild(topBar);
+
+		var titleLabel = new Label();
+		titleLabel.Text = "Notifications";
+		titleLabel.AddThemeFontOverride("font", _customFont);
+		titleLabel.AddThemeFontSizeOverride("font_size", 28);
+		titleLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		topBar.AddChild(titleLabel);
+
+		_collapseNotificationButton = new Button();
+		_collapseNotificationButton.Text = "−";
+		_collapseNotificationButton.AddThemeFontOverride("font", _customFont);
+		_collapseNotificationButton.AddThemeFontSizeOverride("font_size", 20);
+		_collapseNotificationButton.CustomMinimumSize = new Vector2(36, 36);
+		_collapseNotificationButton.Pressed += OnCollapseNotificationPressed;
+		topBar.AddChild(_collapseNotificationButton);
+
+		_notificationMargin = new MarginContainer();
+		_notificationMargin.AddThemeConstantOverride("margin_left", 10);
+		_notificationMargin.AddThemeConstantOverride("margin_top", 5);
+		_notificationMargin.AddThemeConstantOverride("margin_right", 10);
+		_notificationMargin.AddThemeConstantOverride("margin_bottom", 10);
+		_notificationMargin.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		notifContainer.AddChild(_notificationMargin);
 
 		_notificationText = new RichTextLabel();
 		_notificationText.BbcodeEnabled = true;
 		_notificationText.ScrollFollowing = true;
 		_notificationText.AddThemeFontOverride("normal_font", _customFont);
-		notifMargin.AddChild(_notificationText);
+		_notificationText.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		_notificationMargin.AddChild(_notificationText);
 		_notificationText.AddThemeFontSizeOverride("normal_font_size", 22);
 
 		// Interaction Panel
@@ -1258,6 +1306,29 @@ public partial class GameWorld : Node2D
 		GD.Print("Interaction panel closed, cleared current NPC");
 	}
 
+	private void OnCollapseNotificationPressed()
+	{
+		_notificationCollapsed = !_notificationCollapsed;
+		var viewportSize = GetViewportRect().Size;
+		
+		if (_notificationCollapsed)
+		{
+			_notificationMargin.Hide();
+			_collapseNotificationButton.Text = "+";
+			// Move to bottom of screen
+			_notificationPanel.Position = new Vector2(
+				Mathf.Max(20, viewportSize.X - _notificationPanel.CustomMinimumSize.X - 30),
+				viewportSize.Y - 50);
+		}
+		else
+		{
+			_notificationMargin.Show();
+			_collapseNotificationButton.Text = "−";
+			// Move back to expanded position
+			_notificationPanel.Position = _notificationPanelExpandedPosition;
+		}
+	}
+
 	public override void _Process(double delta)
 	{
 		if (Multiplayer.IsServer() && _gameActive)
@@ -1689,15 +1760,17 @@ public partial class GameWorld : Node2D
 				_currentInteractingNpcId = interviewNpcId;
 				RefreshInteractionPanel(); 
 			}
-			else
-			{
-				// Just refresh content
-				RefreshInteractionPanel();
-			}
+			// Don't refresh every frame - InteractionPanel now caches and checks if rebuild is needed
 		}
 		else if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
-			RefreshInteractionPanel();
+			// Only refresh if game state actually changed
+			int currentHash = _localGameState?.GetHashCode() ?? 0;
+			if (currentHash != _lastGameStateHash)
+			{
+				_lastGameStateHash = currentHash;
+				RefreshInteractionPanel();
+			}
 		}
 	}
 
@@ -2611,7 +2684,7 @@ public partial class GameWorld : Node2D
 
 		var vbox = new VBoxContainer();
 		vbox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-		vbox.MouseFilter = Control.MouseFilterEnum.Ignore;
+		vbox.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks to pass to button
 		vbox.AddThemeConstantOverride("separation", 5);
 		btn.AddChild(vbox);
 
@@ -2624,6 +2697,7 @@ public partial class GameWorld : Node2D
 		}
 		tex.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
 		tex.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		tex.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks to pass to button
 		vbox.AddChild(tex);
 
 		// Name at bottom
@@ -2633,6 +2707,7 @@ public partial class GameWorld : Node2D
 		lbl.AddThemeFontSizeOverride("font_size", 18);
 		lbl.AddThemeColorOverride("font_color", Colors.White);
 		lbl.HorizontalAlignment = HorizontalAlignment.Center;
+		lbl.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks to pass to button
 		vbox.AddChild(lbl);
 
 		// Hover effect: Darken asset
