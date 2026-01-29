@@ -1,130 +1,420 @@
 {
-  "default": {
-    "intro_topics": [
-      {
-        "id": "intro_mood",
-        "text": "How are you feeling about the show?",
-        "score": 0,
-        "response": "I'm a bit nervous, but I think it's going well.",
-        "followups": ["followup_confidence", "followup_gossip", "followup_generic"]
-      },
-      {
-        "id": "intro_outfit",
-        "text": "You look great today! Who are you wearing?",
-        "score": 1,
-        "response": "Oh, thank you! It's just something I threw on.",
-        "followups": ["followup_style", "followup_compliment", "followup_dating"]
-      },
-      {
-        "id": "intro_drama",
-        "text": "I heard some rumors about you. Care to comment?",
-        "score": -1,
-        "response": "Excuse me? I don't listen to baseless gossip.",
-        "followups": ["followup_apology", "followup_push", "followup_change_subject"]
-      },
-      {
-        "id": "intro_excited",
-        "text": "What are you most excited for today?",
-        "score": 1,
-        "response": "I really hope to make a connection with someone special.",
-        "followups": ["followup_romance", "followup_strategy", "followup_hope"]
-      },
-      {
-        "id": "intro_pregnant",
-        "text": "Are you pregnant?",
-        "score": -1,
-        "response": "That is incredibly rude! No!",
-        "followups": ["followup_apology", "followup_awkward", "followup_defensive"]
-      },
-      {
-        "id": "intro_weather",
-        "text": "Nice weather we're having.",
-        "score": 0,
-        "response": "I suppose so. Did you have a real question?",
-        "followups": ["followup_work", "followup_hobby", "followup_generic"]
-      }
-    ],
-    "followups": {
-      "followup_confidence": {
-        "text": "Confidence is key! You'll do great.",
-        "score": 1,
-        "response": "Thanks, I needed to hear that!"
-      },
-      "followup_gossip": {
-        "text": "Any tea you want to spill?",
-        "score": 0,
-        "response": "Not right now. My lips are sealed."
-      },
-      "followup_generic": {
-        "text": "Okay, thanks for your time.",
-        "score": 0,
-        "response": "See you later."
-      },
-      "followup_style": {
-        "text": "It really suits you.",
-        "score": 1,
-        "response": "You're too kind!"
-      },
-      "followup_compliment": {
-        "text": "You're the star of the show!",
-        "score": 1,
-        "response": "Aww, stop it!"
-      },
-      "followup_dating": {
-        "text": "Is it to impress anyone special?",
-        "score": 0,
-        "response": "Maybe... we'll see."
-      },
-      "followup_apology": {
-        "text": "I'm sorry, I didn't mean to offend.",
-        "score": 1,
-        "response": "It's fine. Just watch it next time."
-      },
-      "followup_push": {
-        "text": "Come on, the audience wants to know!",
-        "score": -1,
-        "response": "I said no comment! This interview is over."
-      },
-      "followup_change_subject": {
-        "text": "So, how about the food?",
-        "score": 0,
-        "response": "The catering is decent, I guess."
-      },
-      "followup_romance": {
-        "text": "Anyone caught your eye yet?",
-        "score": 1,
-        "response": "There is someone... but I won't say who yet."
-      },
-      "followup_strategy": {
-        "text": "What's your strategy to win?",
-        "score": 0,
-        "response": "Just be myself."
-      },
-      "followup_hope": {
-        "text": "I'm rooting for you!",
-        "score": 1,
-        "response": "Thank you so much!"
-      },
-      "followup_awkward": {
-        "text": "...",
-        "score": -1,
-        "response": "Use your brain next time."
-      },
-      "followup_defensive": {
-        "text": "It was just a question!",
-        "score": -1,
-        "response": "A terrible one."
-      },
-      "followup_work": {
-        "text": "What do you do for work?",
-        "score": 0,
-        "response": "I'm an accountant."
-      },
-      "followup_hobby": {
-        "text": "What do you do for fun?",
-        "score": 1,
-        "response": "I love hiking and painting."
-      }
+    "default": {
+        "intro_topics": [
+            {
+                "id": "intro_mood",
+                "text": "How are you feeling about the show?",
+                "score": 0,
+                "response": "I'm a bit nervous, but I think it's going well.",
+                "followups": [
+                    "followup_confidence",
+                    "followup_gossip",
+                    "followup_generic"
+                ]
+            },
+            {
+                "id": "intro_outfit",
+                "text": "You look great today! Who are you wearing?",
+                "score": 1,
+                "response": "Oh, thank you! It's just something I threw on.",
+                "followups": [
+                    "followup_style",
+                    "followup_compliment",
+                    "followup_dating"
+                ]
+            },
+            {
+                "id": "intro_drama",
+                "text": "I heard some rumors about you. Care to comment?",
+                "score": -1,
+                "response": "Excuse me? I don't listen to baseless gossip.",
+                "followups": [
+                    "followup_apology",
+                    "followup_push",
+                    "followup_change_subject"
+                ]
+            },
+            {
+                "id": "intro_excited",
+                "text": "What are you most excited for today?",
+                "score": 1,
+                "response": "I really hope to make a connection with someone special.",
+                "followups": [
+                    "followup_romance",
+                    "followup_strategy",
+                    "followup_hope"
+                ]
+            },
+            {
+                "id": "intro_pregnant",
+                "text": "Are you pregnant?",
+                "score": -1,
+                "response": "That is incredibly rude! No!",
+                "followups": [
+                    "followup_apology",
+                    "followup_awkward",
+                    "followup_defensive"
+                ]
+            },
+            {
+                "id": "intro_weather",
+                "text": "Nice weather we're having.",
+                "score": 0,
+                "response": "I suppose so. Did you have a real question?",
+                "followups": [
+                    "followup_work",
+                    "followup_hobby",
+                    "followup_generic"
+                ]
+            },
+            {
+                "id": "intro_fans",
+                "text": "The fans seem to really love you!",
+                "score": 1,
+                "response": "Really? That makes me so happy to hear!",
+                "followups": [
+                    "followup_message",
+                    "followup_humble",
+                    "followup_fans_love"
+                ]
+            },
+            {
+                "id": "intro_haircut",
+                "text": "Is that a new haircut?",
+                "score": 0,
+                "response": "Oh, noticed? Yeah, just a trim.",
+                "followups": [
+                    "followup_looks_good",
+                    "followup_generic",
+                    "followup_style"
+                ]
+            },
+            {
+                "id": "intro_breakup",
+                "text": "Why did your last relationship end?",
+                "score": -1,
+                "response": "That is extremely personal and none of your business.",
+                "followups": [
+                    "followup_apology",
+                    "followup_push_hard",
+                    "followup_awkward"
+                ]
+            },
+            {
+                "id": "intro_backstory",
+                "text": "What made you sign up for this show in the first place?",
+                "score": 0,
+                "response": "I figured… why not? Life’s short, and I needed a change.",
+                "followups": [
+                    "followup_backstory_support",
+                    "followup_backstory_probe",
+                    "followup_backstory_mock"
+                ]
+            },
+            {
+                "id": "intro_rival",
+                "text": "Who do you think is your biggest competition here?",
+                "score": 0,
+                "response": "Honestly? There are a few strong personalities. We'll see.",
+                "followups": [
+                    "followup_rival_respect",
+                    "followup_rival_neutral",
+                    "followup_rival_stir"
+                ]
+            },
+            {
+                "id": "intro_redflags",
+                "text": "What’s a red flag that would make you walk away immediately?",
+                "score": 1,
+                "response": "Dishonesty. If I catch even a whiff of it, I'm out.",
+                "followups": [
+                    "followup_redflags_validate",
+                    "followup_redflags_generic",
+                    "followup_redflags_judge"
+                ]
+            },
+            {
+                "id": "intro_strength",
+                "text": "What’s your best quality in relationships?",
+                "score": 1,
+                "response": "I’m loyal. Maybe too loyal sometimes, but it’s who I am.",
+                "followups": [
+                    "followup_strength_praise",
+                    "followup_strength_followup",
+                    "followup_strength_doubt"
+                ]
+            },
+            {
+                "id": "intro_socials",
+                "text": "Your DMs must be wild right now. How are you handling the attention?",
+                "score": 0,
+                "response": "I’m trying not to look. It’s… a lot.",
+                "followups": [
+                    "followup_socials_support",
+                    "followup_socials_neutral",
+                    "followup_socials_pushy"
+                ]
+            },
+            {
+                "id": "intro_family",
+                "text": "What would your family say about you being here?",
+                "score": 0,
+                "response": "They’d act surprised, but they’re secretly thrilled.",
+                "followups": [
+                    "followup_family_wholesome",
+                    "followup_family_neutral",
+                    "followup_family_insult"
+                ]
+            },
+            {
+                "id": "intro_secret",
+                "text": "Is there anything you’re nervous the audience might find out about you?",
+                "score": -1,
+                "response": "That question feels like a trap. Next.",
+                "followups": [
+                    "followup_secret_apologize",
+                    "followup_secret_backoff",
+                    "followup_secret_press"
+                ]
+            },
+            {
+                "id": "intro_conflict",
+                "text": "How do you handle conflict when you’re upset?",
+                "score": 1,
+                "response": "I take a minute, then I talk it through. I don't like playing games.",
+                "followups": [
+                    "followup_conflict_respect",
+                    "followup_conflict_neutral",
+                    "followup_conflict_provoke"
+                ]
+            }
+        ],
+        "followups": {
+            "followup_confidence": {
+                "text": "Confidence is key! You'll do great.",
+                "score": 1,
+                "response": "Thanks, I needed to hear that!"
+            },
+            "followup_gossip": {
+                "text": "Any tea you want to spill?",
+                "score": 0,
+                "response": "Not right now. My lips are sealed."
+            },
+            "followup_generic": {
+                "text": "Okay, thanks for your time.",
+                "score": 0,
+                "response": "See you later."
+            },
+            "followup_style": {
+                "text": "It really suits you.",
+                "score": 1,
+                "response": "You're too kind!"
+            },
+            "followup_compliment": {
+                "text": "You're the star of the show!",
+                "score": 1,
+                "response": "Aww, stop it!"
+            },
+            "followup_dating": {
+                "text": "Is it to impress anyone special?",
+                "score": 0,
+                "response": "Maybe... we'll see."
+            },
+            "followup_apology": {
+                "text": "I'm sorry, I didn't mean to offend.",
+                "score": 1,
+                "response": "It's fine. Just watch it next time."
+            },
+            "followup_push": {
+                "text": "Come on, the audience wants to know!",
+                "score": -1,
+                "response": "I said no comment! This interview is over."
+            },
+            "followup_change_subject": {
+                "text": "So, how about the food?",
+                "score": 0,
+                "response": "The catering is decent, I guess."
+            },
+            "followup_romance": {
+                "text": "Anyone caught your eye yet?",
+                "score": 1,
+                "response": "There is someone... but I won't say who yet."
+            },
+            "followup_strategy": {
+                "text": "What's your strategy to win?",
+                "score": 0,
+                "response": "Just be myself."
+            },
+            "followup_hope": {
+                "text": "I'm rooting for you!",
+                "score": 1,
+                "response": "Thank you so much!"
+            },
+            "followup_awkward": {
+                "text": "...",
+                "score": -1,
+                "response": "Use your brain next time."
+            },
+            "followup_defensive": {
+                "text": "It was just a question!",
+                "score": -1,
+                "response": "A terrible one."
+            },
+            "followup_work": {
+                "text": "What do you do for work?",
+                "score": 0,
+                "response": "I'm an accountant."
+            },
+            "followup_hobby": {
+                "text": "What do you do for fun?",
+                "score": 1,
+                "response": "I love hiking and painting."
+            },
+            "followup_message": {
+                "text": "Any message for your supporters?",
+                "score": 1,
+                "response": "Just thank you! I love you all!"
+            },
+            "followup_humble": {
+                "text": "You're becoming an icon.",
+                "score": 1,
+                "response": "Oh stop, I'm just me!"
+            },
+            "followup_fans_love": {
+                "text": "They think you'll win.",
+                "score": 1,
+                "response": "I hope they're right!"
+            },
+            "followup_looks_good": {
+                "text": "It looks really sharp.",
+                "score": 1,
+                "response": "Thanks, my stylist is a genius."
+            },
+            "followup_push_hard": {
+                "text": "The public has a right to know!",
+                "score": -1,
+                "response": "Security! Get this person away from me!"
+            },
+            "followup_backstory_support": {
+                "text": "That takes guts. I respect the leap.",
+                "score": 1,
+                "response": "Thank you. I’m trying to be brave about it."
+            },
+            "followup_backstory_probe": {
+                "text": "Was it heartbreak, boredom, or something else?",
+                "score": 0,
+                "response": "A mix. Mostly me realizing I was stuck."
+            },
+            "followup_backstory_mock": {
+                "text": "So you came for attention. Classic.",
+                "score": -1,
+                "response": "Wow. No. I'm here for real reasons, actually."
+            },
+            "followup_rival_respect": {
+                "text": "I like that you’re staying respectful. Classy.",
+                "score": 1,
+                "response": "It’s not my style to tear people down."
+            },
+            "followup_rival_neutral": {
+                "text": "So you’re keeping your cards close. Fair enough.",
+                "score": 0,
+                "response": "Exactly. I’m just watching and learning."
+            },
+            "followup_rival_stir": {
+                "text": "Name names. Who annoys you the most?",
+                "score": -1,
+                "response": "I’m not doing that. Don’t try to bait me."
+            },
+            "followup_redflags_validate": {
+                "text": "That’s a healthy boundary.",
+                "score": 1,
+                "response": "It took me a while to learn it, but yeah."
+            },
+            "followup_redflags_generic": {
+                "text": "Makes sense. Anything else?",
+                "score": 0,
+                "response": "Disrespect. I won’t tolerate it."
+            },
+            "followup_redflags_judge": {
+                "text": "Sounds like you’re picky. Good luck with that.",
+                "score": -1,
+                "response": "Or maybe I just know what I deserve."
+            },
+            "followup_strength_praise": {
+                "text": "Loyalty like that is rare. Someone will be lucky.",
+                "score": 1,
+                "response": "I hope they’ll appreciate it."
+            },
+            "followup_strength_followup": {
+                "text": "What does loyalty look like for you day-to-day?",
+                "score": 0,
+                "response": "Showing up. Being consistent. Not disappearing when it’s hard."
+            },
+            "followup_strength_doubt": {
+                "text": "Loyal people usually get played. Are you naive?",
+                "score": -1,
+                "response": "No. I’m careful. Don’t confuse kindness with weakness."
+            },
+            "followup_socials_support": {
+                "text": "Protect your peace. You don’t owe anyone access.",
+                "score": 1,
+                "response": "Honestly? Needed that reminder."
+            },
+            "followup_socials_neutral": {
+                "text": "Do you read any of it at all?",
+                "score": 0,
+                "response": "A little. Mostly I regret it immediately."
+            },
+            "followup_socials_pushy": {
+                "text": "Show us the weirdest DM you got. Come on!",
+                "score": -1,
+                "response": "Absolutely not. That’s gross and invasive."
+            },
+            "followup_family_wholesome": {
+                "text": "That’s actually really sweet.",
+                "score": 1,
+                "response": "Yeah… they’re not perfect, but they care."
+            },
+            "followup_family_neutral": {
+                "text": "Would they approve of who you date here?",
+                "score": 0,
+                "response": "They’d have opinions. They always do."
+            },
+            "followup_family_insult": {
+                "text": "So they’re attention-seekers too. Runs in the family?",
+                "score": -1,
+                "response": "Don’t talk about my family like that."
+            },
+            "followup_secret_apologize": {
+                "text": "Sorry—bad question. Let’s move on.",
+                "score": 1,
+                "response": "Thank you. I appreciate that."
+            },
+            "followup_secret_backoff": {
+                "text": "Fair. No pressure.",
+                "score": 0,
+                "response": "Good. Because I’m not playing that game."
+            },
+            "followup_secret_press": {
+                "text": "If it’s not a big deal, just say it.",
+                "score": -1,
+                "response": "No. And you’re being weird about it."
+            },
+            "followup_conflict_respect": {
+                "text": "That level of self-control is attractive.",
+                "score": 1,
+                "response": "Thanks. I’ve worked on it a lot."
+            },
+            "followup_conflict_neutral": {
+                "text": "Do you cool off alone or with friends?",
+                "score": 0,
+                "response": "Alone first. Then I talk to someone I trust."
+            },
+            "followup_conflict_provoke": {
+                "text": "So you think you’re better than everyone who gets emotional?",
+                "score": -1,
+                "response": "No. But you’re clearly trying to twist my words."
+            }
+        }
     }
-  }
 }

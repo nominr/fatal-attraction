@@ -169,19 +169,22 @@ public partial class GameWorld : Node2D
 				var area = GetNodeOrNull<Area2D>(rName);
 				if (area != null)
 				{
-					// Calculate relative position to the ORIGINAL TileMap position
-					// (Assuming user aligned them in editor)
-					Vector2 relPos = area.Position - originalTileMapPos;
-					
-					// Apply Scale
-					// New Relative Pos = Old Rel Pos * Scale
-					Vector2 newRelPos = relPos * targetScale;
-					
-					// Apply Global Offset (TargetPos)
-					area.Position = targetPos + newRelPos;
-					area.Scale = targetScale;
-					
-					GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {relPos + originalTileMapPos}), Scale {area.Scale}");
+					// Calculate relative position.
+				// NOTE: We assume Area2Ds were placed relative to world origin (0,0) which was the intended
+				// top-left of the map, even if the TileMapLayer itself ended up at (11, -46) in the scene.
+				// Subtracting originalTileMapPos (11, -46) introduces a shift that gets scaled x4, causing misalignment.
+				// So we use area.Position directly as the relative offset from "Map Top-Left".
+				Vector2 relPos = area.Position; 
+				
+				// Apply Scale
+				// New Relative Pos = Old Rel Pos * Scale
+				Vector2 newRelPos = relPos * targetScale;
+				
+				// Apply Global Offset (TargetPos)
+				area.Position = targetPos + newRelPos;
+				area.Scale = targetScale;
+				
+				GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {area.Position}), Scale {area.Scale}");
 				}
 			}
 		}
@@ -237,71 +240,45 @@ public partial class GameWorld : Node2D
 
 	private string GetRoomIdAtPosition(Vector2 pos)
 	{
-		// ROBUST DETECTION STRATEGY:
-		// 1. Prioritize specific rooms (Room1-Room5) over Hallways.
-		// 2. Use expanded bounds (margin) to catch players standing near walls or in misaligned areas.
-		// 3. If multiple rooms match (due to expansion), pick the one with the CLOSEST CENTER.
+		// PHYSICS ENGINE DETECTION STRATEGY:
+		// Use the physics engine to determine exactly which room Area2D contains the point.
 		
-		string[] specificAndHallway = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
-		
-		string bestRoomId = null;
-		float minDistanceSq = float.MaxValue;
-		
-		// Scaled margin to forgive alignment issues (e.g. 150px in world space -> ~37px in unscaled)
-		// Since we convert to local space, we use unscaled margin.
-		// Visual tiles are ~32px. 37px is roughly 1 tile margin.
-		// Wait, if misalignment is ~160px (global) -> 40px local.
-		float marginX = 80.0f; // Generous horizontal margin
-		float marginY = 50.0f; // Generous vertical margin
-		
-		foreach (var rName in specificAndHallway)
+		var spaceState = GetWorld2D().DirectSpaceState;
+		var query = new PhysicsPointQueryParameters2D
 		{
-			var area = GetNodeOrNull<Area2D>(rName);
-			if (area != null)
-			{
-				foreach (var child in area.GetChildren())
-				{
-					if (child is CollisionShape2D shape && shape.Shape is RectangleShape2D rect)
-					{
-						var dim = rect.Size / 2;
-						var localPos = area.ToLocal(pos) - shape.Position;
-						
-						// Check overlaps with expansion
-						float dx = Math.Abs(localPos.X);
-						float dy = Math.Abs(localPos.Y);
-						
-						// Strict check for Hallways (don't expand hallways, they are the fallback)
-						float expansionX = (rName == "Hallways") ? 0 : marginX;
-						float expansionY = (rName == "Hallways") ? 0 : marginY;
+			Position = pos,
+			CollideWithAreas = true,
+			CollideWithBodies = false,
+			CollisionMask = int.MaxValue // Check all layers, we verify names manually
+		};
 
-						if (dx <= (dim.X + expansionX) && dy <= (dim.Y + expansionY))
-						{
-							// Calculate distance to center (squared) for tie-breaking
-							// Prefer the room we are deeper inside
-							// Actually, prefer the room with closer CENTER to the point
-							float distSq = localPos.LengthSquared();
-							
-							// Bias AGAINST Hallways in tie-breaker
-							if (rName == "Hallways") distSq += 100000f; 
-							
-							if (distSq < minDistanceSq)
-							{
-								minDistanceSq = distSq;
-								bestRoomId = rName;
-							}
-						}
-					}
+		var results = spaceState.IntersectPoint(query);
+		
+		string bestId = null;
+		
+		// Priority: Specific Rooms > Hallways
+		foreach (var result in results)
+		{
+			var collider = result["collider"].As<Node>();
+			if (collider is Area2D area)
+			{
+				string name = area.Name;
+				// Check if it's one of our monitored rooms
+				if (name == "Room1" || name == "Room2" || name == "Room3" || 
+					name == "Room4" || name == "Room5")
+				{
+					// Found a specific room, return immediately (highest priority)
+					return name;
+				}
+				else if (name == "Hallways")
+				{
+					// Found Hallways, keep as candidate but keep searching for specific room
+					bestId = "Hallways";
 				}
 			}
 		}
-		
-		if (bestRoomId != null) 
-		{
-			// GD.Print($"[GameWorld] Resolved {pos} to {bestRoomId}");
-			return bestRoomId;
-		}
 
-		return null;
+		return bestId;
 	}
 
 	private void OnBodyEnteredRoom(Node body, string roomId)
@@ -338,6 +315,9 @@ public partial class GameWorld : Node2D
 		// Add transparent grey background to HUD
 		var hudPanel = new PanelContainer();
 		hudPanel.Position = new Vector2(20, 20);
+		// Ensure HUD doesn't block clicks in empty areas, but let buttons inside work
+		hudPanel.MouseFilter = Control.MouseFilterEnum.Pass;
+		
 		var hudBgStyle = new StyleBoxFlat();
 		hudBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
 		hudBgStyle.SetCornerRadiusAll(4);
@@ -602,12 +582,32 @@ public partial class GameWorld : Node2D
 		mVBoxMain.MouseFilter = Control.MouseFilterEnum.Pass;
 		mPanel.AddChild(mVBoxMain);
 
+		// Header Row (Title + Close Button)
+		var headerHBox = new HBoxContainer();
+		headerHBox.Name = "HeaderHBox";
+		mVBoxMain.AddChild(headerHBox);
+
 		var mTitle = new Label();
 		mTitle.Text = "Select 2 NPCs to Marry:";
 		mTitle.HorizontalAlignment = HorizontalAlignment.Center;
+		mTitle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; // Center title
 		mTitle.AddThemeFontOverride("font", _customFont);
 		mTitle.AddThemeFontSizeOverride("font_size", 23);
-		mVBoxMain.AddChild(mTitle);
+		headerHBox.AddChild(mTitle);
+
+		var mCloseInfoBtn = new Button();
+		mCloseInfoBtn.Text = "X";
+		mCloseInfoBtn.AddThemeFontOverride("font", _customFont);
+		mCloseInfoBtn.Flat = true;
+		mCloseInfoBtn.CustomMinimumSize = new Vector2(30, 30);
+		mCloseInfoBtn.Pressed += () => 
+		{
+			// Close Panel Logic
+			mPanel.Visible = false;
+			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+			if (btn != null) btn.ButtonPressed = false; 
+		};
+		headerHBox.AddChild(mCloseInfoBtn);
 
 		// Columns Container
 		var columnsHBox = new HBoxContainer();
@@ -1353,7 +1353,22 @@ public partial class GameWorld : Node2D
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
 		
-		// Store current interacting NPC ID for proximity tracking
+
+		// Unfreeze previous NPC if any (safety check if panel was somehow bypassed)
+		if (!string.IsNullOrEmpty(_currentInteractingNpcId) && _currentInteractingNpcId != npcId)
+		{
+			if (_npcEntities.TryGetValue(_currentInteractingNpcId, out var prevNpc))
+			{
+				prevNpc.SetFrozen(false);
+			}
+		}
+
+		// Freeze the NPC
+		if (_npcEntities.TryGetValue(npcId, out var npc))
+		{
+			npc.SetFrozen(true);
+		}
+
 		_currentInteractingNpcId = npcId;
 		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
@@ -1927,8 +1942,58 @@ public partial class GameWorld : Node2D
 	
 	private void OnInteractionPanelClosed()
 	{
+		// Unfreeze the NPC
+		if (!string.IsNullOrEmpty(_currentInteractingNpcId))
+		{
+			if (_npcEntities.TryGetValue(_currentInteractingNpcId, out var npc))
+			{
+				npc.SetFrozen(false);
+			}
+		}
+
 		_currentInteractingNpcId = null;
-		GD.Print("Interaction panel closed, cleared current NPC");
+		GD.Print("Interaction panel closed, requesting end of interaction");
+		
+		// If on client, tell server to clear the active interview/interaction state
+		if (!Multiplayer.IsServer())
+		{
+			RpcId(1, MethodName.RequestEndInteraction);
+		}
+		else
+		{
+			// If we are server (hosting player), do it directly
+			EndInteractionForSelf();
+		}
+	}
+
+	private void EndInteractionForSelf()
+	{
+		// Hosting player end interaction
+		if (_gameActive && _gameEngine != null)
+		{
+			// Assuming host is Producer for now, or lookup?
+			// _networkManager.Players[1] -> Role
+			// Simplify: Just try to end for all local player roles if possible, or use _myRole
+			if (Enum.TryParse<Role>(_myRole, true, out var role))
+			{
+				_gameEngine.EndActiveInteraction(role);
+			}
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+	private void RequestEndInteraction()
+	{
+		if (!Multiplayer.IsServer()) return;
+
+		var senderId = Multiplayer.GetRemoteSenderId();
+		string roleStr = _networkManager.Players.ContainsKey(senderId) ? _networkManager.Players[senderId].Role : "Observer";
+		
+		if (Enum.TryParse<Role>(roleStr, true, out var role))
+		{
+			GD.Print($"[GameWorld] Ending interaction for {role} (Peer {senderId})");
+			_gameEngine.EndActiveInteraction(role);
+		}
 	}
 
 	private bool TryGetNpcTargetState(string npcId, out bool isTarget, out bool alive)
@@ -2209,7 +2274,7 @@ public partial class GameWorld : Node2D
 				{
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
 					_interactionPanel.Hide();
-					_currentInteractingNpcId = null;
+					OnInteractionPanelClosed(); // Ensure we notify server to clear state
 				}
 			}
 		}
@@ -2282,6 +2347,32 @@ public partial class GameWorld : Node2D
 		// Admirer punch hints and input handling
 		UpdatePunchHints();
 		HandlePunchInput();
+
+		// Check Producer Panels Auto-Close on Move
+		CheckProducerPanelsOnMove();
+	}
+
+	private void CheckProducerPanelsOnMove()
+	{
+		if (!GodotObject.IsInstanceValid(_localPlayer) || _localPlayer.Velocity.LengthSquared() < 100) return; // Not moving significantly
+
+		// Check Marriage Panel
+		var mPanel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
+		if (mPanel != null && mPanel.Visible)
+		{
+			mPanel.Visible = false;
+			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
+			if (btn != null) btn.SetPressedNoSignal(false);
+		}
+
+		// Check Camera Panel
+		var cPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
+		if (cPanel != null && cPanel.Visible)
+		{
+			cPanel.Visible = false;
+			var btn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
+			if (btn != null) btn.SetPressedNoSignal(false);
+		}
 	}
 
 	// ---- NETWORKING ----
@@ -2565,6 +2656,10 @@ public partial class GameWorld : Node2D
 		var npcActions = myActions?[npcId];
 
 		var npcEntity = _npcEntities.GetValueOrDefault(npcId);
+		if (npcEntity != null)
+		{
+			npcEntity.SetFrozen(true);
+		}
 		string npcName = npcEntity?.NpcName ?? npcId;
 
 		var npcConfig = _localGameState?["npcs"]?[npcId];
