@@ -908,9 +908,9 @@ public partial class GameWorld : Node2D
 							bool isTarget = prop.Value["isTarget"]?.Value<bool>() ?? false;
 							
 							if (isLoveInterest)
-								loveInterestList.Add(Capitalize(prop.Name));
+								loveInterestList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
 							if (isTarget)
-								targetsList.Add(Capitalize(prop.Name));
+								targetsList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
 						}
 					}
 					
@@ -1464,6 +1464,7 @@ public partial class GameWorld : Node2D
 
 		// NPC states
 		var npcStates = new JObject();
+		var npcsMetadata = new JObject(); // For goals display on clients
 		foreach (var npc in _gameEngine.GameState.NPCs.Values)
 		{
 			var stateObj = new JObject
@@ -1471,7 +1472,8 @@ public partial class GameWorld : Node2D
 				{ "alive", npc.Alive },
 				{ "converted", npc.Converted },
 				{ "married", npc.Married },
-				{ "is_love_interest", npc.IsLoveInterest } // Expose for UI filtering
+				{ "is_love_interest", npc.IsLoveInterest }, // Expose for UI filtering
+				{ "is_target", npc.IsTarget } // Expose target status for Admirer
 			};
 			
 			// Include Position (SERVER AUTHORITY)
@@ -1482,8 +1484,19 @@ public partial class GameWorld : Node2D
 			}
 			
 			npcStates[npc.Id] = stateObj;
+
+			// Add metadata for goals display
+			var metaObj = new JObject
+			{
+				{ "name", npc.Name },
+				{ "role", npc.IsLoveInterest ? "love_interest" : (npc.IsTarget ? "target" : "npc") },
+				{ "isTarget", npc.IsTarget },
+				{ "isLoveInterest", npc.IsLoveInterest }
+			};
+			npcsMetadata[npc.Id] = metaObj;
 		}
 		status["npc_states"] = npcStates;
+		status["npcs"] = npcsMetadata;
 
 		// Actions for all roles
 		var allActions = new JObject();
@@ -1633,9 +1646,9 @@ public partial class GameWorld : Node2D
 						bool isTarget = prop.Value["isTarget"]?.Value<bool>() ?? false;
 						
 						if (isLoveInterest)
-							loveInterestList.Add(Capitalize(prop.Name));
+							loveInterestList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
 						if (isTarget)
-							targetsList.Add(Capitalize(prop.Name));
+							targetsList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
 					}
 					
 					loveInterest = string.Join(", ", loveInterestList);
@@ -2227,6 +2240,7 @@ public partial class GameWorld : Node2D
 				bool alive = state["alive"]?.Value<bool>() ?? true;
 				bool converted = state["converted"]?.Value<bool>() ?? false;
 				bool married = state["married"]?.Value<bool>() ?? false;
+				bool isTarget = state["is_target"]?.Value<bool>() ?? false;
 				
 				// Sync Position (If client)
 				if (!Multiplayer.IsServer())
@@ -2240,7 +2254,7 @@ public partial class GameWorld : Node2D
 					}
 				}
 
-				kvp.Value.UpdateState(alive, converted, married);
+				kvp.Value.UpdateState(alive, converted, married, isTarget);
 			}
 		}
 	}

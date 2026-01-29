@@ -30,6 +30,7 @@ public partial class NPCEntity : CharacterBody2D
 	private Sprite2D _convertedIndicator;
 	private Sprite2D _deadOverlay;
 	private Sprite2D _marriedIndicator;
+	private Sprite2D _targetIndicator;
 
 	// Interaction range
 	private Area2D _interactionArea;
@@ -436,6 +437,9 @@ public partial class NPCEntity : CharacterBody2D
 		// Married (Heart) - Above head (approx -90)
 		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
 
+		// Target indicator (for Admirer targets)
+		_targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -65));
+
 		// Dead Overlay (Darkens sprite)
 		_deadOverlay = CreateDeadOverlay();
 
@@ -651,12 +655,13 @@ public partial class NPCEntity : CharacterBody2D
 	/// <summary>
 	/// Update the visual state of this NPC based on game state
 	/// </summary>
-	public void UpdateState(bool alive, bool converted, bool married)
+	public void UpdateState(bool alive, bool converted, bool married, bool isTarget = false)
 	{
 		_isAlive = alive;
 		_deadOverlay.Visible = !alive;
 		_convertedIndicator.Visible = converted;
 		_marriedIndicator.Visible = married;
+		_targetIndicator.Visible = isTarget;
 		
 		// Dim the sprite if dead
 		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
