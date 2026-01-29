@@ -103,6 +103,9 @@ public partial class NPCEntity : CharacterBody2D
 
 	public override void _Ready()
 	{
+		// Enable Y-sort for proper overlap rendering (NPCs further down screen render in front)
+		YSortEnabled = true;
+		
 		// Load custom font
 		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
 		
@@ -409,6 +412,7 @@ public partial class NPCEntity : CharacterBody2D
 	{
 		// Main NPC sprite - load from file based on NPC ID
 		_sprite = new Sprite2D();
+		_sprite.YSortEnabled = true; // Participate in Y-sort
 		LoadSpriteForNPC();
 		AddChild(_sprite);
 
@@ -437,8 +441,11 @@ public partial class NPCEntity : CharacterBody2D
 		// Married (Heart) - Above head (approx -90)
 		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
 
-		// Target indicator (for Admirer targets)
-		_targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -65));
+		// Target indicator (for Admirer targets) - DISABLED to avoid visual confusion with camera UI
+		// _targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -65));
+		_targetIndicator = new Sprite2D(); // Create dummy sprite to avoid null reference
+		_targetIndicator.Visible = false;
+		AddChild(_targetIndicator);
 
 		// Dead Overlay (Darkens sprite)
 		_deadOverlay = CreateDeadOverlay();
@@ -529,7 +536,8 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		indicator.TextureFilter = TextureFilterEnum.Nearest;
 		indicator.Position = offset;
-		indicator.Visible = false;
+		indicator.YSortEnabled = true; // Participate in parent's Y-sortPC
+		indicator.ZIndex = 1; // Render above the NPC sprite but respect parent layering
 		AddChild(indicator);
 		return indicator;
 	}

@@ -93,6 +93,9 @@ public partial class GameWorld : Node2D
 
 	public override void _Ready()
 	{
+		// Enable Y-sort for proper NPC/player overlap rendering
+		YSortEnabled = true;
+		
 		// RUN DEBUG TESTS
 		FatalAttraction.Tests.MurderTest.RunTests();
 
@@ -121,7 +124,17 @@ public partial class GameWorld : Node2D
 			// Scale and Move TileMap
 			tileMapNode.Scale = targetScale;
 			tileMapNode.Position = targetPos;
-			tileMapNode.ZIndex = -10; 
+			tileMapNode.ZIndex = -10;
+			
+			// CRITICAL FIX: Set Z-index on all child TileMapLayers to prevent camera tiles from appearing over NPCs
+			foreach (var child in tileMapNode.GetChildren())
+			{
+				if (child is Node2D childLayer)
+				{
+					childLayer.ZIndex = -10;
+					GD.Print($"Set ZIndex=-10 on child layer: {childLayer.Name}");
+				}
+			} 
 			
 			GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
 			
