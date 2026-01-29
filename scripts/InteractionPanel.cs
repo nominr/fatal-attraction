@@ -143,6 +143,7 @@ public partial class InteractionPanel : PanelContainer
 		_npcDescLabel.AddThemeFontOverride("font", _customFont);
 		_npcDescLabel.AddThemeFontSizeOverride("font_size", 16);
 		_npcDescLabel.MouseFilter = Control.MouseFilterEnum.Ignore; // Don't block
+		_npcDescLabel.AddThemeColorOverride("font_color", new Color(0.2f, 0.2f, 0.2f));
 		dialogueVBox.AddChild(_npcDescLabel);
 
 		// Separator
@@ -227,6 +228,7 @@ public partial class InteractionPanel : PanelContainer
 	/// </summary>
 	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions)
 	{
+		GD.Print($"[InteractionPanel] ShowForNPC called. ID: {npcId}, Name: {npcName}, Desc: '{npcDescription}'");
 		// Generate Content Signature to prevent unnecessary rebuilds (which cause flickering)
 		var actionIds = new List<string>();
 		if (actions != null)
@@ -246,6 +248,7 @@ public partial class InteractionPanel : PanelContainer
 		_currentNpcId = npcId;
 		_npcNameLabel.Text = npcName;
 		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
+		_npcDescLabel.Text = npcDescription;
 
 		// Portrait sprite is already loaded, could be customized per NPC later
 		// For now, it uses the default sprite-portrait.png
@@ -346,8 +349,6 @@ public partial class InteractionPanel : PanelContainer
 	{
 		GD.Print($"Action selected: {actionId} for NPC {_currentNpcId}");
 		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
-		Hide();
-		EmitSignal(SignalName.PanelClosed);
 	}
 
 	private void OnClosePressed()

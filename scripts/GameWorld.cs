@@ -1216,7 +1216,22 @@ public partial class GameWorld : Node2D
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
 		
-		// Store current interacting NPC ID for proximity tracking
+
+		// Unfreeze previous NPC if any (safety check if panel was somehow bypassed)
+		if (!string.IsNullOrEmpty(_currentInteractingNpcId) && _currentInteractingNpcId != npcId)
+		{
+			if (_npcEntities.TryGetValue(_currentInteractingNpcId, out var prevNpc))
+			{
+				prevNpc.SetFrozen(false);
+			}
+		}
+
+		// Freeze the NPC
+		if (_npcEntities.TryGetValue(npcId, out var npc))
+		{
+			npc.SetFrozen(true);
+		}
+
 		_currentInteractingNpcId = npcId;
 		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
@@ -1254,6 +1269,15 @@ public partial class GameWorld : Node2D
 	
 	private void OnInteractionPanelClosed()
 	{
+		// Unfreeze the NPC
+		if (!string.IsNullOrEmpty(_currentInteractingNpcId))
+		{
+			if (_npcEntities.TryGetValue(_currentInteractingNpcId, out var npc))
+			{
+				npc.SetFrozen(false);
+			}
+		}
+
 		_currentInteractingNpcId = null;
 		GD.Print("Interaction panel closed, requesting end of interaction");
 		
@@ -1328,6 +1352,12 @@ public partial class GameWorld : Node2D
 					if (!string.IsNullOrEmpty(kvp.Value.NpcId))
 						frozenNpcIds.Add(kvp.Value.NpcId);
 				}
+			}
+			
+			// Also freeze the NPC we are currently interacting with locally
+			if (!string.IsNullOrEmpty(_currentInteractingNpcId))
+			{
+				frozenNpcIds.Add(_currentInteractingNpcId);
 			}
 
 			foreach (var kvp in _npcEntities)
@@ -1767,6 +1797,10 @@ public partial class GameWorld : Node2D
 		var npcActions = myActions?[npcId];
 
 		var npcEntity = _npcEntities.GetValueOrDefault(npcId);
+		if (npcEntity != null)
+		{
+			npcEntity.SetFrozen(true);
+		}
 		string npcName = npcEntity?.NpcName ?? npcId;
 
 		var npcConfig = _localGameState?["npcs"]?[npcId];
