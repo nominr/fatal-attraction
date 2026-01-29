@@ -28,6 +28,7 @@ public partial class InteractionPanel : PanelContainer
 
 	// Current state
 	private string _currentNpcId;
+	private bool _isInterview; // Added to track interview state
 	private Font _customFont;
 	private string _lastContentSignature = "";
 
@@ -226,9 +227,9 @@ public partial class InteractionPanel : PanelContainer
 	/// <summary>
 	/// Show the interaction panel for a specific NPC with available actions
 	/// </summary>
-	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions)
+	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions, bool isInterview = false)
 	{
-		GD.Print($"[InteractionPanel] ShowForNPC called. ID: {npcId}, Name: {npcName}, Desc: '{npcDescription}'");
+		GD.Print($"[InteractionPanel] ShowForNPC called. ID: {npcId}, Name: {npcName}, Desc: '{npcDescription}', Interview: {isInterview}");
 		// Generate Content Signature to prevent unnecessary rebuilds (which cause flickering)
 		var actionIds = new List<string>();
 		if (actions != null)
@@ -236,7 +237,7 @@ public partial class InteractionPanel : PanelContainer
 			foreach (var a in actions) 
 				actionIds.Add(a["id"]?.Value<string>() ?? "null");
 		}
-		string newSignature = $"{npcId}|{npcDescription}|{string.Join(",", actionIds)}";
+		string newSignature = $"{npcId}|{npcDescription}|{string.Join(",", actionIds)}|{isInterview}";
 
 		// If nothing changed and panel is already visible, just return
 		if (Visible && _lastContentSignature == newSignature)
@@ -246,6 +247,8 @@ public partial class InteractionPanel : PanelContainer
 
 		_lastContentSignature = newSignature;
 		_currentNpcId = npcId;
+		_isInterview = isInterview; // Store interview state
+		
 		_npcNameLabel.Text = npcName;
 		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
 		_npcDescLabel.Text = npcDescription;
@@ -349,6 +352,16 @@ public partial class InteractionPanel : PanelContainer
 	{
 		GD.Print($"Action selected: {actionId} for NPC {_currentNpcId}");
 		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
+		
+		// AUTO-CLOSE LOGIC:
+		// If NOT an interview, and NOT starting an interview, close the panel.
+		// "start_interview" is the specific action that begins the interview mode.
+		// Once in interview mode (_isInterview == true), panels stay open for questions/followups.
+		if (!_isInterview && actionId != "start_interview")
+		{
+			Hide();
+			EmitSignal(SignalName.PanelClosed);
+		}
 	}
 
 	private void OnClosePressed()

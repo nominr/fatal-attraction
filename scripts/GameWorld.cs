@@ -73,6 +73,10 @@ public partial class GameWorld : Node2D
 	private VBoxContainer _producerStatsContainer;
 	private Label _activeCamerasLabel;
 	private Button _callPoliceButton;
+	
+	// Track where panels were opened to auto-close on distance
+	private Vector2 _marriagePanelOpenPos;
+	private Vector2 _cameraSelectPanelOpenPos;
 
 	// Helper for Trap-Like UI Style
 	private StyleBoxFlat CreateTrapStyle(Color bgColor, Color borderColor)
@@ -609,6 +613,9 @@ public partial class GameWorld : Node2D
 			{
 				var camBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 				if (camBtn != null && camBtn.ButtonPressed) camBtn.ButtonPressed = false;
+				
+				// Capture open position for distance check
+				if (_localPlayer != null) _marriagePanelOpenPos = _localPlayer.Position;
 			}
 		};
 		_uiLayer.AddChild(marryBtn);
@@ -655,6 +662,9 @@ public partial class GameWorld : Node2D
 			{
 				var mBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
 				if (mBtn != null && mBtn.ButtonPressed) mBtn.ButtonPressed = false;
+				
+				// Capture open position for distance check
+				if (_localPlayer != null) _cameraSelectPanelOpenPos = _localPlayer.Position;
 			}
 		};
 		_uiLayer.AddChild(manageCamsBtn);
