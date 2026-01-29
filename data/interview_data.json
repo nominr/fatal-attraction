@@ -6,42 +6,66 @@
         "text": "How are you feeling about the show?",
         "score": 0,
         "response": "I'm a bit nervous, but I think it's going well.",
-        "followups": ["followup_confidence", "followup_gossip", "followup_generic"]
+        "followups": [
+          "followup_confidence",
+          "followup_gossip",
+          "followup_generic"
+        ]
       },
       {
         "id": "intro_outfit",
         "text": "You look great today! Who are you wearing?",
         "score": 1,
         "response": "Oh, thank you! It's just something I threw on.",
-        "followups": ["followup_style", "followup_compliment", "followup_dating"]
+        "followups": [
+          "followup_style",
+          "followup_compliment",
+          "followup_dating"
+        ]
       },
       {
         "id": "intro_drama",
         "text": "I heard some rumors about you. Care to comment?",
         "score": -1,
         "response": "Excuse me? I don't listen to baseless gossip.",
-        "followups": ["followup_apology", "followup_push", "followup_change_subject"]
+        "followups": [
+          "followup_apology",
+          "followup_push",
+          "followup_change_subject"
+        ]
       },
       {
         "id": "intro_excited",
         "text": "What are you most excited for today?",
         "score": 1,
         "response": "I really hope to make a connection with someone special.",
-        "followups": ["followup_romance", "followup_strategy", "followup_hope"]
+        "followups": [
+          "followup_romance",
+          "followup_strategy",
+          "followup_hope"
+        ]
       },
       {
         "id": "intro_pregnant",
         "text": "Are you pregnant?",
         "score": -1,
         "response": "That is incredibly rude! No!",
-        "followups": ["followup_apology", "followup_awkward", "followup_defensive"]
+        "followups": [
+          "followup_apology",
+          "followup_awkward",
+          "followup_defensive"
+        ]
       },
       {
         "id": "intro_weather",
         "text": "Nice weather we're having.",
         "score": 0,
         "response": "I suppose so. Did you have a real question?",
-        "followups": ["followup_work", "followup_hobby", "followup_generic"]
+        "followups": [
+          "followup_work",
+          "followup_hobby",
+          "followup_generic"
+        ]
       }
     ],
     "followups": {

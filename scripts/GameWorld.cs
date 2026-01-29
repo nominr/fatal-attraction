@@ -1452,7 +1452,26 @@ public partial class GameWorld : Node2D
 			{
 				float distance = _localPlayer.Position.DistanceTo(npc.Position);
 				// Close menu if player is too far (150 = interaction range + buffer)
-				if (distance > 150)
+				// Close menu if player is too far (150 = interaction range + buffer)
+				// BUT keep open if we are in an Active Interview with this NPC
+				bool isInterviewing = false;
+				if (_gameEngine?.GameState?.ActiveInterviews != null)
+				{
+					// Check if I am the interviewer for this NPC
+					foreach(var kvp in _gameEngine.GameState.ActiveInterviews)
+					{
+						// kvp.Key is the Role enum of the interviewer
+						// kvp.Value is InterviewContext containing NpcId
+						if (kvp.Key.ToString().Equals(_myRole, StringComparison.OrdinalIgnoreCase) && 
+							kvp.Value.NpcId == _currentInteractingNpcId)
+						{
+							isInterviewing = true;
+							break;
+						}
+					}
+				}
+
+				if (distance > 150 && !isInterviewing)
 				{
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
 					_npcDialogueUI.Visible = false;
@@ -1813,16 +1832,44 @@ public partial class GameWorld : Node2D
 		var npcConfig = _localGameState?["npcs"]?[npcId];
 		string desc = npcConfig?["interactionTree"]?["root"]?["text"]?.Value<string>() 
 			?? "An NPC awaits your action.";
+		
+		// Check for Temporary Dialog Override (Results, etc)
+		var npcStates = _localGameState?["npc_states"] as JObject;
+		var npcState = npcStates?[npcId];
+		var tempOverride = npcState?["temporary_dialog_override"]?.Value<string>();
+		
+			desc = tempOverride;
+			GD.Print($"[UI] Using Temporary Override for {npcId}");
+		}
+		else
+		{
+			// GD.Print($"[UI] No temp override for {npcId}. State: {npcState?.ToString()}");
+		}
 
-		// INTERVIEW UI OVERRIDE
+		// INTERVIEW UI OVERRIDE (Active Interviews)
+		// active_interviews are exported with keys like "producer", "admirer" (ToLower)
 		var activeInterviews = _localGameState?["active_interviews"] as JObject;
-		string roleKey = Capitalize(_myRole); 
+		string roleKey = _myRole?.ToLower() ?? "";
+		
+		// DEBUG PRINT
+		if (activeInterviews != null)
+		{
+			// GD.Print($"[UI] Checking Active Interviews for role '{roleKey}'. Available keys: {string.Join(", ", activeInterviews.Properties().Select(p => p.Name))}");
+		}
+
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
-			if (interviewInfo["npcId"]?.Value<string>() == npcId)
+			string interviewNpc = interviewInfo["npcId"]?.Value<string>();
+			
+			if (interviewNpc == npcId)
 			{
-				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+				string lastResp = interviewInfo["lastResponse"]?.Value<string>();
+				if (!string.IsNullOrEmpty(lastResp))
+				{
+					desc = lastResp;
+					GD.Print($"[UI] Using Interview Override for {npcId}: {desc.Take(20)}...");
+				}
 			}
 		}
 

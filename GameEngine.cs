@@ -76,6 +76,7 @@ namespace FatalAttraction.Engine
 		public bool PrankActive { get; set; } = false;
 		public int Quadrant { get; set; } = -1; // 0:TL, 1:TR, 2:BL, 3:BR
 		public string CurrentRoomId { get; set; } = "Hallways";
+		public string TemporaryDialogOverride { get; set; }
 
 		public NPC(string id, string name, bool isLoveInterest = false, bool isTarget = false)
 		{
@@ -664,13 +665,13 @@ namespace FatalAttraction.Engine
 					else
 					{
 						// No followups? End interview early
-						ApplyInterviewResult(ctx, playerRole);
+						ApplyInterviewResult(ctx, playerRole, response);
 						return (true, null);
 					}
 				}
 				else // Followup Done
 				{
-					ApplyInterviewResult(ctx, playerRole);
+					ApplyInterviewResult(ctx, playerRole, response);
 					return (true, null);
 				}
 			}
@@ -906,7 +907,7 @@ namespace FatalAttraction.Engine
 			return (true, null);
 		}
 
-		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole)
+		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole, string finalAnswerText = "")
 		{
 			// Add score to Ratings (if > 0)
 			// User request: "-1 ratings points" for bad, so we apply delta directly.
@@ -923,7 +924,18 @@ namespace FatalAttraction.Engine
 			string resultMsg = ctx.CurrentScore > 0 ? "Great interview!" : (ctx.CurrentScore < 0 ? "Disastrous interview..." : "Average interview.");
 			 _gameState.AddNotification($"Interview finished. Score: {ctx.CurrentScore}. {resultMsg}");
 			 
-			 // Clear interview
+			 // Update NPC with temporary text override so it persists after interview closes
+			 var npc = _gameState.GetNPC(ctx.NpcId);
+			 if (npc != null)
+			 {
+			 	string fullText = "";
+				if (!string.IsNullOrEmpty(finalAnswerText)) fullText += $"{finalAnswerText}\n\n";
+				fullText += $"[Interview Complete]\nFinal Score: {ctx.CurrentScore}\n{resultMsg}";
+				
+			 	npc.TemporaryDialogOverride = fullText;
+			 }
+			 
+			 // Clear interview context to end the mode
 			 _gameState.ActiveInterviews.Remove(playerRole);
 		}
 
@@ -1030,6 +1042,10 @@ namespace FatalAttraction.Engine
 			{
 				return (false, "You have been eliminated and cannot act.");
 			}
+
+			// Clear temporary dialog override on any new action
+			var npc = GameState.GetNPC(npcId);
+			if (npc != null) npc.TemporaryDialogOverride = null;
 
 			GameState.InteractionSeed++; // Ensure randomness changes after every action
 			var result = InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
@@ -1250,6 +1266,19 @@ namespace FatalAttraction.Engine
 
 			status["players"] = playersObj;
 			
+			// Export Active Interviews for Client UI
+			var interviewsObj = new JObject();
+			foreach (var kvp in GameState.ActiveInterviews)
+			{
+				interviewsObj[kvp.Key.ToString().ToLower()] = new JObject
+				{
+					{ "npcId", kvp.Value.NpcId },
+					{ "currentStage", kvp.Value.CurrentStage },
+					{ "lastResponse", kvp.Value.LastResponse }
+				};
+			}
+			status["active_interviews"] = interviewsObj;
+
 			// Export Active Conversions for Client UI
 			var conversionsObj = new JObject();
 			foreach (var kvp in GameState.ActiveConversions)
@@ -1262,6 +1291,25 @@ namespace FatalAttraction.Engine
 				};
 			}
 			status["active_conversions"] = conversionsObj;
+
+			// Export NPC States (sync positions/status)
+			var npcStatesObj = new JObject();
+			foreach (var kvp in GameState.NPCs)
+			{
+				var npc = kvp.Value;
+				npcStatesObj[kvp.Key] = new JObject
+				{
+					{ "alive", npc.Alive },
+					{ "converted", npc.Converted },
+					{ "married", npc.Married },
+					{ "is_target", npc.IsTarget },
+					{ "prank_active", npc.PrankActive },
+					{ "temporary_dialog_override", npc.TemporaryDialogOverride }
+					// Pos sync is handled differently or can be added here if needed, 
+					// but sticking to logic required for UI.
+				};
+			}
+			status["npc_states"] = npcStatesObj;
 
 			return status;
 		}
