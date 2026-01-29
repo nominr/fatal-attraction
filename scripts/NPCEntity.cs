@@ -36,6 +36,7 @@ public partial class NPCEntity : CharacterBody2D
 	private Area2D _interactionArea;
 	private bool _playerInRange = false;
 	private Label _interactHint;
+	private Label _punchHint;
 
 	// Room and corridor definitions
 	private struct Room
@@ -449,6 +450,23 @@ public partial class NPCEntity : CharacterBody2D
 		CallDeferred(MethodName.CenterNameLabel);
 		// Size will auto-adjust based on text content
 
+		// Punch hint above NPC name (for Admirer targets)
+		_punchHint = new Label();
+		_punchHint.Text = "Press P to Punch";
+		_punchHint.HorizontalAlignment = HorizontalAlignment.Center;
+		_punchHint.AddThemeColorOverride("font_color", Colors.Yellow);
+		_punchHint.AddThemeFontOverride("font", _customFont);
+		_punchHint.AddThemeFontSizeOverride("font_size", 22);
+		// Add transparent grey background
+		var punchBgStyle = new StyleBoxFlat();
+		punchBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f);
+		punchBgStyle.SetCornerRadiusAll(4);
+		punchBgStyle.SetContentMarginAll(4);
+		_punchHint.AddThemeStyleboxOverride("normal", punchBgStyle);
+		_punchHint.Visible = false;
+		AddChild(_punchHint);
+		CallDeferred(MethodName.CenterPunchHint);
+
 		// Status indicators (hidden by default)
 		// Converted (Halo) - Above head (approx -90)
 		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -65));
@@ -685,6 +703,10 @@ public partial class NPCEntity : CharacterBody2D
 		_convertedIndicator.Visible = converted;
 		_marriedIndicator.Visible = married;
 		_targetIndicator.Visible = isTarget;
+		if (!alive && _punchHint != null)
+		{
+			_punchHint.Visible = false;
+		}
 		
 		// Dim the sprite if dead
 		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
@@ -701,6 +723,32 @@ public partial class NPCEntity : CharacterBody2D
 		
 		// Disable interaction if dead
 		InputPickable = alive;
+	}
+
+	/// <summary>
+	/// Show or hide the punch hint label.
+	/// </summary>
+	public void SetPunchHintVisible(bool visible)
+	{
+		if (_punchHint != null)
+		{
+			_punchHint.Visible = visible;
+		}
+	}
+
+	/// <summary>
+	/// Flash the NPC red briefly to indicate damage.
+	/// </summary>
+	public void FlashDamage(double seconds = 0.5)
+	{
+		if (_sprite == null) return;
+		_sprite.Modulate = Colors.Red;
+		var timer = GetTree().CreateTimer(Math.Max(0.1, seconds));
+		timer.Timeout += () =>
+		{
+			if (!IsInstanceValid(this) || _sprite == null) return;
+			_sprite.Modulate = _isAlive ? Colors.White : Colors.DarkGray;
+		};
 	}
 
 	/// <summary>
@@ -756,6 +804,19 @@ public partial class NPCEntity : CharacterBody2D
 			var labelWidth = _nameLabel.Size.X;
 			// Position much higher (-140) to be above the status icons which are at -90
 			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -120);
+		}
+	}
+
+	/// <summary>
+	/// Center the punch hint horizontally over the NPC based on its actual width.
+	/// Called deferred to ensure the label has been sized.
+	/// </summary>
+	private void CenterPunchHint()
+	{
+		if (_punchHint != null)
+		{
+			var labelWidth = _punchHint.Size.X;
+			_punchHint.Position = new Vector2(-labelWidth / 2, -195);
 		}
 	}
 

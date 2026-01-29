@@ -76,6 +76,11 @@ public partial class GameWorld : Node2D
 	private List<Vector2> _targetZones = new List<Vector2>(); // x position and width
 	private BombSlider _sliderControl;
 
+	// Admirer punch logic
+	private const int PUNCHES_TO_KILL = 50;
+	private const float PUNCH_RANGE = 120f;
+	private bool _wasPunchPressed = false;
+
 
 	private Font _customFont;
 	private Texture2D _ratingMeterTexture;
@@ -1693,6 +1698,7 @@ public partial class GameWorld : Node2D
 		if (npc != null)
 		{
 			npc.Alive = false;
+			npc.PunchesTaken = PUNCHES_TO_KILL;
 			GD.Print($"[GameWorld] NPC {targetNpcId} marked as eliminated by bomb");
 			
 			// Apply immobilization effect visually
@@ -1708,6 +1714,54 @@ public partial class GameWorld : Node2D
 		else
 		{
 			GD.PrintErr($"[GameWorld] Could not find NPC {targetNpcId} for bomb kill");
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void PunchTargetNPC(string targetNpcId)
+	{
+		if (!Multiplayer.IsServer()) return;
+		if (_gameEngine == null) return;
+
+		var npc = _gameEngine.GameState.GetNPC(targetNpcId);
+		if (npc == null || !npc.IsTarget || !npc.Alive) return;
+
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
+
+		if (!_networkManager.Players.TryGetValue(senderId, out var playerInfo)) return;
+		if (!string.Equals(playerInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
+
+		if (!_playerControllers.TryGetValue(senderId, out var playerCtrl)) return;
+		if (!_npcEntities.TryGetValue(targetNpcId, out var npcEntity)) return;
+
+		float distance = playerCtrl.Position.DistanceTo(npcEntity.Position);
+		if (distance > PUNCH_RANGE) return;
+
+		npc.PunchesTaken = Math.Min(npc.PunchesTaken + 1, PUNCHES_TO_KILL);
+		Rpc(MethodName.RpcFlashNpcDamage, targetNpcId);
+
+		if (npc.PunchesTaken >= PUNCHES_TO_KILL)
+		{
+			npc.Alive = false;
+			npc.PunchesTaken = PUNCHES_TO_KILL;
+
+			if (_npcEntities.TryGetValue(targetNpcId, out var targetEntity))
+			{
+				targetEntity.SetFrozen(true);
+			}
+
+			_gameEngine.GameState.AddNotification($"{npc.Name} has been eliminated. Target down!");
+			BroadcastGameState();
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void RpcFlashNpcDamage(string npcId)
+	{
+		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
+		{
+			npcEntity.FlashDamage(0.5);
 		}
 	}
 	
@@ -1875,6 +1929,128 @@ public partial class GameWorld : Node2D
 	{
 		_currentInteractingNpcId = null;
 		GD.Print("Interaction panel closed, cleared current NPC");
+	}
+
+	private bool TryGetNpcTargetState(string npcId, out bool isTarget, out bool alive)
+	{
+		isTarget = false;
+		alive = true;
+
+		if (Multiplayer.IsServer() && _gameEngine != null)
+		{
+			var npc = _gameEngine.GameState.GetNPC(npcId);
+			if (npc == null) return false;
+			isTarget = npc.IsTarget;
+			alive = npc.Alive;
+			return true;
+		}
+
+		var npcStates = _localGameState?["npc_states"] as JObject;
+		var state = npcStates?[npcId];
+		if (state == null) return false;
+		isTarget = state["is_target"]?.Value<bool>() ?? false;
+		alive = state["alive"]?.Value<bool>() ?? true;
+		return true;
+	}
+
+	private void UpdatePunchHints()
+	{
+		if (string.IsNullOrEmpty(_myRole) || _myRole.ToLower() != "admirer")
+		{
+			foreach (var kvp in _npcEntities)
+			{
+				kvp.Value.SetPunchHintVisible(false);
+			}
+			return;
+		}
+
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			if (_playerControllers.TryGetValue(myId, out var localCtrl))
+			{
+				_localPlayer = localCtrl;
+			}
+		}
+
+		if (_localPlayer == null)
+		{
+			foreach (var kvp in _npcEntities)
+			{
+				kvp.Value.SetPunchHintVisible(false);
+			}
+			return;
+		}
+
+		foreach (var kvp in _npcEntities)
+		{
+			if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive))
+			{
+				kvp.Value.SetPunchHintVisible(false);
+				continue;
+			}
+
+			if (!isTarget || !alive)
+			{
+				kvp.Value.SetPunchHintVisible(false);
+				continue;
+			}
+
+			float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+			bool inRange = distance <= PUNCH_RANGE;
+			kvp.Value.SetPunchHintVisible(inRange);
+		}
+	}
+
+	private void HandlePunchInput()
+	{
+		bool pressed = Input.IsKeyPressed(Key.P);
+		if (string.IsNullOrEmpty(_myRole) || _myRole.ToLower() != "admirer")
+		{
+			_wasPunchPressed = pressed;
+			return;
+		}
+
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			if (_playerControllers.TryGetValue(myId, out var localCtrl))
+			{
+				_localPlayer = localCtrl;
+			}
+		}
+
+		if (_localPlayer == null)
+		{
+			_wasPunchPressed = pressed;
+			return;
+		}
+
+		if (pressed && !_wasPunchPressed)
+		{
+			string closestNpcId = null;
+			float closestDistance = float.MaxValue;
+
+			foreach (var kvp in _npcEntities)
+			{
+				if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive)) continue;
+				if (!isTarget || !alive) continue;
+
+				float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+				if (distance <= PUNCH_RANGE && distance < closestDistance)
+				{
+					closestDistance = distance;
+					closestNpcId = kvp.Key;
+				}
+			}
+
+			if (!string.IsNullOrEmpty(closestNpcId))
+			{
+				RpcId(1, MethodName.PunchTargetNPC, closestNpcId);
+			}
+		}
+
+		_wasPunchPressed = pressed;
 	}
 
 	private void OnCollapseNotificationPressed()
@@ -2102,6 +2278,10 @@ public partial class GameWorld : Node2D
 				}
 			}
 		}
+
+		// Admirer punch hints and input handling
+		UpdatePunchHints();
+		HandlePunchInput();
 	}
 
 	// ---- NETWORKING ----

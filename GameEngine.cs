@@ -74,6 +74,7 @@ namespace FatalAttraction.Engine
 		public bool IsLoveInterest { get; set; } = false;
 		public bool IsTarget { get; set; } = false;
 		public bool PrankActive { get; set; } = false;
+		public int PunchesTaken { get; set; } = 0;
 		public int Quadrant { get; set; } = -1; // 0:TL, 1:TR, 2:BL, 3:BR
 		public string CurrentRoomId { get; set; } = "Hallways";
 
@@ -306,6 +307,11 @@ namespace FatalAttraction.Engine
 				
 				// Identify convert action by ID or properties
 				string id = option["id"]?.Value<string>();
+				// Admirer target kills are handled by punch mechanic, so hide kill actions.
+				if (playerRole == Role.Admirer && npc.IsTarget && !string.IsNullOrEmpty(id) && id.StartsWith("kill"))
+				{
+					continue;
+				}
 				bool isConvert = id != null && (id.StartsWith("convert") || id.Contains("convert_"));
 				
 				if (isConvert && playerRole == Role.Prophet)
@@ -678,6 +684,10 @@ namespace FatalAttraction.Engine
 			// Check if NPC is dead first
 			if (!npc.Alive && optionId != "leave")
 				return (false, $"{npc.Name} is no longer available");
+
+			// Admirer target kills must use punch mechanic (no instant kill action)
+			if (playerRole == Role.Admirer && npc.IsTarget && optionId.StartsWith("kill"))
+				return (false, "Use punches to eliminate targets.");
 
 
 			// CHECK FOR CAMERA CATCH (Admirer Kill)
