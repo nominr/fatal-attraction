@@ -27,10 +27,14 @@ public partial class InteractionPanel : PanelContainer
 	// Current state
 	private string _currentNpcId;
 	private Font _customFont;
+	private string _lastNpcId;
+	private string _lastDescription;
+	private int _lastActionCount;
 
 	public override void _Ready()
 	{
 		SetupUI();
+		MouseFilter = MouseFilterEnum.Stop; // Block clicks from passing through
 		Hide(); // Hidden by default
 	}
 
@@ -172,19 +176,6 @@ public partial class InteractionPanel : PanelContainer
 	/// </summary>
 	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions)
 	{
-		_currentNpcId = npcId;
-		_npcNameLabel.Text = npcName;
-		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
-
-		// Portrait sprite is already loaded, could be customized per NPC later
-		// For now, it uses the default sprite-portrait.png
-
-		// Clear previous actions
-		foreach (Node child in _actionsContainer.GetChildren())
-		{
-			child.QueueFree();
-		}
-
 		// Count visible actions (non-RPS moves)
 		int visibleActionCount = 0;
 		if (actions != null)
@@ -197,6 +188,29 @@ public partial class InteractionPanel : PanelContainer
 					visibleActionCount++;
 				}
 			}
+		}
+
+		// Check if we need to rebuild (same NPC and action count = no rebuild needed)
+		if (_lastNpcId == npcId && _lastDescription == npcDescription && _lastActionCount == visibleActionCount && Visible)
+		{
+			// No changes needed, skip rebuild to avoid recreating buttons
+			return;
+		}
+
+		_currentNpcId = npcId;
+		_lastNpcId = npcId;
+		_lastDescription = npcDescription;
+		_lastActionCount = visibleActionCount;
+		_npcNameLabel.Text = npcName;
+		_interactionStatusLabel.Text = $"{npcName} awaits your action.";
+
+		// Portrait sprite is already loaded, could be customized per NPC later
+		// For now, it uses the default sprite-portrait.png
+
+		// Clear previous actions immediately with Free() not QueueFree()
+		foreach (Node child in _actionsContainer.GetChildren())
+		{
+			child.Free();
 		}
 
 		// Switch container type based on button count (more than 2 buttons = vertical)
@@ -214,7 +228,7 @@ public partial class InteractionPanel : PanelContainer
 
 		// Replace the old container with the new one
 		_actionsScrollContainer.RemoveChild(oldContainer);
-		oldContainer.QueueFree();
+		oldContainer.Free();
 		_actionsScrollContainer.AddChild(_actionsContainer);
 
 		// Create action buttons
@@ -276,12 +290,18 @@ public partial class InteractionPanel : PanelContainer
 		GD.Print($"Action selected: {actionId} for NPC {_currentNpcId}");
 		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
 		Hide();
+		_lastNpcId = null;
+		_lastDescription = null;
+		_lastActionCount = 0;
 		EmitSignal(SignalName.PanelClosed);
 	}
 
 	private void OnClosePressed()
 	{
 		Hide();
+		_lastNpcId = null;
+		_lastDescription = null;
+		_lastActionCount = 0;
 		EmitSignal(SignalName.PanelClosed);
 	}
 
@@ -293,6 +313,9 @@ public partial class InteractionPanel : PanelContainer
 			if (keyEvent.Pressed && keyEvent.Keycode == Key.Escape)
 			{
 				Hide();
+				_lastNpcId = null;
+				_lastDescription = null;
+				_lastActionCount = 0;
 				EmitSignal(SignalName.PanelClosed);
 				GetViewport().SetInputAsHandled();
 			}

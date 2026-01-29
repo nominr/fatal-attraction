@@ -44,6 +44,7 @@ public partial class GameWorld : Node2D
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
 	private string _currentConversionNpcId = null;
+	private int _lastGameStateHash = 0; // Track when game state changes to prevent unnecessary refreshes
 	private bool _goalsShownAtStart = false;
 	
 	private Label _timerLabel;
@@ -1746,15 +1747,17 @@ public partial class GameWorld : Node2D
 				_currentInteractingNpcId = interviewNpcId;
 				RefreshInteractionPanel(); 
 			}
-			else
-			{
-				// Just refresh content
-				RefreshInteractionPanel();
-			}
+			// Don't refresh every frame - InteractionPanel now caches and checks if rebuild is needed
 		}
 		else if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
-			RefreshInteractionPanel();
+			// Only refresh if game state actually changed
+			int currentHash = _localGameState?.GetHashCode() ?? 0;
+			if (currentHash != _lastGameStateHash)
+			{
+				_lastGameStateHash = currentHash;
+				RefreshInteractionPanel();
+			}
 		}
 	}
 
@@ -2668,7 +2671,7 @@ public partial class GameWorld : Node2D
 
 		var vbox = new VBoxContainer();
 		vbox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-		vbox.MouseFilter = Control.MouseFilterEnum.Ignore;
+		vbox.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks to pass to button
 		vbox.AddThemeConstantOverride("separation", 5);
 		btn.AddChild(vbox);
 
@@ -2681,6 +2684,7 @@ public partial class GameWorld : Node2D
 		}
 		tex.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
 		tex.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		tex.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks to pass to button
 		vbox.AddChild(tex);
 
 		// Name at bottom
@@ -2690,6 +2694,7 @@ public partial class GameWorld : Node2D
 		lbl.AddThemeFontSizeOverride("font_size", 18);
 		lbl.AddThemeColorOverride("font_color", Colors.White);
 		lbl.HorizontalAlignment = HorizontalAlignment.Center;
+		lbl.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks to pass to button
 		vbox.AddChild(lbl);
 
 		// Hover effect: Darken asset
