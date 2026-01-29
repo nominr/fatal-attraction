@@ -33,6 +33,12 @@
           "constraints": {
             "mustBeLoveInterest": true
           }
+        },
+        "throw_bomb": {
+          "displayName": "Throw Bomb",
+          "resolution": {
+            "type": "delayed"
+          }
         }
       },
       "goals": {
@@ -408,7 +414,7 @@
           "options": [
             {
               "id": "kill",
-              "text": "Kill John",
+              "text": "Punch John",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "nonConverted"
@@ -584,7 +590,7 @@
           "options": [
             {
               "id": "kill_rebecca",
-              "text": "Kill Rebecca",
+              "text": "Punch Rebecca",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "nonConverted"
@@ -760,7 +766,7 @@
           "options": [
             {
               "id": "kill_marcus",
-              "text": "Kill Marcus",
+              "text": "Punch Marcus",
               "requires": {
                 "role": "admirer",
                 "npcStatus": "nonConverted"
