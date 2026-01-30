@@ -34,7 +34,7 @@ public partial class GameWorld : Node2D
 	private PlayerController _localPlayer;
 	
 	// UI Components
-	private InteractionPanel _interactionPanel;
+	private NPCDialogueUI _npcDialogueUI;
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
@@ -469,11 +469,12 @@ public partial class GameWorld : Node2D
 		_notificationMargin.AddChild(_notificationText);
 		_notificationText.AddThemeFontSizeOverride("normal_font_size", 22);
 
-		// Interaction Panel
-		_interactionPanel = new InteractionPanel();
-		_interactionPanel.ActionSelected += OnActionSelected;
-		_interactionPanel.PanelClosed += OnInteractionPanelClosed;
-		_uiLayer.AddChild(_interactionPanel);
+		// Interaction Panel (Replaced by NPCDialogueUI)
+		var dialogScene = GD.Load<PackedScene>("res://scenes/NpcDialogueBoxScene.tscn");
+		_npcDialogueUI = dialogScene.Instantiate<NPCDialogueUI>();
+		_npcDialogueUI.ActionSelected += OnActionSelected;
+		_npcDialogueUI.PanelClosed += OnInteractionPanelClosed;
+		_uiLayer.AddChild(_npcDialogueUI);
 
 		// Prophet Trap Button
 		var trapButton = new Button();
@@ -1309,17 +1310,22 @@ public partial class GameWorld : Node2D
 		// Don't allow interactions when in bomb mode - show "too close" message
 		if (_bombOperationActive)
 		{
-			GD.Print("[BOMB] NPC clicked during bomb mode - player too close");
+			GD.Print($"[BOMB] NPC {npcId} clicked. Selecting as target.");
 			// Check if this is one of the target NPCs
 			var targetNPCs = new[] { "john", "rebecca", "marcus" };
-			if (targetNPCs.Contains(npcId))
+			// Convert to lower case for comparison just in case
+			if (targetNPCs.Contains(npcId.ToLower()))
 			{
-				// Add notification
-				if (_gameEngine != null)
+				_selectedBombTarget = npcId;
+				
+				// Hide selection overlay
+				if (_bombTargetOverlay != null)
 				{
-					_gameEngine.GameState.AddNotification("Too close to activate bomb.");
-					BroadcastGameState();
+					_bombTargetOverlay.Visible = false;
 				}
+				
+				// Proceed to slider minigame
+				ShowBombSlider();
 			}
 			return;
 		}
@@ -1380,7 +1386,7 @@ public partial class GameWorld : Node2D
 		}
 
 		_currentInteractingNpcId = npcId;
-		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -1914,25 +1920,10 @@ public partial class GameWorld : Node2D
 			GD.Print($"[BOMB] Target NPC clicked: {npcEntity.NpcId}");
 			
 			// Check if player is too close to the clicked NPC
-			var myId = Multiplayer.GetUniqueId();
-			if (_playerControllers.TryGetValue(myId, out var localPlayer))
-			{
-				const float INTERACTION_RANGE = 250f; // Match the visual interaction range
-				float distanceToNPC = localPlayer.Position.DistanceTo(npcEntity.Position);
-				GD.Print($"[BOMB] Distance to clicked target {npcEntity.NpcId}: {distanceToNPC}");
-				
-				if (distanceToNPC <= INTERACTION_RANGE)
-				{
-					GD.Print("[BOMB] Too close to target NPC - cannot select");
-					// Add notification
-					if (_gameEngine != null)
-					{
-						_gameEngine.GameState.AddNotification("Too close to activate bomb.");
-						BroadcastGameState();
-					}
-					return; // Don't proceed with target selection
-				}
-			}
+			GD.Print($"[BOMB] Target NPC clicked: {npcEntity.NpcId}");
+			
+			// Distance check removed per user request (Bomb Fix)
+			// Allow selection at any distance
 			
 			_selectedBombTarget = npcEntity.NpcId;
 			
@@ -2289,7 +2280,7 @@ public partial class GameWorld : Node2D
 		}
 
 		// If interaction panel is visible, check if player is still in range of NPC
-		if (_interactionPanel != null && _interactionPanel.Visible && _currentInteractingNpcId != null)
+		if (_npcDialogueUI != null && _npcDialogueUI.Visible && _currentInteractingNpcId != null)
 		{
 			// Try to find local player if not set
 			if (_localPlayer == null)
@@ -2309,7 +2300,7 @@ public partial class GameWorld : Node2D
 				if (distance > 150)
 				{
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
-					_interactionPanel.Hide();
+					_npcDialogueUI.Close();
 					OnInteractionPanelClosed(); // Ensure we notify server to clear state
 				}
 			}
@@ -2664,14 +2655,14 @@ public partial class GameWorld : Node2D
 		if (isInInterview && interviewNpcId != null)
 		{
 			// If panel is closed or showing wrong NPC, force it open/correct
-			if (!_interactionPanel.Visible || _currentInteractingNpcId != interviewNpcId)
+			if (!_npcDialogueUI.Visible || _currentInteractingNpcId != interviewNpcId)
 			{
 				_currentInteractingNpcId = interviewNpcId;
 				RefreshInteractionPanel(); 
 			}
 			// Don't refresh every frame - InteractionPanel now caches and checks if rebuild is needed
 		}
-		else if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		else if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
 			// Only refresh if game state actually changed
 			int currentHash = _localGameState?.GetHashCode() ?? 0;
@@ -2717,7 +2708,7 @@ public partial class GameWorld : Node2D
 		}
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
-		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
 	}
 
 	private void SpawnNPCsFromState()
@@ -2927,7 +2918,7 @@ public partial class GameWorld : Node2D
 		}
 
 		// Refresh Interaction Panel if open (for dynamic content like Interview)
-		if (_interactionPanel.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
 			RefreshInteractionPanel();
 		}
