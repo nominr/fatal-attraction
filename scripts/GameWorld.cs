@@ -35,6 +35,11 @@ public partial class GameWorld : Node2D
 	
 	// UI Components
 	private NPCDialogueUI _npcDialogueUI;
+	// Elimination UI
+	private Control _eliminationOverlay;
+	private Label _eliminationLabel;
+	private double _admirerEliminatedTimer = 0;
+	private bool _admirerEliminatedShown = false;
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
@@ -345,19 +350,32 @@ public partial class GameWorld : Node2D
 		_roleLabel.AddThemeColorOverride("font_color", Colors.White);
 		hudContainer.AddChild(_roleLabel);
 
-		// Eliminated Status Label (Top Center - for non-Admirers)
-		var elimLabel = new Label();
-		elimLabel.Name = "EliminatedLabel";
-		elimLabel.Text = "ADMIRER ELIMINATED"; 
-		elimLabel.AddThemeFontSizeOverride("font_size", 24);
-		elimLabel.AddThemeColorOverride("font_color", Colors.White);
-		// elimLabel.AddThemeColorOverride("font_outline_color", Colors.Black); // Outline for contrast
-		// elimLabel.AddThemeConstantOverride("outline_size", 4);
-		elimLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		elimLabel.Visible = false;
-		// Position Manually at top center
-		elimLabel.AnchorsPreset = (int)Control.LayoutPreset.TopWide;
-		_uiLayer.AddChild(elimLabel);
+
+		// Elimination Overlay (Shared for "You Died" and "Admirer Eliminated")
+		_eliminationOverlay = new PanelContainer();
+		_eliminationOverlay.Name = "EliminationOverlay";
+		_eliminationOverlay.SetAnchorsPreset(Control.LayoutPreset.Center);
+		// _eliminationOverlay.AnchorsPreset = (int)Control.LayoutPreset.Center; // Godot 4 style
+		_eliminationOverlay.GrowHorizontal = Control.GrowDirection.Both;
+		_eliminationOverlay.GrowVertical = Control.GrowDirection.Both;
+		_eliminationOverlay.Visible = false;
+		
+		var elimStyle = new StyleBoxFlat();
+		elimStyle.BgColor = new Color(0, 0, 0, 0.8f);
+		elimStyle.SetCornerRadiusAll(10);
+		elimStyle.SetContentMarginAll(20);
+		_eliminationOverlay.AddThemeStyleboxOverride("panel", elimStyle);
+		
+		_eliminationLabel = new Label();
+		_eliminationLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		_eliminationLabel.VerticalAlignment = VerticalAlignment.Center;
+		_eliminationLabel.AddThemeFontOverride("font", _customFont);
+		_eliminationLabel.AddThemeFontSizeOverride("font_size", 42); // Big and centered
+		_eliminationLabel.AddThemeColorOverride("font_color", Colors.Red);
+		_eliminationOverlay.AddChild(_eliminationLabel);
+		
+		_uiLayer.AddChild(_eliminationOverlay);
+
 
 		// Game Over Overlay (For eliminated player)
 		var overlay = new PanelContainer();
@@ -1358,12 +1376,14 @@ public partial class GameWorld : Node2D
 		// _myRole from network might be "producer" (lowercase).
 		
 		string roleKey = Capitalize(_myRole); // Ensure "Producer"
+		bool isInterview = false;
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+				isInterview = true;
 			}
 		}
 
@@ -1758,6 +1778,15 @@ public partial class GameWorld : Node2D
 				npcEntity.SetFrozen(true);
 				GD.Print($"[GameWorld] NPC {targetNpcId} frozen (immobilized)");
 			}
+
+			// CAMERA DETECTION LOGIC
+			if (_gameEngine.GameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
+			{
+				_gameEngine.GameState.AdmirerCaught = true;
+				_gameEngine.GameState.AdmirerEliminated = false;
+				_gameEngine.GameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
+				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
+			}
 			
 			_gameEngine.GameState.AddNotification($"Bomb successful! {npc.Name} has been eliminated!");
 			BroadcastGameState();
@@ -1800,6 +1829,15 @@ public partial class GameWorld : Node2D
 			if (_npcEntities.TryGetValue(targetNpcId, out var targetEntity))
 			{
 				targetEntity.SetFrozen(true);
+			}
+
+			// CAMERA DETECTION LOGIC
+			if (_gameEngine.GameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
+			{
+				_gameEngine.GameState.AdmirerCaught = true;
+				_gameEngine.GameState.AdmirerEliminated = false;
+				_gameEngine.GameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
+				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
 			}
 
 			_gameEngine.GameState.AddNotification($"{npc.Name} has been eliminated. Target down!");
@@ -2164,6 +2202,17 @@ public partial class GameWorld : Node2D
 
 	public override void _Process(double delta)
 	{
+		// Handle Admirer Eliminated timer for non-Admirer players
+		if (_admirerEliminatedTimer > 0)
+		{
+			_admirerEliminatedTimer -= (float)delta;
+			if (_admirerEliminatedTimer <= 0)
+			{
+				_eliminationOverlay.Visible = false;
+				// Do NOT reset _admirerEliminatedShown here, or it will loop forever in UpdateUI
+			}
+		}
+
 		// Update bomb slider animation
 		if (_bombSliderOverlay != null && _bombSliderOverlay.Visible && _sliderMoving)
 		{
@@ -2698,12 +2747,14 @@ public partial class GameWorld : Node2D
 		// INTERVIEW UI OVERRIDE
 		var activeInterviews = _localGameState?["active_interviews"] as JObject;
 		string roleKey = Capitalize(_myRole); 
+		bool isInterview = false;
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+				isInterview = true;
 			}
 		}
 
@@ -3165,46 +3216,38 @@ public partial class GameWorld : Node2D
 		}
 
 
-		// Admirer Elimination Check
-		bool admirerEliminated = _localGameState["admirer_eliminated"]?.Value<bool>() ?? false;
-		var elimLabel = _uiLayer.GetNodeOrNull<Label>("EliminatedLabel");
-		var gameOverOverlay = _uiLayer.GetNodeOrNull<Control>("GameOverOverlay");
-
+		// Elimination UI Logic
+		bool admirerEliminated = _localGameState?["admirer_eliminated"]?.Value<bool>() ?? false;
+		
 		if (admirerEliminated)
 		{
-			bool isLocalAdmirer = (_myRole?.ToLower() == "admirer");
-			
-			if (isLocalAdmirer)
+			// Verify if we haven't shown it yet
+			if (!_admirerEliminatedShown)
 			{
-				// I AM ELIMINATED
-				if (gameOverOverlay != null) 
+				_admirerEliminatedShown = true;
+				_eliminationOverlay.Visible = true;
+				_admirerEliminatedTimer = 5.0f; // Start 5s timer for EVERYONE
+
+				if (_myRole.ToLower() == "admirer")
 				{
-					gameOverOverlay.Visible = true;
-					// Ensure it blocks mouse if possible? PanelContainer usually monitors mouse.
+					_eliminationLabel.Text = "YOU HAVE BEEN ELIMINATED";
 				}
-				if (_localPlayer != null)
+				else
 				{
-					_localPlayer.InputEnabled = false;
-					_localPlayer.Velocity = Vector2.Zero;
+					_eliminationLabel.Text = "ADMIRER ELIMINATED";
 				}
-				if (elimLabel != null) elimLabel.Visible = false; // Don't show top label
 			}
-			else
-			{
-				// Someone else eliminated
-				if (elimLabel != null) 
-				{
-					elimLabel.Visible = true;
-					elimLabel.Text = "ADMIRER HAS BEEN ELIMINATED"; // Requirements: "white text on top... producer lost (sic: admirer lost)"
-				}
-				if (gameOverOverlay != null) gameOverOverlay.Visible = false;
-			}
+			// Visibility is controlled by _Process via timer
 		}
-		else if (!isGameOver) // Only hide if game isn't over otherwise
+		else
+		{
+			_eliminationOverlay.Visible = false;
+			_admirerEliminatedShown = false;
+		}
+		if (!isGameOver) // Only hide if game isn't over otherwise
 		{
 			// Reset if new game
-			if (elimLabel != null) elimLabel.Visible = false;
-			if (gameOverOverlay != null) gameOverOverlay.Visible = false;
+			// Reset if new game
 		}
 	}
 
