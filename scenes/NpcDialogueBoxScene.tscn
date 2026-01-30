@@ -1,0 +1,38 @@
+[gd_scene load_steps=3 format=3 uid="uid://b2dv106ce3j76"]
+
+[ext_resource type="Script" path="res://scripts/NPCDialogueUI.cs" id="2_script"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_detby"]
+load_path = "res://.godot/imported/npc-message-box.png-84b108a3bf7d121ef62fbc859a277fab.ctex"
+
+[node name="NPCDialogueBox" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1228.0
+offset_bottom = -702.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_script")
+
+[node name="TextureRect" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 48.0
+offset_bottom = 17.0
+texture = SubResource("CompressedTexture2D_detby")
+stretch_mode = 2
+
+[node name="DialogueBox" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 6.0
+offset_right = 47.0
+offset_bottom = 13.0
+
+[node name="NPCNameBox" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 2.0
+offset_right = 13.0
+offset_bottom = 5.0
