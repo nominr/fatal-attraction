@@ -1454,7 +1454,7 @@ public partial class GameWorld : Node2D
 			_bombTargetOverlay = new Control();
 			_bombTargetOverlay.Name = "BombTargetOverlay";
 			_bombTargetOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-			_bombTargetOverlay.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks through to NPCs
+			_bombTargetOverlay.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks through to NPCs
 			
 			// Top instruction label (smaller, inside overlay with transparent background)
 			var instructionPanel = new PanelContainer();
