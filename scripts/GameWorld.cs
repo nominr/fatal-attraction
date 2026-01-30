@@ -1524,8 +1524,8 @@ public partial class GameWorld : Node2D
 		
 		for (int i = 0; i < numZones; i++)
 		{
-			float zoneX = (float)(random.NextDouble() * (barWidth - 20)); // Leave room for zone width
-			float zoneWidth = (float)(random.Next(10, 20)); // Zone width 10-20 pixels (reduced)
+			float zoneX = (float)(random.NextDouble() * (barWidth - 24)); // Leave room for zone width
+			float zoneWidth = (float)(random.Next(14, 24)); // Zone width 14-24 pixels (slightly bigger)
 			_targetZones.Add(new Vector2(zoneX, zoneWidth));
 		}
 		
@@ -1630,9 +1630,31 @@ public partial class GameWorld : Node2D
 			_uiLayer.AddChild(_bombSliderOverlay);
 		}
 		
+		// Ensure slider control state is synced to current target zones and position
+		if (_sliderControl != null)
+		{
+			_sliderControl.TargetZones = _targetZones;
+			_sliderControl.SliderPosition = _sliderPosition;
+		}
+
 		// Show the slider
 		_bombSliderOverlay.Visible = true;
 		_bombOperationActive = true;
+	}
+
+	private bool IsSliderInTargetZone(float sliderPosition)
+	{
+		const float HITBOX_EXTENSION = 10f;
+		foreach (var zone in _targetZones)
+		{
+			float zoneStart = zone.X - HITBOX_EXTENSION;
+			float zoneEnd = zone.X + zone.Y + HITBOX_EXTENSION;
+			if (sliderPosition >= zoneStart && sliderPosition <= zoneEnd)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	private void OnBombStop()
@@ -1651,20 +1673,18 @@ public partial class GameWorld : Node2D
 		
 		// Stop the slider movement
 		_sliderMoving = false;
-		
-		// Check if stopped in a target zone (with extended hitbox - 10 pixels beyond edges)
-		const float HITBOX_EXTENSION = 10f;
-		bool inTargetZone = false;
-		foreach (var zone in _targetZones)
+
+		// Use the visual slider position to avoid mismatch between UI and hit detection
+		float barWidth = 400f;
+		if (_sliderControl != null && _sliderControl.Size.X > 0)
 		{
-			float zoneStart = zone.X - HITBOX_EXTENSION;
-			float zoneEnd = zone.X + zone.Y + HITBOX_EXTENSION;
-			if (_sliderPosition >= zoneStart && _sliderPosition <= zoneEnd)
-			{
-				inTargetZone = true;
-				break;
-			}
+			barWidth = _sliderControl.Size.X;
 		}
+		float sliderPosition = _sliderControl?.SliderPosition ?? _sliderPosition;
+		sliderPosition = Mathf.Clamp(sliderPosition, 0f, barWidth);
+		_sliderPosition = sliderPosition;
+
+		bool inTargetZone = IsSliderInTargetZone(sliderPosition);
 		
 		GD.Print($"[GameWorld] Slider stopped at {_sliderPosition}, in target zone: {inTargetZone}");
 		
@@ -2363,6 +2383,10 @@ public partial class GameWorld : Node2D
 
 		// Check Producer Panels Auto-Close on Move
 		CheckProducerPanelsOnMove();
+
+		// Admirer punch hints and input handling
+		UpdatePunchHints();
+		HandlePunchInput();
 	}
 
 	private void CheckProducerPanelsOnMove()
@@ -2387,9 +2411,6 @@ public partial class GameWorld : Node2D
 			if (btn != null) btn.SetPressedNoSignal(false);
 		}
 
-		// Admirer punch hints and input handling
-		UpdatePunchHints();
-		HandlePunchInput();
 	}
 
 	// ---- NETWORKING ----
