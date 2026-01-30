@@ -169,6 +169,16 @@ public partial class GameWorld : Node2D
 			
 			GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
 			
+			// Match Layer1 to the same transform (since it was reparented to root)
+			var layer1 = GetNodeOrNull("Layer1");
+			if (layer1 != null && layer1 is Node2D layer1Node)
+			{
+				layer1Node.Scale = targetScale;
+				layer1Node.Position = targetPos;
+				layer1Node.ZIndex = -5; // Above floor (-10) but BELOW players (0)
+				GD.Print($"Layer1 scaled to {targetScale} and positioned at {targetPos}");
+			}
+			
 			// ALIGN ROOM AREAS TO MATCH SCALED WORLD
 			// The Areas in the scene are 1x scale and relative to the original TileMap layout.
 			// We must transform them to match the new world coordinates.
