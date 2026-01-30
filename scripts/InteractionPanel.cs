@@ -280,12 +280,8 @@ public partial class InteractionPanel : PanelContainer
 			}
 		}
 
-		// Check if we need to rebuild (same NPC and action count = no rebuild needed)
-		if (_lastNpcId == npcId && _lastDescription == npcDescription && _lastActionCount == visibleActionCount && Visible)
-		{
-			// No changes needed, skip rebuild to avoid recreating buttons
-			return;
-		}
+		// Removed redundant manual check that conflcited with signature check
+
 
 		_currentNpcId = npcId;
 		_lastNpcId = npcId;

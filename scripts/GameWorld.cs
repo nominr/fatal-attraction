@@ -1352,12 +1352,14 @@ public partial class GameWorld : Node2D
 		// _myRole from network might be "producer" (lowercase).
 		
 		string roleKey = Capitalize(_myRole); // Ensure "Producer"
+		bool isInterview = false;
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+				isInterview = true;
 			}
 		}
 
@@ -1380,7 +1382,7 @@ public partial class GameWorld : Node2D
 		}
 
 		_currentInteractingNpcId = npcId;
-		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
+		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList, isInterview);
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -2686,17 +2688,19 @@ public partial class GameWorld : Node2D
 		// INTERVIEW UI OVERRIDE
 		var activeInterviews = _localGameState?["active_interviews"] as JObject;
 		string roleKey = Capitalize(_myRole); 
+		bool isInterview = false;
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+				isInterview = true;
 			}
 		}
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
-		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList);
+		_interactionPanel.ShowForNPC(npcId, npcName, desc, actionsList, isInterview);
 	}
 
 	private void SpawnNPCsFromState()
