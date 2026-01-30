@@ -32,7 +32,7 @@ polygon = PackedVector2Array(683, 220, 683, 290, 763, 290, 763, 220, 696, 220)
 
 [node name="ButtonRoom5" type="Area2D" parent="Node2D"]
 script = ExtResource("2_7iqg5")
-room_name = "Room 3"
+room_name = "Room 5"
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom5"]
 position = Vector2(-185, 220)
@@ -48,7 +48,7 @@ polygon = PackedVector2Array(901, 160, 901, 250, 741, 250, 741, 160)
 
 [node name="ButtonRoom3" type="Area2D" parent="Node2D"]
 script = ExtResource("2_7iqg5")
-room_name = "Room 5"
+room_name = "Room 3"
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Node2D/ButtonRoom3"]
 position = Vector2(-14, 217)
