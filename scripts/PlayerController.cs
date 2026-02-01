@@ -35,6 +35,10 @@ public partial class PlayerController : CharacterBody2D
 	private long _playerId = 0;
 	private Vector2 _lastSentPosition = Vector2.Zero;
 	private const float PositionSyncThreshold = 2.0f; // Only sync if moved more than this
+	
+	// Slip state (for banana trap)
+	private bool _isSlipping = false;
+	private double _slipTimer = 0.0;
 
 	public override void _Ready()
 	{
@@ -99,6 +103,25 @@ public partial class PlayerController : CharacterBody2D
 		// Center the label over the player based on text width
 		CallDeferred(MethodName.CenterRoleLabel);
 		// Size will auto-adjust based on text content
+	}
+
+	public override void _Process(double delta)
+	{
+		// Update slip timer and resume when elapsed
+		if (_isSlipping)
+		{
+			_slipTimer -= delta;
+			if (_slipTimer <= 0)
+			{
+				_isSlipping = false;
+				_slipTimer = 0;
+				// Restore upright rotation
+				if (_sprite != null)
+				{
+					_sprite.RotationDegrees = 0;
+				}
+			}
+		}
 	}
 
 
@@ -258,6 +281,13 @@ public partial class PlayerController : CharacterBody2D
 	{
 		// Only process input for the local player
 		if (!_isLocalPlayer || !InputEnabled) return;
+		
+		// If slipping, disable movement
+		if (_isSlipping)
+		{
+			Velocity = Vector2.Zero;
+			return;
+		}
 
 		var velocity = Vector2.Zero;
 
@@ -284,6 +314,21 @@ public partial class PlayerController : CharacterBody2D
 		{
 			_lastSentPosition = Position;
 			EmitSignal(SignalName.PositionChanged, _playerId, Position);
+		}
+	}
+
+	/// <summary>
+	/// Temporarily disable movement and rotate 90 degrees clockwise for the specified duration.
+	/// Used when player slips on a banana trap.
+	/// </summary>
+	/// <param name="seconds">Duration in seconds.</param>
+	public void StartSlip(double seconds)
+	{
+		_isSlipping = true;
+		_slipTimer = Math.Max(0, seconds);
+		if (_sprite != null)
+		{
+			_sprite.RotationDegrees = 90;
 		}
 	}
 
