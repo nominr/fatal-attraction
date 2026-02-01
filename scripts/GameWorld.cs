@@ -1907,7 +1907,7 @@ public partial class GameWorld : Node2D
 		}
 	}
 	
-	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
 	public void RpcFreezeNPC(string npcId, bool frozen)
 	{
 		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
