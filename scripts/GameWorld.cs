@@ -106,7 +106,12 @@ public partial class GameWorld : Node2D
 	// Producer HUD Elements
 	private VBoxContainer _producerStatsContainer;
 	private Label _activeCamerasLabel;
+
 	private Button _callPoliceButton;
+
+	private Label _callPoliceTimerLabel;
+	private long _localCaughtTimeFallback = 0;
+	private int _lastProcessedNotificationCount = 0;
 	
 	// Track where panels were opened to auto-close on distance
 	private Vector2 _marriagePanelOpenPos;
@@ -315,7 +320,7 @@ public partial class GameWorld : Node2D
 
 	private void OnBodyEnteredRoom(Node body, string roomId)
 	{
-		// GD.Print($"[GameWorld] Body {body.Name} entered {roomId}");
+		GD.Print($"[GameWorld] Body {body.Name} entered {roomId}");
 		if (Multiplayer.IsServer() && body is NPCEntity npcEntity)
 		{
 			// Update GameEngine NPC location
@@ -459,13 +464,28 @@ public partial class GameWorld : Node2D
 		_activeCamerasLabel.Visible = false;
 		_producerStatsContainer.AddChild(_activeCamerasLabel);
 
+		// Call Police Section (HBox for Button + Timer)
+		var policeHBox = new HBoxContainer();
+		policeHBox.AddThemeConstantOverride("separation", 10);
+		_producerStatsContainer.AddChild(policeHBox);
+
 		_callPoliceButton = new Button();
 		_callPoliceButton.Text = "CALL POLICE!";
 		_callPoliceButton.Modulate = Colors.Red;
 		_callPoliceButton.Visible = false;
 		_callPoliceButton.AddThemeFontOverride("font", _customFont);
+		_callPoliceButton.AddThemeFontSizeOverride("font_size", 25);
 		_callPoliceButton.Pressed += () => OnActionSelected("producer_global", "call_police");
-		_producerStatsContainer.AddChild(_callPoliceButton);
+		policeHBox.AddChild(_callPoliceButton);
+
+		_callPoliceTimerLabel = new Label();
+		_callPoliceTimerLabel.Text = "";
+		_callPoliceTimerLabel.Visible = false;
+		_callPoliceTimerLabel.AddThemeFontOverride("font", _customFont);
+		_callPoliceTimerLabel.AddThemeFontSizeOverride("font_size", 24); // Larger text to match button
+		_callPoliceTimerLabel.AddThemeColorOverride("font_color", Colors.Yellow);
+		_callPoliceTimerLabel.VerticalAlignment = VerticalAlignment.Center;
+		policeHBox.AddChild(_callPoliceTimerLabel);
 
 		// Notification Panel (bottom right)
 		var viewportSize = GetViewportRect().Size; // Use actual viewport to avoid clipping on smaller windows
@@ -909,7 +929,7 @@ public partial class GameWorld : Node2D
 		var csLabel = new Label();
 		csLabel.Text = "Toggle Cameras (Max 2):";
 		csLabel.HorizontalAlignment = HorizontalAlignment.Center; // Center title
-		csLabel.AddThemeFontSizeOverride("font_size", 24); // Larger text
+		csLabel.AddThemeFontSizeOverride("font_size", 18);
 		csLabel.AddThemeFontOverride("font", _customFont);
 		csVBox.AddChild(csLabel);
 		
@@ -957,7 +977,7 @@ public partial class GameWorld : Node2D
 						{
 							// Remove spaces to match command format (e.g. "Room 1" -> "Room1")
 							string cleanName = roomName.Replace(" ", "");
-							// GD.Print($"[GameWorld] Producer selected camera: {cleanName}");
+							GD.Print($"[GameWorld] Producer selected camera: {cleanName}");
 							OnActionSelected("producer_global", $"toggle_camera_{cleanName}");
 						}));
 					}
@@ -3092,6 +3112,30 @@ public partial class GameWorld : Node2D
 		TimeSpan ts = TimeSpan.FromSeconds(time);
 		_timerLabel.Text = $"Time: {ts.Minutes:D2}:{ts.Seconds:D2}";
 
+		// Check for new CAMERA ALERTS to reset local timer if needed
+		var notifications = _localGameState["notifications"]?.ToObject<List<string>>() ?? new List<string>();
+		// GD.Print($"[CallPoliceDebug] Notifs: {notifications.Count}, Last: {_lastProcessedNotificationCount}");
+		
+		// CRITICAL FIX: If notifications were cleared (Count dropped), reset our pointer so we don't miss new ones.
+		if (notifications.Count < _lastProcessedNotificationCount)
+		{
+			_lastProcessedNotificationCount = 0;
+		}
+
+		if (notifications.Count > _lastProcessedNotificationCount)
+		{
+			for (int i = _lastProcessedNotificationCount; i < notifications.Count; i++)
+			{
+				if (notifications[i].Contains("[CAMERA ALERT]"))
+				{
+					// New detection! Reset local fallback timer to NOW
+					_localCaughtTimeFallback = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+				}
+			}
+			_lastProcessedNotificationCount = notifications.Count;
+		}
+
 		// Role
 		long myId = Multiplayer.GetUniqueId();
 		if (_networkManager.Players.ContainsKey(myId))
@@ -3187,10 +3231,55 @@ public partial class GameWorld : Node2D
 			bool admirerCaught = _localGameState?["admirer_caught"]?.Value<bool>() ?? false;
 			bool isEliminated = _localGameState?["admirer_eliminated"]?.Value<bool>() ?? false;
 			
+			// Get caught time - try snake_case first (standard), then PascalCase fallback
+			long caughtTime = _localGameState?["admirer_caught_timestamp"]?.Value<long>() 
+							?? _localGameState?["AdmirerCaughtTimestamp"]?.Value<long>() ?? 0;
+
 			if (_callPoliceButton != null)
 			{
-				// Only show if caught AND not yet eliminated
-				_callPoliceButton.Visible = admirerCaught && !isEliminated;
+				bool isWithinWindow = false;
+				
+				if (admirerCaught && !isEliminated)
+				{
+
+					// Check 40 second window
+					long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+					
+					// LOGIC FIX: Always use the most recent timestamp.
+					// If a new notification arrived, _localCaughtTimeFallback is NOW.
+					// If server sends old time T1, and we have T2 (now), use T2.
+					// If server sends 0, and we have T2, use T2.
+					if (_localCaughtTimeFallback > caughtTime)
+					{
+						caughtTime = _localCaughtTimeFallback;
+					}
+					// Only clear fallback if server time is actually newer (meaning server caught up)
+					else if (caughtTime > 0)
+					{
+						_localCaughtTimeFallback = 0; 
+					}
+
+					long elapsed = now - caughtTime;
+					long remaining = 40000 - elapsed;
+					
+					if (remaining > 0)
+					{
+						isWithinWindow = true;
+						_callPoliceTimerLabel.Text = $"{Math.Ceiling(remaining / 1000.0)}s";
+						_callPoliceTimerLabel.Visible = true;
+					}
+					else
+					{
+						_callPoliceTimerLabel.Visible = false;
+					}
+				}
+				else
+				{
+					_callPoliceTimerLabel.Visible = false;
+				}
+				
+				// Only show if caught AND not yet eliminated AND within 40s window
+				_callPoliceButton.Visible = isWithinWindow;
 			}
 			
 			// Update Camera Select Panel Buttons (if open)
