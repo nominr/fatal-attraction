@@ -45,6 +45,9 @@ public partial class PlayerController : CharacterBody2D
 	private bool _isFlashing = false;
 	private double _flashTimer = 0.0;
 
+	// Ghost mode state (for eliminated players)
+	private bool _isGhostMode = false;
+
 	public override void _Ready()
 	{
 		// Load custom font
@@ -153,14 +156,15 @@ public partial class PlayerController : CharacterBody2D
 			{
 				_isFlashing = false;
 				_flashTimer = 0;
-				// Restore normal color
+				// Restore normal color, preserving ghost mode alpha
+				float alpha = _isGhostMode ? 0.5f : 1.0f;
 				if (_sprite != null && _isLocalPlayer)
 				{
-					_sprite.Modulate = Colors.White;
+					_sprite.Modulate = new Color(1, 1, 1, alpha);
 				}
 				else if (_sprite != null)
 				{
-					_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, 1f);
+					_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, alpha);
 				}
 			}
 		}
@@ -276,6 +280,8 @@ public partial class PlayerController : CharacterBody2D
 	/// </summary>
 	public void SetGhostMode(bool enabled)
 	{
+		_isGhostMode = enabled;
+		
 		if (_sprite != null)
 		{
 			// Semi-transparent if ghost
@@ -384,7 +390,9 @@ public partial class PlayerController : CharacterBody2D
 		_flashTimer = Math.Max(0, duration);
 		if (_sprite != null)
 		{
-			_sprite.Modulate = new Color(1, 0, 0, 1); // Red flash
+			// Preserve ghost mode alpha when flashing
+			float alpha = _isGhostMode ? 0.5f : 1.0f;
+			_sprite.Modulate = new Color(1, 0, 0, alpha); // Red flash with preserved alpha
 		}
 	}
 

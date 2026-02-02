@@ -140,6 +140,38 @@ public partial class GameWorld : Node2D
 		return style;
 	}
 
+	// Helper to check if the local player is dead
+	private bool IsLocalPlayerDead()
+	{
+		if (string.IsNullOrEmpty(_myRole)) return false;
+		
+		// On server, check game engine directly
+		if (Multiplayer.IsServer() && _gameEngine != null)
+		{
+			if (Enum.TryParse<Role>(_myRole, true, out var role))
+			{
+				var playerState = _gameEngine.GameState.GetPlayerState(role);
+				return playerState != null && !playerState.Alive;
+			}
+		}
+		
+		// On client, check cached player states
+		var playerStates = _localGameState?["player_states"] as JObject;
+		if (playerStates != null)
+		{
+			// Keys are role names like "Prophet", "Producer", "Admirer"
+			var roleKey = _myRole; // Already capitalized from network manager
+			var stateObj = playerStates[roleKey];
+			if (stateObj != null)
+			{
+				bool alive = stateObj["alive"]?.Value<bool>() ?? true;
+				return !alive;
+			}
+		}
+		
+		return false;
+	}
+
 	public override void _Ready()
 	{
 		// Enable Y-sort for proper NPC/player overlap rendering
@@ -1400,6 +1432,13 @@ public partial class GameWorld : Node2D
 
 	private void OnNPCClicked(string npcId)
 	{
+		// Don't allow dead players to interact with NPCs
+		if (IsLocalPlayerDead())
+		{
+			GD.Print($"[GameWorld] Dead player tried to interact with NPC {npcId}, ignoring.");
+			return;
+		}
+		
 		// Don't allow interactions when in bomb mode - show "too close" message
 		if (_bombOperationActive)
 		{
@@ -1887,6 +1926,10 @@ public partial class GameWorld : Node2D
 		if (!_networkManager.Players.TryGetValue(senderId, out var playerInfo)) return;
 		if (!string.Equals(playerInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
 
+		// Check if Admirer is dead (server-side verification)
+		var admirerState = _gameEngine.GameState.GetPlayerState(Role.Admirer);
+		if (admirerState != null && !admirerState.Alive) return;
+
 		if (!_playerControllers.TryGetValue(senderId, out var playerCtrl)) return;
 		if (!_npcEntities.TryGetValue(targetNpcId, out var npcEntity)) return;
 
@@ -1942,6 +1985,10 @@ public partial class GameWorld : Node2D
 		if (!_networkManager.Players.TryGetValue(senderId, out var senderInfo)) return;
 		if (!string.Equals(senderInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
 
+		// Check if Admirer is dead (server-side verification)
+		var admirerState = _gameEngine.GameState.GetPlayerState(Role.Admirer);
+		if (admirerState != null && !admirerState.Alive) return;
+
 		// Verify target is Prophet or Producer
 		if (!_networkManager.Players.TryGetValue(targetPlayerId, out var targetInfo)) return;
 		string targetRole = targetInfo.Role;
@@ -1961,6 +2008,9 @@ public partial class GameWorld : Node2D
 		if (!Enum.TryParse<Role>(targetRole, ignoreCase: true, out targetRoleEnum)) return;
 		var targetPlayerState = _gameEngine.GameState.GetPlayerState(targetRoleEnum);
 		if (targetPlayerState == null) return;
+
+		// Don't punch already-dead players
+		if (!targetPlayerState.Alive) return;
 
 		// Increment punches taken
 		targetPlayerState.PunchesTaken = Math.Min(targetPlayerState.PunchesTaken + 1, PLAYER_PUNCHES_TO_KILL);
@@ -2337,6 +2387,13 @@ public partial class GameWorld : Node2D
 			return;
 		}
 
+		// Don't allow dead Admirer to punch
+		if (IsLocalPlayerDead())
+		{
+			_wasPunchPressed = pressed;
+			return;
+		}
+
 		if (_localPlayer == null)
 		{
 			var myId = Multiplayer.GetUniqueId();
@@ -2387,6 +2444,15 @@ public partial class GameWorld : Node2D
 				string role = playerInfo.Role;
 				if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
 					!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
+
+				// Skip dead players (check cached player states)
+				var playerStates = _localGameState?["player_states"] as JObject;
+				if (playerStates != null)
+				{
+					var targetState = playerStates[role];
+					bool targetAlive = targetState?["alive"]?.Value<bool>() ?? true;
+					if (!targetAlive) continue;
+				}
 
 				float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
 				if (distance <= PUNCH_RANGE && distance < closestDistance)
@@ -3746,8 +3812,11 @@ public partial class GameWorld : Node2D
 
 	private void UpdateGhostMode()
 	{
-		// Check for Admirer Elimination
+		// Check for Admirer Elimination (legacy flag)
 		bool admirerEliminated = _localGameState?["admirer_eliminated"]?.Value<bool>() ?? false;
+		
+		// Get player states for all roles
+		var playerStates = _localGameState?["player_states"] as JObject;
 		
 		// Iterate through all players
 		foreach (var kvp in _playerControllers)
@@ -3763,21 +3832,28 @@ public partial class GameWorld : Node2D
 				role = netPlayers?[pid.ToString()]?["role"]?.Value<string>() ?? controller.PlayerRole;
 			}
 			
-			bool isAdmirer = role.ToLower() == "admirer";
+			// Check if this player is dead
+			bool isPlayerDead = false;
 			
-			// Enable Ghost Mode if it's the Admirer and they are eliminated
-			// Note: We might want to expand this to any eliminated role in future
-			if (isAdmirer && admirerEliminated)
+			// For Admirer, use the legacy flag or player states
+			if (role.ToLower() == "admirer")
 			{
-				// Only set if not already set (optimize?) - SetGhostMode handles internal checks or lightweight assignment
-				// Check collision layer to see if update needed? 
-				// Just call it, it's cheap.
-				controller.SetGhostMode(true);
+				isPlayerDead = admirerEliminated;
 			}
-			else
+			
+			// Also check player_states for any role
+			if (playerStates != null)
 			{
-				controller.SetGhostMode(false);
+				var roleState = playerStates[role];
+				if (roleState != null)
+				{
+					bool alive = roleState["alive"]?.Value<bool>() ?? true;
+					isPlayerDead = !alive;
+				}
 			}
+			
+			// Enable Ghost Mode if the player is eliminated
+			controller.SetGhostMode(isPlayerDead);
 		}
 	}
 
