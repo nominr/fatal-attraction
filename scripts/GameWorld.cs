@@ -3589,7 +3589,7 @@ public partial class GameWorld : Node2D
 					var pos = prophetController.Position;
 					string trapId = $"Trap_{Time.GetTicksMsec()}_{senderId}";
 					GD.Print($"[SubmitAction] Prophet {senderId} placed trap {trapId} at {pos}. Broadcasting to all.");
-					Rpc(MethodName.SpawnBananaVisual, pos, trapId);
+					Rpc(MethodName.SpawnBananaVisual, pos, trapId, senderId);
 				}
 				else
 				{
@@ -3642,9 +3642,9 @@ public partial class GameWorld : Node2D
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
-	public void SpawnBananaVisual(Vector2 position, string trapId)
+	public void SpawnBananaVisual(Vector2 position, string trapId, long placerId)
 	{
-		GD.Print($"[SpawnBananaVisual] Spawning banana {trapId} at {position} on peer {Multiplayer.GetUniqueId()}");
+		GD.Print($"[SpawnBananaVisual] Spawning banana {trapId} at {position} placed by {placerId} on peer {Multiplayer.GetUniqueId()}");
 		// Create a BananaTrap node with sprite and collision to detect NPCs
 		var bananaTexture = ResourceLoader.Load<Texture2D>("res://assets/banana.png");
 		if (bananaTexture == null)
@@ -3658,6 +3658,10 @@ public partial class GameWorld : Node2D
 		bananaRoot.Position = position;
 		bananaRoot.AddToGroup("traps");
 		bananaRoot.ZIndex = -5; // Behind players/NPCs (tilemap is at -10)
+	
+	// Store placer ID and placement time as metadata for immunity checks
+	bananaRoot.SetMeta("placerId", placerId);
+	bananaRoot.SetMeta("placementTime", Time.GetTicksMsec());
 
 		var sprite = new Sprite2D();
 		sprite.Texture = bananaTexture;
@@ -3668,7 +3672,7 @@ public partial class GameWorld : Node2D
 		var area = new Area2D();
 		area.Monitoring = true;
 		area.Monitorable = true;
-		area.CollisionMask = 4; // Detect bodies on NPC layer (NPCEntity)
+		area.CollisionMask = 6; // Detect bodies on NPC layer (4) and Player layer (2)
 			var shape = new CollisionShape2D();
 			var circle = new CircleShape2D();
 			circle.Radius = 12; // Smaller trigger radius around banana
@@ -3681,6 +3685,12 @@ public partial class GameWorld : Node2D
 		{
 			area.BodyEntered += (Node2D body) =>
 			{
+				// Get trap metadata for immunity checks
+				long trapPlacerId = (long)bananaRoot.GetMeta("placerId", 0L);
+				ulong placementTime = (ulong)bananaRoot.GetMeta("placementTime", 0UL);
+				ulong currentTime = Time.GetTicksMsec();
+				ulong immunityDuration = 2000; // 2 seconds immunity in milliseconds
+				
 				if (body is NPCEntity npc)
 				{
 					// Notify and apply slip globally
@@ -3688,6 +3698,50 @@ public partial class GameWorld : Node2D
 					
 					// Sync the slip and removal to ALL clients
 					Rpc(MethodName.SyncTrapTriggered, trapId, npc.NpcId);
+					
+					// Increase Prophet's chaos by 1
+					var prophetState = _gameEngine.GameState.GetPlayerState(Role.Prophet);
+					if (prophetState != null)
+					{
+						var chaosMeter = prophetState.GetMeter("chaos");
+						if (chaosMeter != null)
+						{
+							chaosMeter.Add(1);
+							_gameEngine.GameState.AddNotification($"Prophet gained Chaos! ({chaosMeter.Value}/{chaosMeter.MaxValue})");
+						}
+					}
+					
+					// Broadcast updated state (for notifications)
+					BroadcastGameState();
+				}
+				else if (body is PlayerController player)
+				{
+					// Find the actual player ID from the controller
+					long playerId = 0;
+					foreach (var kvp in _playerControllers)
+					{
+						if (kvp.Value == player)
+						{
+							playerId = kvp.Key;
+							break;
+						}
+					}
+					
+					// Skip if this is the placer and within immunity period
+					if (playerId == trapPlacerId && (currentTime - placementTime) < immunityDuration)
+					{
+						GD.Print($"[BananaTrap] Player {playerId} is immune to their own trap (placed {currentTime - placementTime}ms ago)");
+						return;
+					}
+					
+					// Get player role for notification
+					string playerRole = player.PlayerRole;
+					
+					// Notify and apply slip globally
+					_gameEngine.GameState.AddNotification($"A trap has been triggered! {playerRole.ToUpper()} was caught in the banana trap!");
+					
+					// Sync the player slip and trap removal to ALL clients
+					Rpc(MethodName.SyncPlayerTrapTriggered, trapId, playerId);
 					
 					// Increase Prophet's chaos by 1
 					var prophetState = _gameEngine.GameState.GetPlayerState(Role.Prophet);
@@ -3728,6 +3782,27 @@ public partial class GameWorld : Node2D
 		{
 			npc.StartSlip(3.0);
 			GD.Print($"[SyncTrapTriggered] NPC {npcId} started slipping");
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	public void SyncPlayerTrapTriggered(string trapId, long playerId)
+	{
+		GD.Print($"[SyncPlayerTrapTriggered] Trap {trapId} triggered by Player {playerId}");
+		
+		// 1. Remove the visual banana trap on all clients
+		var trapNode = GetNodeOrNull(trapId);
+		if (trapNode != null)
+		{
+			trapNode.QueueFree();
+			GD.Print($"[SyncPlayerTrapTriggered] Removed trap node {trapId}");
+		}
+
+		// 2. Make the player slip visually on all clients
+		if (_playerControllers.TryGetValue(playerId, out var player))
+		{
+			player.StartSlip(3.0);
+			GD.Print($"[SyncPlayerTrapTriggered] Player {playerId} started slipping");
 		}
 	}
 
