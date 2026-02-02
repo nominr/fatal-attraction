@@ -26,6 +26,7 @@ public partial class PlayerController : CharacterBody2D
 	private Sprite2D _sprite;
 	private Label _nameLabel;
 	private Label _roleLabel;
+	private Label _healthHintLabel;
 	private Camera2D _camera;
 	private Font _customFont;
 
@@ -39,6 +40,10 @@ public partial class PlayerController : CharacterBody2D
 	// Slip state (for banana trap)
 	private bool _isSlipping = false;
 	private double _slipTimer = 0.0;
+
+	// Flash damage state
+	private bool _isFlashing = false;
+	private double _flashTimer = 0.0;
 
 	public override void _Ready()
 	{
@@ -103,6 +108,23 @@ public partial class PlayerController : CharacterBody2D
 		// Center the label over the player based on text width
 		CallDeferred(MethodName.CenterRoleLabel);
 		// Size will auto-adjust based on text content
+
+		// Health hint label (for Admirer to see when nearby)
+		_healthHintLabel = new Label();
+		_healthHintLabel.Text = "Health: 200/200\nPress P to Punch";
+		_healthHintLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		_healthHintLabel.AddThemeColorOverride("font_color", new Color(1, 0.6f, 0, 1)); // Orange text
+		_healthHintLabel.AddThemeFontOverride("font", _customFont);
+		_healthHintLabel.AddThemeFontSizeOverride("font_size", 22);
+		// Add transparent grey background
+		var healthBgStyle = new StyleBoxFlat();
+		healthBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.8f); // Darker background
+		healthBgStyle.SetCornerRadiusAll(4);
+		healthBgStyle.SetContentMarginAll(6);
+		_healthHintLabel.AddThemeStyleboxOverride("normal", healthBgStyle);
+		_healthHintLabel.Position = new Vector2(-80, -150); // Above player
+		_healthHintLabel.Visible = false;
+		AddChild(_healthHintLabel);
 	}
 
 	public override void _Process(double delta)
@@ -119,6 +141,26 @@ public partial class PlayerController : CharacterBody2D
 				if (_sprite != null)
 				{
 					_sprite.RotationDegrees = 0;
+				}
+			}
+		}
+
+		// Update flash timer
+		if (_isFlashing)
+		{
+			_flashTimer -= delta;
+			if (_flashTimer <= 0)
+			{
+				_isFlashing = false;
+				_flashTimer = 0;
+				// Restore normal color
+				if (_sprite != null && _isLocalPlayer)
+				{
+					_sprite.Modulate = Colors.White;
+				}
+				else if (_sprite != null)
+				{
+					_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, 1f);
 				}
 			}
 		}
@@ -333,6 +375,20 @@ public partial class PlayerController : CharacterBody2D
 	}
 
 	/// <summary>
+	/// Flash the player sprite red for visual damage feedback.
+	/// </summary>
+	/// <param name="duration">Duration in seconds.</param>
+	public void FlashDamage(double duration)
+	{
+		_isFlashing = true;
+		_flashTimer = Math.Max(0, duration);
+		if (_sprite != null)
+		{
+			_sprite.Modulate = new Color(1, 0, 0, 1); // Red flash
+		}
+	}
+
+	/// <summary>
 	/// Center the role label horizontally over the player based on its actual width.
 	/// Called deferred to ensure the label has been sized.
 	/// </summary>
@@ -342,6 +398,21 @@ public partial class PlayerController : CharacterBody2D
 		{
 			var labelWidth = _roleLabel.Size.X;
 			_roleLabel.Position = new Vector2(-labelWidth / 2, -115);
+		}
+	}
+
+	/// <summary>
+	/// Show or hide the health hint label (for Admirer proximity detection).
+	/// </summary>
+	public void SetHealthHintVisible(bool visible, int healthRemaining = 200, int maxHealth = 200)
+	{
+		if (_healthHintLabel != null)
+		{
+			_healthHintLabel.Visible = visible;
+			if (visible)
+			{
+				_healthHintLabel.Text = $"Health: {healthRemaining}/{maxHealth}\nPress P to Punch";
+			}
 		}
 	}
 }

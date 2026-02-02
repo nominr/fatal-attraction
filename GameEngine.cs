@@ -93,6 +93,8 @@ namespace FatalAttraction.Engine
 		public Dictionary<string, Meter> Meters { get; set; } = new();
 		public List<string> ActionsTaken { get; set; } = new();
 		public List<string> GoalsMet { get; set; } = new();
+		public int PunchesTaken { get; set; } = 0;
+		public bool Alive { get; set; } = true;
 
 		public PlayerState(Role role)
 		{

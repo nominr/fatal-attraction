@@ -83,6 +83,7 @@ public partial class GameWorld : Node2D
 
 	// Admirer punch logic
 	private const int PUNCHES_TO_KILL = 50;
+	private const int PLAYER_PUNCHES_TO_KILL = 200;
 	private const float PUNCH_RANGE = 120f;
 	private bool _wasPunchPressed = false;
 
@@ -110,6 +111,18 @@ public partial class GameWorld : Node2D
 	// Track where panels were opened to auto-close on distance
 	private Vector2 _marriagePanelOpenPos;
 	private Vector2 _cameraSelectPanelOpenPos;
+	
+	// +1 Rating Visual Feedback
+	private double _previousProducerRating = 0;
+	private CenterContainer _plusOneOverlay;
+	private double _plusOneTimer = 0;
+	private Texture2D _plusOneTexture;
+
+	// Player Health Display
+	private Label _playerHealthLabel;
+
+	// Room 5 Health Regeneration
+	private double _room5RegenAccumulator = 0;
 
 	// Helper for Trap-Like UI Style
 	private StyleBoxFlat CreateTrapStyle(Color bgColor, Color borderColor)
@@ -422,6 +435,15 @@ public partial class GameWorld : Node2D
 		_bombCounterLabel.Visible = false; // Only relevant for Admirer
 		hudContainer.AddChild(_bombCounterLabel);
 
+		// Player Health Label (Prophet/Producer only)
+		_playerHealthLabel = new Label();
+		_playerHealthLabel.Text = "Health: 200/200";
+		_playerHealthLabel.AddThemeFontOverride("font", _customFont);
+		_playerHealthLabel.AddThemeFontSizeOverride("font_size", 26);
+		_playerHealthLabel.AddThemeColorOverride("font_color", new Color(1, 0, 0, 1)); // Red text
+		_playerHealthLabel.Visible = false; // Only for Prophet/Producer
+		hudContainer.AddChild(_playerHealthLabel);
+
 		_metersContainer = new VBoxContainer();
 		_metersContainer = new VBoxContainer();
 		hudContainer.AddChild(_metersContainer);
@@ -589,6 +611,29 @@ public partial class GameWorld : Node2D
 		// RPS Result Overlay
 		_rpsResultOverlay = new RPSResultOverlay();
 		AddChild(_rpsResultOverlay);
+
+		// +1 Rating Visual Feedback Overlay
+		_plusOneTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_plusone-nobg.png");
+		if (_plusOneTexture == null)
+		{
+			GD.PrintErr("[GameWorld] Failed to load ai_plusone-nobg.png texture");
+		}
+		
+		_plusOneOverlay = new CenterContainer();
+		_plusOneOverlay.Name = "PlusOneOverlay";
+		_plusOneOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+		_plusOneOverlay.MouseFilter = Control.MouseFilterEnum.Stop; // Block clicks during display
+		_plusOneOverlay.Visible = false;
+		_plusOneOverlay.ZIndex = 100; // Above everything
+		
+		var plusOneTexRect = new TextureRect();
+		plusOneTexRect.Name = "PlusOneImage";
+		plusOneTexRect.Texture = _plusOneTexture;
+		plusOneTexRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+		plusOneTexRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+		_plusOneOverlay.AddChild(plusOneTexRect);
+		
+		_uiLayer.AddChild(_plusOneOverlay);
 
 		// Producer UI Elements
 		SetupProducerUI();
@@ -1863,6 +1908,69 @@ public partial class GameWorld : Node2D
 			npcEntity.FlashDamage(0.5);
 		}
 	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void PunchPlayer(long targetPlayerId)
+	{
+		if (!Multiplayer.IsServer()) return;
+		if (_gameEngine == null) return;
+
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
+
+		// Verify sender is Admirer
+		if (!_networkManager.Players.TryGetValue(senderId, out var senderInfo)) return;
+		if (!string.Equals(senderInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
+
+		// Verify target is Prophet or Producer
+		if (!_networkManager.Players.TryGetValue(targetPlayerId, out var targetInfo)) return;
+		string targetRole = targetInfo.Role;
+		if (!string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase) && 
+			!string.Equals(targetRole, "Producer", StringComparison.OrdinalIgnoreCase)) return;
+
+		// Get player controllers
+		if (!_playerControllers.TryGetValue(senderId, out var senderCtrl)) return;
+		if (!_playerControllers.TryGetValue(targetPlayerId, out var targetCtrl)) return;
+
+		// Check range
+		float distance = senderCtrl.Position.DistanceTo(targetCtrl.Position);
+		if (distance > PUNCH_RANGE) return;
+
+		// Get target player state
+		Role targetRoleEnum;
+		if (!Enum.TryParse<Role>(targetRole, ignoreCase: true, out targetRoleEnum)) return;
+		var targetPlayerState = _gameEngine.GameState.GetPlayerState(targetRoleEnum);
+		if (targetPlayerState == null) return;
+
+		// Increment punches taken
+		targetPlayerState.PunchesTaken = Math.Min(targetPlayerState.PunchesTaken + 1, PLAYER_PUNCHES_TO_KILL);
+		Rpc(MethodName.RpcFlashPlayerDamage, targetPlayerId);
+
+		if (targetPlayerState.PunchesTaken >= PLAYER_PUNCHES_TO_KILL)
+		{
+			targetPlayerState.Alive = false;
+			targetPlayerState.PunchesTaken = PLAYER_PUNCHES_TO_KILL;
+
+			// Set ghost mode for eliminated player
+			if (_playerControllers.TryGetValue(targetPlayerId, out var eliminatedPlayer))
+			{
+				eliminatedPlayer.SetGhostMode(true);
+			}
+
+			_gameEngine.GameState.AddNotification($"{targetRole} has been eliminated by the Admirer!");
+			BroadcastGameState();
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void RpcFlashPlayerDamage(long playerId)
+	{
+		if (_playerControllers.TryGetValue(playerId, out var playerCtrl))
+		{
+			playerCtrl.FlashDamage(0.5);
+		}
+	}
+	
 	
 	private void PauseTargetNPCs(bool pause)
 	{
@@ -2095,6 +2203,10 @@ public partial class GameWorld : Node2D
 			{
 				kvp.Value.SetPunchHintVisible(false);
 			}
+			foreach (var kvp in _playerControllers)
+			{
+				kvp.Value.SetHealthHintVisible(false);
+			}
 			return;
 		}
 
@@ -2113,9 +2225,14 @@ public partial class GameWorld : Node2D
 			{
 				kvp.Value.SetPunchHintVisible(false);
 			}
+			foreach (var kvp in _playerControllers)
+			{
+				kvp.Value.SetHealthHintVisible(false);
+			}
 			return;
 		}
 
+		// Update NPC punch hints
 		foreach (var kvp in _npcEntities)
 		{
 			if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive))
@@ -2133,6 +2250,61 @@ public partial class GameWorld : Node2D
 			float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
 			bool inRange = distance <= PUNCH_RANGE;
 			kvp.Value.SetPunchHintVisible(inRange);
+		}
+
+		// Update Player health hints (Prophet/Producer only)
+		var playerStates = _localGameState?["player_states"] as JObject;
+		foreach (var kvp in _playerControllers)
+		{
+			long playerId = kvp.Key;
+			var playerCtrl = kvp.Value;
+
+			// Skip self
+			if (playerId == Multiplayer.GetUniqueId())
+			{
+				playerCtrl.SetHealthHintVisible(false);
+				continue;
+			}
+
+			// Check if target is Prophet or Producer
+			if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo))
+			{
+				playerCtrl.SetHealthHintVisible(false);
+				continue;
+			}
+
+			string role = playerInfo.Role;
+			if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
+				!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase))
+			{
+				playerCtrl.SetHealthHintVisible(false);
+				continue;
+			}
+
+			// Check distance
+			float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
+			bool inRange = distance <= PUNCH_RANGE;
+
+			if (inRange && playerStates != null)
+			{
+				// Get player health
+				string roleKey = role; // "Prophet" or "Producer"
+				var playerState = playerStates[roleKey];
+				if (playerState != null)
+				{
+					int punchesTaken = playerState["punches_taken"]?.Value<int>() ?? 0;
+					int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
+					playerCtrl.SetHealthHintVisible(true, healthRemaining, PLAYER_PUNCHES_TO_KILL);
+				}
+				else
+				{
+					playerCtrl.SetHealthHintVisible(false);
+				}
+			}
+			else
+			{
+				playerCtrl.SetHealthHintVisible(false);
+			}
 		}
 	}
 
@@ -2163,8 +2335,10 @@ public partial class GameWorld : Node2D
 		if (pressed && !_wasPunchPressed)
 		{
 			string closestNpcId = null;
+			long closestPlayerId = -1;
 			float closestDistance = float.MaxValue;
 
+			// Check NPCs
 			foreach (var kvp in _npcEntities)
 			{
 				if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive)) continue;
@@ -2175,10 +2349,40 @@ public partial class GameWorld : Node2D
 				{
 					closestDistance = distance;
 					closestNpcId = kvp.Key;
+					closestPlayerId = -1; // Reset player target
 				}
 			}
 
-			if (!string.IsNullOrEmpty(closestNpcId))
+			// Check Players (Prophet and Producer only)
+			foreach (var kvp in _playerControllers)
+			{
+				long playerId = kvp.Key;
+				var playerCtrl = kvp.Value;
+
+				// Skip self
+				if (playerId == Multiplayer.GetUniqueId()) continue;
+
+				// Check if target is Prophet or Producer
+				if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
+				string role = playerInfo.Role;
+				if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
+					!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
+
+				float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
+				if (distance <= PUNCH_RANGE && distance < closestDistance)
+				{
+					closestDistance = distance;
+					closestPlayerId = playerId;
+					closestNpcId = null; // Reset NPC target
+				}
+			}
+
+			// Punch the closest target (player or NPC)
+			if (closestPlayerId != -1)
+			{
+				RpcId(1, MethodName.PunchPlayer, closestPlayerId);
+			}
+			else if (!string.IsNullOrEmpty(closestNpcId))
 			{
 				RpcId(1, MethodName.PunchTargetNPC, closestNpcId);
 			}
@@ -2212,6 +2416,16 @@ public partial class GameWorld : Node2D
 
 	public override void _Process(double delta)
 	{
+		// Handle +1 Rating Visual Feedback Timer
+		if (_plusOneTimer > 0)
+		{
+			_plusOneTimer -= delta;
+			if (_plusOneTimer <= 0 && _plusOneOverlay != null)
+			{
+				_plusOneOverlay.Visible = false;
+				GD.Print("[GameWorld] Hiding +1 rating visual feedback");
+			}
+		}
 		// Handle Admirer Eliminated timer for non-Admirer players
 		if (_admirerEliminatedTimer > 0)
 		{
@@ -2309,6 +2523,40 @@ public partial class GameWorld : Node2D
 					if (npcEntity.Position.Y >= midY) q += 2;
 					
 					npcData.Quadrant = q;
+				}
+			}
+
+			// Player Health Regeneration in Room 5
+			foreach (var kvp in _playerControllers)
+			{
+				long playerId = kvp.Key;
+				var playerCtrl = kvp.Value;
+
+				// Get player role
+				if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
+				string role = playerInfo.Role;
+
+				// Only Prophet and Producer can regenerate
+				if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
+					!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
+
+				// Get player state
+				if (!Enum.TryParse<Role>(role, ignoreCase: true, out var roleEnum)) continue;
+				var playerState = _gameEngine.GameState.GetPlayerState(roleEnum);
+				if (playerState == null || !playerState.Alive) continue;
+
+				// Check if player is in Room 5
+				string roomId = GetRoomIdAtPosition(playerCtrl.Position);
+				if (roomId == "Room5" && playerState.PunchesTaken > 0)
+				{
+					// Regenerate health slowly (1 HP every 0.5 seconds = 2 HP per second)
+					// Using delta time to smooth the regeneration
+					_room5RegenAccumulator += delta;
+					if (_room5RegenAccumulator >= 0.5)
+					{
+						_room5RegenAccumulator = 0;
+						playerState.PunchesTaken = Math.Max(0, playerState.PunchesTaken - 1);
+					}
 				}
 			}
 
@@ -2556,6 +2804,19 @@ public partial class GameWorld : Node2D
 			};
 		}
 		status["network_players"] = netPlayers;
+
+		// Player Health States
+		var playerStates = new JObject();
+		foreach (var kvp in _gameEngine.GameState.Players)
+		{
+			var playerState = kvp.Value;
+			playerStates[kvp.Key.ToString()] = new JObject
+			{
+				{ "punches_taken", playerState.PunchesTaken },
+				{ "alive", playerState.Alive }
+			};
+		}
+		status["player_states"] = playerStates;
 
 		// Active Interview State (for UI)
 		var interviews = new JObject();
@@ -2861,6 +3122,33 @@ public partial class GameWorld : Node2D
 			_bombCounterLabel.Visible = isAdmirer;
 		}
 
+		// Player Health Label (Prophet/Producer only)
+		bool isProphetOrProducer = (_myRole?.ToLower() == "prophet") || (_myRole?.ToLower() == "producer");
+		if (_playerHealthLabel != null)
+		{
+			if (isProphetOrProducer)
+			{
+				// Get player health from game state
+				var playerStates = _localGameState?["player_states"] as JObject;
+				if (playerStates != null)
+				{
+					string myRoleKey = _myRole?.ToLower() == "prophet" ? "Prophet" : "Producer";
+					var myPlayerState = playerStates[myRoleKey];
+					if (myPlayerState != null)
+					{
+						int punchesTaken = myPlayerState["punches_taken"]?.Value<int>() ?? 0;
+						int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
+						_playerHealthLabel.Text = $"Health: {healthRemaining}/{PLAYER_PUNCHES_TO_KILL}";
+						_playerHealthLabel.Visible = true;
+					}
+				}
+			}
+			else
+			{
+				_playerHealthLabel.Visible = false;
+			}
+		}
+
 		// Prophet conversion progress
 		if (_convertedLabel != null)
 		{
@@ -3118,6 +3406,8 @@ public partial class GameWorld : Node2D
 		if (notifs != null)
 		{
 			var notifList = notifs.ToObject<List<string>>();
+			int oldNotificationCount = _lastNotificationCount; // Save old count for checking new notifications
+			
 			// Only add new notifications (those we haven't shown yet)
 			for (int i = _lastNotificationCount; i < notifList.Count; i++)
 			{
@@ -3155,6 +3445,66 @@ public partial class GameWorld : Node2D
 				}
 			}
 			_lastNotificationCount = notifList.Count;
+			
+			// Check for +1 rating increase for Producer after interview
+			bool isProducerRole = (_myRole?.ToLower() == "producer");
+			if (isProducerRole)
+			{
+				// Get current producer rating
+				var players = _localGameState["players"];
+				var producerState = players?["producer"];
+				if (producerState != null)
+				{
+					var meters = producerState["meters"];
+					var ratingsData = meters?["ratings"];
+					if (ratingsData != null)
+					{
+						double currentRating = ratingsData["value"]?.Value<double>() ?? 0;
+						
+						GD.Print($"[+1 Debug] Current rating: {currentRating}, Previous rating: {_previousProducerRating}");
+						
+						// Check if rating increased by exactly +1 and an interview just finished
+						if (currentRating == _previousProducerRating + 1)
+						{
+							GD.Print("[+1 Debug] Rating increased by +1! Checking for interview notification...");
+							
+							// Check if any of the new notifications mention "Interview finished"
+							bool interviewFinished = false;
+							// Check only the NEW notifications that were just added (from oldNotificationCount to current)
+							for (int i = oldNotificationCount; i < notifList.Count; i++)
+							{
+								GD.Print($"[+1 Debug] Checking notification {i}: {notifList[i]}");
+								if (notifList[i].Contains("Interview finished"))
+								{
+									interviewFinished = true;
+									GD.Print("[+1 Debug] Found 'Interview finished' notification!");
+									break;
+								}
+							}
+							
+							GD.Print($"[+1 Debug] Interview finished: {interviewFinished}, Timer: {_plusOneTimer}, Overlay null: {_plusOneOverlay == null}");
+							
+							if (interviewFinished && _plusOneTimer <= 0)
+							{
+								// Show +1 visual
+								if (_plusOneOverlay != null)
+								{
+									_plusOneOverlay.Visible = true;
+									_plusOneTimer = 1.0; // Display for 1 second
+									GD.Print("[GameWorld] ✅ Showing +1 rating visual feedback!");
+								}
+								else
+								{
+									GD.PrintErr("[+1 Debug] ERROR: _plusOneOverlay is null!");
+								}
+							}
+						}
+						
+						// Update previous rating for next check
+						_previousProducerRating = currentRating;
+					}
+				}
+			}
 		}
 
 		// Game Over check
