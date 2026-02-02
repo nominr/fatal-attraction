@@ -452,6 +452,7 @@ public partial class GameWorld : Node2D
 		_callPoliceButton.Modulate = Colors.Red;
 		_callPoliceButton.Visible = false;
 		_callPoliceButton.AddThemeFontOverride("font", _customFont);
+		_callPoliceButton.AddThemeFontSizeOverride("font_size", 25);
 		_callPoliceButton.Pressed += () => OnActionSelected("producer_global", "call_police");
 		policeHBox.AddChild(_callPoliceButton);
 
@@ -459,7 +460,7 @@ public partial class GameWorld : Node2D
 		_callPoliceTimerLabel.Text = "";
 		_callPoliceTimerLabel.Visible = false;
 		_callPoliceTimerLabel.AddThemeFontOverride("font", _customFont);
-		_callPoliceTimerLabel.AddThemeFontSizeOverride("font_size", 18); // Small text
+		_callPoliceTimerLabel.AddThemeFontSizeOverride("font_size", 24); // Larger text to match button
 		_callPoliceTimerLabel.AddThemeColorOverride("font_color", Colors.Yellow);
 		_callPoliceTimerLabel.VerticalAlignment = VerticalAlignment.Center;
 		policeHBox.AddChild(_callPoliceTimerLabel);
@@ -883,7 +884,7 @@ public partial class GameWorld : Node2D
 		var csLabel = new Label();
 		csLabel.Text = "Toggle Cameras (Max 2):";
 		csLabel.HorizontalAlignment = HorizontalAlignment.Center; // Center title
-		csLabel.AddThemeFontSizeOverride("font_size", 24); // Larger text
+		csLabel.AddThemeFontSizeOverride("font_size", 18);
 		csLabel.AddThemeFontOverride("font", _customFont);
 		csVBox.AddChild(csLabel);
 		
@@ -2868,7 +2869,7 @@ public partial class GameWorld : Node2D
 				{
 					// New detection! Reset local fallback timer to NOW
 					_localCaughtTimeFallback = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-					GD.Print($"[CallPoliceDebug] ALERT FOUND at index {i}. Reset fallback to {_localCaughtTimeFallback}");
+
 				}
 			}
 			_lastProcessedNotificationCount = notifications.Count;
@@ -2973,8 +2974,6 @@ public partial class GameWorld : Node2D
 					long elapsed = now - caughtTime;
 					long remaining = 40000 - elapsed;
 					
-					GD.Print($"[CallPoliceDebug] Values: SvrTime={_localGameState?["admirer_caught_timestamp"]}, LocalFallback={_localCaughtTimeFallback}, FinalCaught={caughtTime}, Elapsed={elapsed}, Rem={remaining}");
-
 					if (remaining > 0)
 					{
 						isWithinWindow = true;
