@@ -118,6 +118,7 @@ namespace FatalAttraction.Engine
 		public string EditorialFocus { get; set; }
 		public List<string> ActiveCameraRoomIds { get; private set; } = new();
 		public bool AdmirerCaught { get; set; } = false;
+		public long AdmirerCaughtTimestamp { get; set; } = 0; // Epoch ms
 		public bool AdmirerEliminated { get; set; } = false;
 		public bool MonitoringActive { get; set; } = false; // "Set Focus" essentially activates monitoring
 		public int InteractionSeed { get; set; } = 0;
@@ -568,10 +569,20 @@ namespace FatalAttraction.Engine
 				{
 					if (_gameState.AdmirerCaught)
 					{
-				if (optionId == "call_police")
-				{
-					if (_gameState.AdmirerCaught)
-					{
+						long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+						long elapsed = now - _gameState.AdmirerCaughtTimestamp;
+
+						// FAIL-SAFE: If timestamp is 0 (missing) but caught is true, allow it.
+						if (_gameState.AdmirerCaughtTimestamp == 0)
+						{
+							elapsed = 0; 
+						}
+						
+						if (elapsed > 40000) // 40 seconds
+						{
+							return (false, "The 40 second window to call police has expired!");
+						}
+						
 						// _gameState.Winner = Role.Producer.ToString(); // OLD: Ended game
 						_gameState.AdmirerEliminated = true; // NEW: Just eliminate admirer
 						
@@ -579,9 +590,6 @@ namespace FatalAttraction.Engine
 						// _gameState.AddNotification("The Producer has saved the show! ADMIRER ELIMINATED.");
 						// Don't clutter notification log too much, UI will handle specific messages
 						return (true, null);
-					}
-					return (false, "You have no evidence to call the police!");
-				}
 					}
 					return (false, "You have no evidence to call the police!");
 				}
@@ -708,9 +716,9 @@ namespace FatalAttraction.Engine
 					// Check if NPC is in a monitored room
 					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
 					{
-						// ADMIRER CAUGHT!
-						_gameState.AdmirerCaught = true;
-						_gameState.AdmirerEliminated = false; // Just to be sure, though it's set on police call
+
+						_gameState.AdmirerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+						_gameState.AdmirerEliminated = false; 
 						_gameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
 						_gameState.AddNotification($"Producer's Camera captured the crime!");
 						// We do NOT instantly end game, Producer must Call Police.
@@ -1264,6 +1272,7 @@ namespace FatalAttraction.Engine
 				{ "winner", GameState.Winner },
 				{ "active_camera_room_ids", new JArray(GameState.ActiveCameraRoomIds) },
 				{ "admirer_caught", GameState.AdmirerCaught },
+				{ "admirer_caught_timestamp", GameState.AdmirerCaughtTimestamp },
 				{ "admirer_eliminated", GameState.AdmirerEliminated }
 			};
 
@@ -1305,3 +1314,4 @@ namespace FatalAttraction.Engine
 		}
 	}
 }
+// Touched for recompilation
