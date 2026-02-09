@@ -258,6 +258,9 @@ public partial class MainGame : Control
 				var meters = myRoleState["meters"];
 				foreach (JProperty meter in meters)
 				{
+					// Skip chaos meter - it's been removed from the game
+					if (meter.Name.ToLower() == "chaos") continue;
+					
 					CreateMeterDisplay(meter.Name, meter.Value["value"].Value<double>(), meter.Value["max"].Value<double>());
 				}
 			}

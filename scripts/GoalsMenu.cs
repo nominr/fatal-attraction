@@ -235,8 +235,7 @@ public partial class GoalsMenu : Control
 				goalsContent = "[center][b]PROPHET[/b][/center]\n\n";
 				goalsContent += "[b]Goals:[/b]\n";
 				goalsContent += "• Convert people successfully\n";
-				goalsContent += "• Max chaos meter\n";
-				goalsContent += "• Achieve high chaos\n";
+				goalsContent += "• Spread your message\n";
 				break;
 
 			case "producer":

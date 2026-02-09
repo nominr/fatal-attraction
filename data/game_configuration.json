@@ -96,31 +96,7 @@
           "displayName": "Achieve high chaos"
         }
       },
-      "meters": {
-        "chaos": {
-          "displayName": "Chaos",
-          "min": 0,
-          "max": 10,
-          "start": 0,
-          "segments": [
-            {
-              "name": "hard",
-              "from": 0,
-              "to": 3
-            },
-            {
-              "name": "normal",
-              "from": 3,
-              "to": 7
-            },
-            {
-              "name": "easy",
-              "from": 7,
-              "to": 10
-            }
-          ]
-        }
-      }
+      "meters": {}
     },
     "producer": {
       "displayName": "Producer",

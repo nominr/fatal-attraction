@@ -456,7 +456,7 @@ public partial class GameWorld : Node2D
 		_uiLayer.AddChild(overlay);
 
 		_convertedLabel = new Label();
-		_convertedLabel.Text = $"Converted: 0/{PROPHET_CONVERT_GOAL}";
+		_convertedLabel.Text = "Converted: 0";
 		_convertedLabel.AddThemeFontOverride("font", _customFont);
 		_convertedLabel.AddThemeFontSizeOverride("font_size", 26);
 		_convertedLabel.AddThemeColorOverride("font_color", Colors.White);
@@ -3386,9 +3386,7 @@ public partial class GameWorld : Node2D
 				.Where(p => p.Value["converted"]?.Value<bool>() == true)
 				.Count() ?? 0;
 
-			int goal = PROPHET_CONVERT_GOAL;
-			convertedCount = Math.Min(convertedCount, goal);
-			_convertedLabel.Text = $"Converted: {convertedCount}/{goal}";
+			_convertedLabel.Text = $"Converted: {convertedCount}";
 			_convertedLabel.Visible = isProphet;
 		}
 
@@ -4244,17 +4242,7 @@ public partial class GameWorld : Node2D
 					// Sync the slip and removal to ALL clients
 					Rpc(MethodName.SyncTrapTriggered, trapId, npc.NpcId);
 					
-					// Increase Prophet's chaos by 1
-					var prophetState = _gameEngine.GameState.GetPlayerState(Role.Prophet);
-					if (prophetState != null)
-					{
-						var chaosMeter = prophetState.GetMeter("chaos");
-						if (chaosMeter != null)
-						{
-							chaosMeter.Add(1);
-							_gameEngine.GameState.AddNotification($"Prophet gained Chaos! ({chaosMeter.Value}/{chaosMeter.MaxValue})");
-						}
-					}
+
 					
 					// Broadcast updated state (for notifications)
 					BroadcastGameState();
@@ -4288,17 +4276,7 @@ public partial class GameWorld : Node2D
 					// Sync the player slip and trap removal to ALL clients
 					Rpc(MethodName.SyncPlayerTrapTriggered, trapId, playerId);
 					
-					// Increase Prophet's chaos by 1
-					var prophetState = _gameEngine.GameState.GetPlayerState(Role.Prophet);
-					if (prophetState != null)
-					{
-						var chaosMeter = prophetState.GetMeter("chaos");
-						if (chaosMeter != null)
-						{
-							chaosMeter.Add(1);
-							_gameEngine.GameState.AddNotification($"Prophet gained Chaos! ({chaosMeter.Value}/{chaosMeter.MaxValue})");
-						}
-					}
+
 					
 					// Broadcast updated state (for notifications)
 					BroadcastGameState();

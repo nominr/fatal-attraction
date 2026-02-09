@@ -24,7 +24,7 @@ public partial class InfoScene : Control
         "Welcome to Fatal Attraction!",
         "You've been invited to join the hottest new reality dating show, Love in Paradise!",
         "Play as the Admirer, killing your love interest's potential suitors to win their love...",
-        "Or play as the Prophet, using the powers of chaos to save the world...",
+        "Or play as the Prophet, spreading your message to save the world...",
         "Or play as the Producer, using your charm to win over the audience and catch the Admirer and Prophet in action.",
         // "Click Next to continue...",
     };
