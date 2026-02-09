@@ -22,6 +22,7 @@ public partial class NPCDialogueUI : Control
 	private Label _npcNameLabel;
 	private RichTextLabel _dialogueTextLabel;
 	private HBoxContainer _standardButtonsContainer; // HBox for standard actions
+	private Label _stateLabel; // Global screen label for state vector
 	
 	private Font _customFont;
 	private string _currentNpcId;
@@ -182,24 +183,46 @@ public partial class NPCDialogueUI : Control
 			_npcNameLabel = new Label();
 		}
 
+		// Initialize State Label (Top Right of Screen)
+		_stateLabel = new Label();
+		_stateLabel.TopLevel = true; // Independent of this control's transform
+		_stateLabel.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
+		_stateLabel.Position = new Vector2(20, 20); // Top Left padding
+		// Actually TopLevel anchors might refer to parent canvas. Secure way:
+		// Just set it to TopRight.
+		_stateLabel.AddThemeColorOverride("font_color", Colors.Black);
+		_stateLabel.AddThemeFontSizeOverride("font_size", 20);
+		_stateLabel.HorizontalAlignment = HorizontalAlignment.Left;
+		AddChild(_stateLabel);
+		_stateLabel.Visible = false;
+
 		// Hide initially
 		Visible = false;
 	}
 
-	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions)
+	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions, Vector3 state)
 	{
 		_currentNpcId = npcId;
 		_npcNameLabel.Text = npcName;
+		
+		// Update State Label
+		if (_stateLabel != null)
+		{
+			_stateLabel.Text = $"NPC STATE: [A: {state.X:F1}, P: {state.Y:F1}, Pr: {state.Z:F1}]";
+			// Ensure positioning (re-anchor if viewport changed)
+			_stateLabel.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft, LayoutPresetMode.KeepWidth, 20);
+			// Force manual fix just in case
+			_stateLabel.Position = new Vector2(20, 20);
+			_stateLabel.Visible = true;
+		}
+
 		_dialogueTextLabel.Text = npcDescription;
 
 		// Rebuild Buttons check
-		string currentHash = GenerateActionsHash(actions);
-		if (_lastActionsHash == currentHash)
-		{
-			Visible = true;
-			return;
-		}
-		_lastActionsHash = currentHash;
+		// Since state changes frequently, include it in hash or just rebuild every time?
+		// Rebuilding is safer for state display updates.
+		_lastActionsHash = ""; // Force update to show new state
+
 
 		// Clear containers
 		foreach (Node child in _standardButtonsContainer.GetChildren()) child.QueueFree();
@@ -319,6 +342,7 @@ public partial class NPCDialogueUI : Control
 	public void Close()
 	{
 		Visible = false;
+		if (_stateLabel != null) _stateLabel.Visible = false;
 		_currentNpcId = null;
 		EmitSignal(SignalName.PanelClosed);
 	}

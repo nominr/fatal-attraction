@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using Newtonsoft.Json.Linq;
+using System.Numerics;
 
 namespace FatalAttraction.Engine
 {
@@ -23,9 +24,19 @@ namespace FatalAttraction.Engine
 	public class ConversionContext
 	{
 		public string NpcId { get; set; }
-		public string WinningMove { get; set; } // "rock", "paper", "scissors"
-		public string BaseActionId { get; set; } // e.g. "convert_katy"
+		public int Round { get; set; } = 1; // 1 or 2
+		public int Score { get; set; } = 0; // Win=+1, Loss=-1, Tie=0
+		public string BaseActionId { get; set; } 
 		public List<string> VisibleOptions { get; set; } = new();
+	}
+
+	public class MoneyGameContext
+	{
+		public string NpcId { get; set; }
+		public int TargetSum { get; set; }
+		public int CurrentSum { get; set; } = 0;
+		public List<int> SelectedCoins { get; set; } = new();
+		public int Attempts { get; set; } = 0;
 	}
 
 	public class InterviewContext
@@ -77,6 +88,10 @@ namespace FatalAttraction.Engine
 		public int PunchesTaken { get; set; } = 0;
 		public int Quadrant { get; set; } = -1; // 0:TL, 1:TR, 2:BL, 3:BR
 		public string CurrentRoomId { get; set; } = "Hallways";
+		
+		// VECTOR STATE: [Admirer, Prophet, Producer]
+		public Vector3 State { get; set; } = new Vector3(0, 0, 0); // Raw accumulation
+		public Vector3 NormalizedState => ScoringRules.NormalizeState(State);
 
 		public NPC(string id, string name, bool isLoveInterest = false, bool isTarget = false)
 		{
@@ -90,7 +105,7 @@ namespace FatalAttraction.Engine
 	public class PlayerState
 	{
 		public Role Role { get; set; }
-		public Dictionary<string, Meter> Meters { get; set; } = new();
+		// Meters removed in favor of vector-based NPC state
 		public List<string> ActionsTaken { get; set; } = new();
 		public List<string> GoalsMet { get; set; } = new();
 		public int PunchesTaken { get; set; } = 0;
@@ -99,11 +114,6 @@ namespace FatalAttraction.Engine
 		public PlayerState(Role role)
 		{
 			Role = role;
-		}
-
-		public Meter GetMeter(string meterName)
-		{
-			return Meters.ContainsKey(meterName) ? Meters[meterName] : null;
 		}
 	}
 
@@ -125,6 +135,7 @@ namespace FatalAttraction.Engine
 		public bool MonitoringActive { get; set; } = false; // "Set Focus" essentially activates monitoring
 		public int InteractionSeed { get; set; } = 0;
 		public Dictionary<Role, ConversionContext> ActiveConversions { get; private set; } = new();
+		public Dictionary<Role, MoneyGameContext> ActiveMoneyGames { get; private set; } = new();
 		public Dictionary<Role, InterviewContext> ActiveInterviews { get; private set; } = new();
 		public JObject InterviewData { get; private set; }
 
@@ -164,25 +175,7 @@ namespace FatalAttraction.Engine
 				var player = new PlayerState(role);
 				
 				var roleConfig = Config["roles"][roleName];
-				var metersConfig = roleConfig["meters"];
-				
-				if (metersConfig != null)
-				{
-					foreach (var meterToken in metersConfig.Children().OfType<JProperty>())
-					{
-						var meterName = meterToken.Name;
-						var meterConfig = meterToken.Value;
-						
-						var meter = new Meter(
-							meterName,
-							meterConfig["start"]?.Value<double>() ?? 0,
-							meterConfig["min"]?.Value<double>() ?? 0,
-							meterConfig["max"]?.Value<double>() ?? 10
-						);
-						
-						player.Meters[meterName] = meter;
-					}
-				}
+				// Meter initialization removed
 				
 				Players[role] = player;
 			}
@@ -274,6 +267,14 @@ namespace FatalAttraction.Engine
 			if (_gameState.ActiveInterviews.TryGetValue(playerRole, out var interviewCtx) && interviewCtx.NpcId == npcId)
 			{
 				// Start/Continue Interview - Show Dynamic Questions
+				// Add "Stop Flirting" option
+				availableOptions.Add(new JObject
+				{
+					{ "id", "stop_flirt" },
+					{ "text", "Stop Flirting" },
+					{ "requires", new JObject() }
+				});
+
 				var interviewData = _gameState.InterviewData;
 				foreach (var qId in interviewCtx.AvailableQuestionIds)
 				{
@@ -303,6 +304,20 @@ namespace FatalAttraction.Engine
 				return availableOptions;
 			}
 
+
+
+
+			
+			// If we are interviewing SOMEONE ELSE, maybe we shouldn't show options for THIS NPC?
+			if (playerRole == Role.Admirer && _gameState.ActiveInterviews.ContainsKey(playerRole) && _gameState.ActiveInterviews[playerRole].NpcId != npcId)
+			{
+				// Busy with another NPC. 
+				// Just let standard options flow? Or maybe block everything except leave?
+				// "You are busy with X" notification happens on interaction usually.
+				// But to be clean, let's filter out "start_flirt" for others?
+				// Logic for start_flirt already checks ActiveInterviews. So it will return error if clicked.
+			}
+
 			foreach (var option in options)
 			{
 				// Check for Prophet "convert_npc" power/action
@@ -327,40 +342,11 @@ namespace FatalAttraction.Engine
 					if (_gameState.ActiveConversions.TryGetValue(playerRole, out var ctx) && ctx.NpcId == npcId)
 					{
 						// STEP 2: Show RPS Options (User has already started conversion)
-						
-						// Determine "Level"
-						var chaosMeter = player.GetMeter("chaos");
-						double chaos = chaosMeter?.Value ?? 0;
-						string difficulty = "hard";
-						if (chaos >= 7) difficulty = "easy";
-						else if (chaos >= 3) difficulty = "normal";
-
-						var rpsOptions = new List<JToken>();
-						string[] moves = { "rock", "paper", "scissors" };
-						string winningMove = ctx.WinningMove;
-						var rng = Random.Shared;
-
-						if (difficulty == "hard") // All 3 (1/3 chance)
+						// Show all visible options from context
+						foreach (var move in ctx.VisibleOptions)
 						{
-							rpsOptions.Add(CreateRPSOption(id, "Rock", "rock"));
-							rpsOptions.Add(CreateRPSOption(id, "Paper", "paper"));
-							rpsOptions.Add(CreateRPSOption(id, "Scissors", "scissors"));
+							availableOptions.Add(CreateRPSOption(id, $"Use {Capitalize(move)}", move));
 						}
-						else if (difficulty == "normal") // 2 Options (1 Winner, 1 Loser -> 1/2 chance)
-						{
-							// Show winner
-							rpsOptions.Add(CreateRPSOption(id, $"Use {Capitalize(winningMove)}", winningMove));
-							
-							// Show 1 random loser
-							string loser = moves.Where(m => m != winningMove).OrderBy(_ => rng.Next()).First();
-							rpsOptions.Add(CreateRPSOption(id, $"Use {Capitalize(loser)}", loser));
-						}
-						else // Easy: 1 Option (Winner -> 1/1 chance)
-						{
-							rpsOptions.Add(CreateRPSOption(id, $"Use {Capitalize(winningMove)}", winningMove));
-						}
-						
-						availableOptions.AddRange(rpsOptions);
 					}
 					else
 					{
@@ -380,6 +366,42 @@ namespace FatalAttraction.Engine
 					{
 						availableOptions.Add(option);
 					}
+				}
+			}
+			
+			// PRODUCER: Money Game Option
+			if (playerRole == Role.Producer && npc.Alive)
+			{
+				if (_gameState.ActiveMoneyGames.TryGetValue(playerRole, out var ctx) && ctx.NpcId == npcId)
+				{
+					// Game Active: Show Coin Options and Submit
+					int[] coins = { 1, 5, 10 };
+					foreach (var c in coins)
+					{
+						availableOptions.Add(new JObject
+						{
+							{ "id", $"money_add_{c}" },
+							{ "text", $"Add {c} Coin" },
+							{ "requires", new JObject() }
+						});
+					}
+					
+					availableOptions.Add(new JObject
+					{
+						{ "id", "money_submit" },
+						{ "text", "Submit Offer" },
+						{ "requires", new JObject() }
+					});
+				}
+				else
+				{
+					// Not Active: Start Option
+					availableOptions.Add(new JObject
+					{
+						{ "id", "start_money_game" },
+						{ "text", "Play Money Game" },
+						{ "requires", new JObject() }
+					});
 				}
 			}
 
@@ -463,12 +485,9 @@ namespace FatalAttraction.Engine
 					_gameState.AddNotification("A trap has been set...");
 					
 					// Apply Cost/Effect: +1 Chaos
-					var playerS = _gameState.GetPlayerState(playerRole);
-					var chaos = playerS.GetMeter("chaos");
-					if (chaos != null)
-					{
-						_gameState.AddNotification($"Prophet gained Chaos! ({playerS.GetMeter("chaos").Value}/{playerS.GetMeter("chaos").MaxValue})");
-					}
+					// Apply Cost/Effect: +1 Chaos (Vector Update for Prophet?)
+					// For now, global traps don't affect specific NPC state directly, or maybe they affect all?
+					// Leaving purely notification based for now as requested dynamics are per-NPC.
 					
 					return (true, null);
 				}
@@ -562,12 +581,13 @@ namespace FatalAttraction.Engine
 						_gameState.AdmirerEliminated = true; // NEW: Just eliminate admirer
 						
 						_gameState.AddNotification("POLICE CALLED! The Admirer has been arrested based on video evidence!");
-						// _gameState.AddNotification("The Producer has saved the show! ADMIRER ELIMINATED.");
-						// Don't clutter notification log too much, UI will handle specific messages
 						return (true, null);
 					}
 					return (false, "You have no evidence to call the police!");
 				}
+				
+				// PRODUCER MONEY GAME START (Global option or Contextual?)
+				// Actually, money game is per-NPC interaction.
 				
 				return (false, "Unknown producer action");
 			}
@@ -609,6 +629,18 @@ namespace FatalAttraction.Engine
 				return (true, null);
 			}
 			// 0. (Removed explicit finish button block)
+			
+			if (optionId == "stop_flirt")
+			{
+				if (_gameState.ActiveInterviews.ContainsKey(playerRole))
+				{
+					ApplyInterviewResult(_gameState.ActiveInterviews[playerRole], playerRole, true);
+					_gameState.AddNotification("You stopped flirting.");
+					return (true, null);
+				}
+				return (false, "No active interview.");
+			}
+
 
 			if (optionId.StartsWith("interview_option_"))
 			{
@@ -676,9 +708,7 @@ namespace FatalAttraction.Engine
 			if (!npc.Alive && optionId != "leave")
 				return (false, $"{npc.Name} is no longer available");
 
-			// Admirer target kills must use punch mechanic (no instant kill action)
-			if (playerRole == Role.Admirer && npc.IsTarget && optionId.StartsWith("kill"))
-				return (false, "Use punches to eliminate targets.");
+
 
 
 			// CHECK FOR CAMERA CATCH (Admirer Kill)
@@ -732,112 +762,143 @@ namespace FatalAttraction.Engine
 				
 				if (baseActionId == null) return (false, "This NPC cannot be converted (No RPS action found).");
 
-				// Chaos / Difficulty Logic
-				var playerState = _gameState.GetPlayerState(playerRole);
-				var chaosMeter = playerState.GetMeter("chaos");
-				double chaos = chaosMeter?.Value ?? 0;
-				string difficulty = "hard";
-				if (chaos >= 7) difficulty = "easy";
-				else if (chaos >= 3) difficulty = "normal";
-
-				// Easy Mode: Auto-Win immediately
-				if (difficulty == "easy")
+				// Prophet Logic: 2-Round RPS
+				// Start conversion initializes the context
+				
+				var ctx = new ConversionContext
 				{
-					// Apply effects of base ID immediately
-					var baseOption = npcActions.FirstOrDefault(o => o["id"]?.Value<string>() == baseActionId);
-					if (baseOption != null)
-					{
-						ApplyActionEffects(baseOption, playerRole, npcId, true);
-						_gameState.AddNotification($"[EASY] Your Prophet Powers overwhelmed {npcId} instantly!");
-						return (true, null);
-					}
-				}
-
-				// Generate Winning Move
+					NpcId = npcId,
+					BaseActionId = baseActionId,
+					Round = 1,
+					Score = 0
+				};
+				
+				// Generate options for Round 1
 				string[] moves = { "rock", "paper", "scissors" };
-				string winningMove = moves[Random.Shared.Next(moves.Length)];
-				var visibleOptions = new List<string>();
+				ctx.VisibleOptions = moves.ToList(); // Show all options
+				
+				_gameState.ActiveConversions[playerRole] = ctx;
+				_gameState.AddNotification($"Prophet started conversion ritual with {npcId}. Round 1!");
+				return (true, null);
+			}
 
-				if (difficulty == "normal")
+			// 5. PRODUCER MONEY GAME
+			if (optionId == "start_money_game")
+			{
+				if (playerRole != Role.Producer) return (false, "Only Producer can play Money Game.");
+				
+				// Initialize Context
+				// Target sum: Random 15-30?
+				int target = Random.Shared.Next(15, 31);
+				
+				var ctx = new MoneyGameContext
 				{
-					// Normal: Winner + 1 Loser
-					var losers = moves.Where(m => m != winningMove).OrderBy(_ => Random.Shared.Next()).Take(1);
-					visibleOptions.Add(winningMove);
-					visibleOptions.AddRange(losers);
-					// Shuffle them for display so winner isn't always first
-					visibleOptions = visibleOptions.OrderBy(_ => Random.Shared.Next()).ToList();
+					NpcId = npcId,
+					TargetSum = target,
+					CurrentSum = 0,
+					SelectedCoins = new List<int>()
+				};
+				
+				_gameState.ActiveMoneyGames[playerRole] = ctx;
+				_gameState.AddNotification($"Producer started Money Game with {npc.Name}. Target: {target}");
+				return (true, null);
+			}
+			
+			if (optionId.StartsWith("money_add_"))
+			{
+				if (!_gameState.ActiveMoneyGames.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
+				{
+					return (false, "No active money game.");
+				}
+				
+				int coinVal = int.Parse(optionId.Split('_')[2]);
+				ctx.SelectedCoins.Add(coinVal);
+				ctx.CurrentSum += coinVal;
+				
+				// _gameState.AddNotification($"Added {coinVal}. Current: {ctx.CurrentSum}/{ctx.TargetSum}");
+				return (true, null);
+			}
+			
+			if (optionId == "money_submit")
+			{
+				if (!_gameState.ActiveMoneyGames.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
+				{
+					return (false, "No active money game.");
+				}
+				
+				int score = (ctx.CurrentSum == ctx.TargetSum) ? 1 : -1;
+				
+				var targetNpc = _gameState.GetNPC(ctx.NpcId); // Use local var to avoid closure issues if any
+				if (targetNpc != null)
+				{
+					Vector3 points = ScoringRules.GetMoneyGamePoints(score);
+					targetNpc.State += points;
+					Console.WriteLine($"[DEBUG] MoneyGame: {targetNpc.Name} State += {points} -> {targetNpc.State}");
+				}
+				
+				_gameState.AddNotification($"Money Game Result: {(score > 0 ? "SUCCESS" : "FAILURE")} (Sum: {ctx.CurrentSum}, Target: {ctx.TargetSum})");
+				_gameState.ActiveMoneyGames.Remove(playerRole);
+				return (true, null);
+			}
+
+			// 4. Prophet RPS Resolution (Step 2 - Choice Made)
+			if (optionId.StartsWith("convert_") && _gameState.ActiveConversions.TryGetValue(playerRole, out var convCtx))
+			{
+				// Format: convert_katy_rock
+				string selectedMove = optionId.Split('_').Last(); // rock/paper/scissors
+				
+				// Server chooses move
+				string[] moves = { "rock", "paper", "scissors" };
+				string npcMove = moves[Random.Shared.Next(moves.Length)];
+				
+				// Determine result
+				int roundScore = 0;
+				if (selectedMove == npcMove) roundScore = 0; // Tie
+				else if ((selectedMove == "rock" && npcMove == "scissors") || 
+						 (selectedMove == "paper" && npcMove == "rock") ||
+						 (selectedMove == "scissors" && npcMove == "paper"))
+				{
+					roundScore = 1; // Win
 				}
 				else
 				{
-					// Hard: All 3
-					visibleOptions = moves.ToList();
+					roundScore = -1; // Loss
 				}
 				
-				_gameState.ActiveConversions[playerRole] = new ConversionContext 
+				convCtx.Score += roundScore;
+				_gameState.AddNotification($"Round {convCtx.Round}: Prophet played {selectedMove} vs {npcMove}. Result: {(roundScore > 0 ? "WIN" : (roundScore < 0 ? "LOSS" : "TIE"))}");
+
+				if (convCtx.Round < 2)
 				{
-					NpcId = npcId,
-					WinningMove = winningMove,
-					BaseActionId = baseActionId,
-					VisibleOptions = visibleOptions
-				};
-				
-				_gameState.AddNotification($"Ritual started ({difficulty.ToUpper()})! Check your UI choices...");
-				return (true, null); // Step 1 Success
+					// Prepare Round 2
+					convCtx.Round++;
+					_gameState.AddNotification($"Starting Round 2...");
+					return (true, null);
+				}
+				else
+				{
+					// Finished
+					// Finished
+					var targetNpc = _gameState.GetNPC(convCtx.NpcId); // Use unique variable name
+					if (targetNpc != null)
+					{
+						Vector3 points = ScoringRules.GetConversionPoints(convCtx.Score);
+						targetNpc.State += points;
+						Console.WriteLine($"[DEBUG] Convert: {targetNpc.Name} State += {points} -> {targetNpc.State}");
+						
+						// Check for "Conversion" status update based on State?
+						// "Prophet successful conversion... generates points"
+						// User didn't specify threshold for "Converted" status, just points accumulation.
+						// We'll keep the boolean "Converted" flag logic if the Prophet dominates the state?
+						// For now, just accumulation.
+					}
+					
+					_gameState.AddNotification($"Conversion ritual finished. Total Score: {convCtx.Score}");
+					_gameState.ActiveConversions.Remove(playerRole);
+					return (true, null);
+				}
 			}
 
-
-			// 3b. Prophet RPS Resolution (Step 2 - The Choice)
-			if (playerRole == Role.Prophet && (optionId.EndsWith("_rock") || optionId.EndsWith("_paper") || optionId.EndsWith("_scissors")))
-			{
-				int lastUnderscore = optionId.LastIndexOf('_');
-				string baseId = optionId.Substring(0, lastUnderscore);
-				string playerMove = optionId.Substring(lastUnderscore + 1);
-
-				// Retrieve Conversion Context
-				if (!_gameState.ActiveConversions.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
-				{
-					return (false, "Conversion session expired or mismatch");
-				}
-
-				// Find the actual config option for the base action (e.g. "convert_john")
-				var npcActions = npcConfig["interactionTree"]?["root"]?["options"] as JArray;
-				var baseOption = npcActions?.FirstOrDefault(o => o["id"]?.Value<string>() == baseId);
-				
-				if (baseOption == null) return (false, "Invalid RPS base action configuration");
-
-				// Use STORED Winning Move
-				string winningMove = ctx.WinningMove;
-				
-				// Clear Context (One shot)
-				_gameState.ActiveConversions.Remove(playerRole);
-
-				bool rpsSuccess = false;
-				
-				// Game Rules:
-				// Easy: Guaranteed win (winningMove == playerMove should hopefully match if logic is right, but easy mode skips to win anyway).
-				// Normal: We showed Winner + Loser.
-				// Hard: Standard RPS.
-				
-				if (playerMove == winningMove)
-				{
-					rpsSuccess = true;
-				}
-				
-
-				// Derive NPC's move from the winning move (Rule: winningMove beats npcMove)
-				string npcMove = "";
-				if (winningMove == "rock") npcMove = "scissors";
-				else if (winningMove == "paper") npcMove = "rock";
-				else if (winningMove == "scissors") npcMove = "paper";
-				
-				string resultStr = rpsSuccess ? "WON" : "LOST";
-				_gameState.AddNotification($"{playerRole} played {Capitalize(playerMove)} vs {Capitalize(npcMove)}... and {resultStr}!");
-
-				// Apply effects using the BASE option config
-				ApplyActionEffects(baseOption, playerRole, npcId, rpsSuccess);
-				
-				return (true, null);
-			}
 
 			var options = npcConfig["interactionTree"]?["root"]?["options"] as JArray ?? new();
 			var option = options.FirstOrDefault(o => o["id"]?.Value<string>() == optionId);
@@ -902,18 +963,18 @@ namespace FatalAttraction.Engine
 
 		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
 		{
-			// Add score to LOVE (Admirer)
-			
-			var playerS = _gameState.GetPlayerState(playerRole);
-			var love = playerS?.GetMeter("love");
-			
-			if (love != null)
+			// Add score to NPC State (Admirer Component)
+			var npc = _gameState.NPCs[ctx.NpcId];
+			if (npc != null)
 			{
-				love.Add(ctx.CurrentScore);
+				Vector3 points = ScoringRules.GetFlirtPoints(ctx.CurrentScore);
+				npc.State += points;
+				Console.WriteLine($"[DEBUG] Interview: {npc.Name} State += {points} -> {npc.State}");
 			}
-
+			
 			string resultMsg = ctx.CurrentScore > 0 ? "They seem interested!" : (ctx.CurrentScore < 0 ? "That went poorly..." : "Hard to tell.");
-			 _gameState.AddNotification($"Flirting finished. Result: {resultMsg}");
+			_gameState.AddNotification($"Flirting finished. Result: {resultMsg}");
+			ctx.CurrentScore = 0; // Prevent double application
 			 
 			 // Clear interview/flirt
 			 if (clearAndFinish)
@@ -938,18 +999,7 @@ namespace FatalAttraction.Engine
 			var meterName = effect["meter"]?.Value<string>();
 			if (!string.IsNullOrEmpty(meterName))
 			{
-				var delta = effect["delta"].Value<double>();
-				var player = _gameState.GetPlayerState(playerRole);
-				var meter = player?.GetMeter(meterName);
-
-				if (meter != null)
-				{
-					meter.Add(delta);
-					var verb = delta > 0 ? "raised" : "lowered";
-					_gameState.AddNotification(
-						$"[{playerRole}] {verb} {meterName} to {meter.Value}/{meter.MaxValue}"
-					);
-				}
+				// Meters removed
 			}
 
 			var notification = effect["notification"]?.Value<string>();
@@ -1057,10 +1107,8 @@ namespace FatalAttraction.Engine
 		GameState.AddNotification($"\n--- TURN {GameState.CurrentTurn} START ---");
 		GameState.AddNotification($"[{playerRole}]");
 
-		foreach (var meter in player.Meters.Values)
-		{
-			GameState.AddNotification($"  {meter.Name.ToUpper()}: {meter.Value}/{meter.MaxValue}");
-		}
+		// Normalized Score Status or similar could go here
+		// Removing meter display
 	}
 
 	public void EndTurn()
@@ -1099,21 +1147,9 @@ namespace FatalAttraction.Engine
 			var meterName = requirement["meter"]?.Value<string>();
 			if (!string.IsNullOrEmpty(meterName))
 			{
-				conditionChecked = true;
-				var minValue = requirement["minValue"]?.Value<double>();
-				var meter = player.GetMeter(meterName);
-				
-				if (meter == null) 
-				{
-					// Console.WriteLine($"[CheckWin] Meter '{meterName}' not found for {player.Role}. FAILING.");
-					return false;
-				}
-
-				if (minValue.HasValue)
-				{
-					// Console.WriteLine($"[CheckWin] {meterName}: {meter.Value} < {minValue.Value}?");
-					if (meter.Value < minValue.Value) return false;
-				}
+				// Meters removed. Auto-fail or ignore meter conditions.
+				// Console.WriteLine($"[CheckWin] Meter check '{meterName}' ignored (Meters removed).");
+				return false; 
 			}
 
 			var convertedCountReq = requirement["npcsConverted"]?.Value<int>();
@@ -1204,19 +1240,6 @@ namespace FatalAttraction.Engine
 		}
 	}
 
-	public void StartConversion(Role role, string npcId)
-		{
-			// Generate Winning Move Randomly (Uniform Distribution)
-			// Using Random.Shared to avoid seed bias
-			string[] moves = { "rock", "paper", "scissors" };
-			string winningMove = moves[Random.Shared.Next(moves.Length)];
-			
-			GameState.ActiveConversions[role] = new ConversionContext 
-			{
-				NpcId = npcId,
-				WinningMove = winningMove
-			};
-		}
 
 	public JObject GetGameStatus()
 		{
@@ -1239,14 +1262,7 @@ namespace FatalAttraction.Engine
 				var playerObj = new JObject();
 				var metersObj = new JObject();
 
-				foreach (var meter in kvp.Value.Meters.Values)
-				{
-					metersObj[meter.Name] = new JObject
-					{
-						{ "value", meter.Value },
-						{ "max", meter.MaxValue }
-					};
-				}
+				// Meters removed
 
 				playerObj["meters"] = metersObj;
 				playersObj[kvp.Key.ToString().ToLower()] = playerObj;

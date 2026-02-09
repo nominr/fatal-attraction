@@ -58,6 +58,7 @@ public partial class GameWorld : Node2D
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
 	private RPSResultOverlay _rpsResultOverlay;
+	private MoneyGameOverlay _moneyGameOverlay;
 	private PanelContainer _notificationPanel;
 	private Button _collapseNotificationButton;
 	private bool _notificationCollapsed = false;
@@ -179,6 +180,7 @@ public partial class GameWorld : Node2D
 		// Listen for network player events to keep controllers in sync
 		_networkManager.PlayerConnected += OnNetworkPlayerConnected;
 		_networkManager.PlayerDisconnected += OnNetworkPlayerDisconnected;
+		_networkManager.PlayerInteraction += OnNetworkPlayerInteraction;
 		
 		// Connect Room Signals
 		ConnectRoomSignals();
@@ -476,9 +478,9 @@ public partial class GameWorld : Node2D
 		_playerHealthLabel.Visible = false; // Only for Prophet/Producer
 		hudContainer.AddChild(_playerHealthLabel);
 
-		_metersContainer = new VBoxContainer();
-		_metersContainer = new VBoxContainer();
-		hudContainer.AddChild(_metersContainer);
+		// _metersContainer removed
+		
+		// Producer Stats Container (Active Cameras / Police)
 
 		// Producer Stats Container (Active Cameras / Police)
 		_producerStatsContainer = new VBoxContainer();
@@ -657,7 +659,11 @@ public partial class GameWorld : Node2D
 
 		// RPS Result Overlay
 		_rpsResultOverlay = new RPSResultOverlay();
-		AddChild(_rpsResultOverlay);
+		_uiLayer.AddChild(_rpsResultOverlay);
+
+		_moneyGameOverlay = new MoneyGameOverlay();
+		_moneyGameOverlay.ActionSelected += OnMoneyGameAction;
+		_uiLayer.AddChild(_moneyGameOverlay);
 
 		// +1 Rating Visual Feedback Overlay
 		_plusOneTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_plusone-nobg.png");
@@ -1232,7 +1238,19 @@ public partial class GameWorld : Node2D
 		}
 
 		_currentInteractingNpcId = npcId;
-		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
+		
+		Vector3 npcState = Vector3.Zero;
+		var npcStates = _localGameState?["npc_states"] as JObject;
+		if (npcStates != null && npcStates.ContainsKey(npcId))
+		{
+			var s = npcStates[npcId];
+			float x = s["state_x"]?.Value<float>() ?? 0;
+			float y = s["state_y"]?.Value<float>() ?? 0;
+			float z = s["state_z"]?.Value<float>() ?? 0;
+			npcState = new Vector3(x, y, z);
+		}
+		
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -1264,6 +1282,45 @@ public partial class GameWorld : Node2D
 			}
 		}
 		OnActionSelected("global", "set_trap");
+	}
+
+	private void OnMoneyGameAction(string actionId)
+	{
+		// Context: "money_add_5" or "money_submit"
+		// We need to know WHICH NPC we are interacting with.
+		// We can get it from local cache of ActiveMoneyGames or current interaction.
+		// Since we trust server state, we should check active game in local cache.
+		
+		if (_localGameState == null) return;
+		var moneyGames = _localGameState["active_money_games"] as JObject;
+		if (moneyGames != null && moneyGames.ContainsKey(_myRole))
+		{
+			string npcId = moneyGames[_myRole]["npcId"]?.Value<string>();
+			if (!string.IsNullOrEmpty(npcId))
+			{
+				_networkManager.SendInteract(npcId, actionId);
+			}
+		}
+	}
+
+	private void OnNetworkPlayerInteraction(long senderId, string npcId, string actionId)
+	{
+		if (!Multiplayer.IsServer()) return;
+
+		// Resolve role
+		if (_networkManager.Players.TryGetValue(senderId, out var info))
+		{
+			if (Enum.TryParse<Role>(info.Role, true, out var role))
+			{
+				var result = _gameEngine.PerformAction(npcId, actionId, role);
+				if (!result.success)
+				{
+					// Could notify user of failure, but for now we just log
+					GD.Print($"[GameWorld] Interaction failed: {result.failReason}");
+				}
+				BroadcastGameState();
+			}
+		}
 	}
 
 	private void OnBombButtonPressed()
@@ -2597,6 +2654,21 @@ public partial class GameWorld : Node2D
 			cPanel.Visible = false;
 			var btn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 			if (btn != null) btn.SetPressedNoSignal(false);
+			// Check Money Game
+			var moneyGames = _localGameState["active_money_games"] as JObject;
+			if (moneyGames != null && moneyGames.ContainsKey(_myRole))
+			{
+				var ctx = moneyGames[_myRole];
+				int target = ctx["target"]?.Value<int>() ?? 0;
+				int current = ctx["current"]?.Value<int>() ?? 0;
+				
+				_moneyGameOverlay.UpdateState(target, current);
+				_moneyGameOverlay.ShowGame();
+			}
+			else
+			{
+				_moneyGameOverlay.HideGame();
+			}
 		}
 
 	}
@@ -2641,8 +2713,12 @@ public partial class GameWorld : Node2D
 				{ "converted", npc.Converted },
 				{ "married", npc.Married },
 				{ "is_love_interest", npc.IsLoveInterest }, // Expose for UI filtering
-				{ "is_target", npc.IsTarget } // Expose target status for Admirer
+				{ "is_target", npc.IsTarget }, // Expose target status for Admirer
+				{ "state_x", npc.NormalizedState.X }, // Admirer Score
+				{ "state_y", npc.NormalizedState.Y }, // Prophet Score
+				{ "state_z", npc.NormalizedState.Z }  // Producer Score
 			};
+			Console.WriteLine($"[DEBUG] Serializing {npc.Name}: {npc.NormalizedState} (Raw: {npc.State})");
 			
 			// Include Position (SERVER AUTHORITY)
 			if (_npcEntities.TryGetValue(npc.Id, out var entity))
@@ -2720,6 +2796,20 @@ public partial class GameWorld : Node2D
 			};
 		}
 		status["active_interviews"] = interviews;
+
+		// Active Money Games (for UI)
+		var moneyGames = new JObject();
+		foreach (var kvp in _gameEngine.GameState.ActiveMoneyGames)
+		{
+			var ctx = kvp.Value;
+			moneyGames[kvp.Key.ToString()] = new JObject
+			{
+				{ "npcId", ctx.NpcId },
+				{ "target", ctx.TargetSum },
+				{ "current", ctx.CurrentSum }
+			};
+		}
+		status["active_money_games"] = moneyGames;
 
 		return status.ToString();
 	}
@@ -2918,7 +3008,19 @@ public partial class GameWorld : Node2D
 		}
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
-		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
+		
+		Vector3 npcState = Vector3.Zero;
+		var npcStates = _localGameState?["npc_states"] as JObject;
+		if (npcStates != null && npcStates.ContainsKey(npcId))
+		{
+			var s = npcStates[npcId];
+			float x = s["state_x"]?.Value<float>() ?? 0;
+			float y = s["state_y"]?.Value<float>() ?? 0;
+			float z = s["state_z"]?.Value<float>() ?? 0;
+			npcState = new Vector3(x, y, z);
+		}
+
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
 	}
 
 	private void SpawnNPCsFromState()
@@ -3326,26 +3428,8 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		// Meters
-		foreach (Node child in _metersContainer.GetChildren())
-			child.QueueFree();
+		// Meters removed
 
-		if (!string.IsNullOrEmpty(_myRole))
-		{
-			var players = _localGameState["players"];
-			var myRoleState = players?[_myRole.ToLower()];
-			if (myRoleState != null)
-			{
-				var meters = myRoleState["meters"];
-				foreach (JProperty meter in meters)
-				{
-					double val = meter.Value["value"].Value<double>();
-					double max = meter.Value["max"].Value<double>();
-					var meterControl = CreateMeterControl(meter.Name, val, max, isProducer);
-					if (meterControl != null) _metersContainer.AddChild(meterControl);
-				}
-			}
-		}
 
 		// Notifications
 		var notifs = _localGameState["notifications"];

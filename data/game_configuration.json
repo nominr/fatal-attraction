@@ -159,19 +159,7 @@
           "text": "Katy walks up to you, smiling warmly.",
           "options": [
             {
-              "id": "flirt",
-              "text": "Flirt with Katy",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Katy!"
-                }
-              ]
-            },
-            {
-              "id": "unconvert",
+              "id": "unconvert_katy_admirer",
               "text": "Unconvert Katy",
               "requires": {
                 "role": "admirer",
@@ -231,6 +219,37 @@
                 "role": "admirer"
               },
               "effects": []
+            },
+            {
+              "id": "convert_katy",
+              "text": "Try to convert Katy",
+              "requires": {
+                "role": "prophet",
+                "npcStatus": "nonConverted"
+              },
+              "resolution": {
+                "type": "rps"
+              },
+              "effects_on_success": [
+                {
+                  "meter": "chaos",
+                  "delta": 1,
+                  "clampMax": 10
+                },
+                {
+                  "notification": "You converted Katy!"
+                },
+                {
+                  "npc": "katy",
+                  "field": "convertedStatus",
+                  "value": true
+                }
+              ],
+              "effects_on_failure": [
+                {
+                  "notification": "Katy resisted your conversion."
+                }
+              ]
             }
           ]
         }
@@ -248,19 +267,7 @@
           "text": "John approaches you, looking suspicious.",
           "options": [
             {
-              "id": "flirt_john",
-              "text": "Flirt with John",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with John!"
-                }
-              ]
-            },
-            {
-              "id": "kill",
+              "id": "kill_john",
               "text": "Punch John",
               "requires": {
                 "role": "admirer",
@@ -278,7 +285,7 @@
               ]
             },
             {
-              "id": "convert",
+              "id": "convert_john",
               "text": "Try to convert John",
               "requires": {
                 "role": "prophet",
@@ -331,18 +338,6 @@
         "root": {
           "text": "Rebecca glances at you with curiosity.",
           "options": [
-            {
-              "id": "flirt_rebecca",
-              "text": "Flirt with Rebecca",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Rebecca!"
-                }
-              ]
-            },
             {
               "id": "kill_rebecca",
               "text": "Punch Rebecca",
@@ -415,18 +410,6 @@
         "root": {
           "text": "Marcus walks over with a confident smile.",
           "options": [
-            {
-              "id": "flirt_marcus",
-              "text": "Flirt with Marcus",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Marcus!"
-                }
-              ]
-            },
             {
               "id": "start_flirt",
               "text": "Flirt with Marcus",
@@ -562,18 +545,6 @@
           "text": "Sofia approaches with an intriguing expression.",
           "options": [
             {
-              "id": "flirt_sofia",
-              "text": "Flirt with Sofia",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Sofia!"
-                }
-              ]
-            },
-            {
               "id": "convert_sofia",
               "text": "Try to convert Sofia",
               "requires": {
@@ -681,18 +652,6 @@
         "root": {
           "text": "Amir greets you with a nod.",
           "options": [
-            {
-              "id": "flirt_amir",
-              "text": "Flirt with Amir",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Amir!"
-                }
-              ]
-            },
             {
               "id": "convert_amir",
               "text": "Try to convert Amir",
@@ -802,18 +761,6 @@
           "text": "Bella smiles politely as you approach.",
           "options": [
             {
-              "id": "flirt_bella",
-              "text": "Flirt with Bella",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Bella!"
-                }
-              ]
-            },
-            {
               "id": "convert_bella",
               "text": "Try to convert Bella",
               "requires": {
@@ -921,18 +868,6 @@
         "root": {
           "text": "Chris watches you with interest.",
           "options": [
-            {
-              "id": "flirt_chris",
-              "text": "Flirt with Chris",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Chris!"
-                }
-              ]
-            },
             {
               "id": "convert_chris",
               "text": "Try to convert Chris",
@@ -1042,18 +977,6 @@
           "text": "Diana waves hello cheerfully.",
           "options": [
             {
-              "id": "flirt_diana",
-              "text": "Flirt with Diana",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Diana!"
-                }
-              ]
-            },
-            {
               "id": "convert_diana",
               "text": "Try to convert Diana",
               "requires": {
@@ -1161,18 +1084,6 @@
         "root": {
           "text": "Eli stands thoughtfully, waiting to chat.",
           "options": [
-            {
-              "id": "flirt_eli",
-              "text": "Flirt with Eli",
-              "requires": {
-                "role": "admirer"
-              },
-              "effects": [
-                {
-                  "notification": "You flirted with Eli!"
-                }
-              ]
-            },
             {
               "id": "convert_eli",
               "text": "Try to convert Eli",

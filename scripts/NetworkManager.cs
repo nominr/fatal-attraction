@@ -23,6 +23,9 @@ public partial class NetworkManager : Node
 	[Signal]
 	public delegate void RoleRejectedEventHandler(string role, string reason);
 
+	[Signal]
+	public delegate void PlayerInteractionEventHandler(long senderId, string npcId, string actionId);
+
 	private const int DefaultPort = 7000;
 	private const int MaxClients = 4;
 
@@ -270,5 +273,19 @@ public partial class NetworkManager : Node
 			Players.Remove(playerId);
 			EmitSignal(SignalName.PlayerDisconnected, playerId);
 		}
+	}
+
+	public void SendInteract(string npcId, string actionId)
+	{
+		// Clients send to server (ID 1)
+		RpcId(1, MethodName.Interact, npcId, actionId);
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void Interact(string npcId, string actionId)
+	{
+		long senderId = Multiplayer.GetRemoteSenderId();
+		// Emit signal for GameLogic to handle
+		EmitSignal(SignalName.PlayerInteraction, senderId, npcId, actionId);
 	}
 }
