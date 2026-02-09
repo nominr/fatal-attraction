@@ -1991,45 +1991,69 @@ public partial class GameWorld : Node2D
 
 		// Validate punch is allowed:
 		// Admirer can punch Prophet/Producer
-		// Prophet/Producer can punch Admirer
-		bool isValidPunch = false;
-		if (string.Equals(senderRole, "Admirer", StringComparison.OrdinalIgnoreCase))
-		{
-			// Admirer punching Prophet or Producer
-			isValidPunch = string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase) || 
-				string.Equals(targetRole, "Producer", StringComparison.OrdinalIgnoreCase);
-		}
-		else if (string.Equals(senderRole, "Prophet", StringComparison.OrdinalIgnoreCase) || 
-			string.Equals(senderRole, "Producer", StringComparison.OrdinalIgnoreCase))
-		{
-			// Prophet/Producer punching Admirer
-			isValidPunch = string.Equals(targetRole, "Admirer", StringComparison.OrdinalIgnoreCase);
-		}
+		// Prophet can punch Admirer/Producer
+		// Producer can punch Admirer/Prophet
+		// (All roles can punch any other role, just not themselves)
+		bool isValidPunch = !string.Equals(senderRole, targetRole, StringComparison.OrdinalIgnoreCase);
 		
 		if (!isValidPunch) return;
 
 		// Check if sender is dead (server-side verification)
 		Role senderRoleEnum;
-		if (!Enum.TryParse<Role>(senderRole, ignoreCase: true, out senderRoleEnum)) return;
+		if (!Enum.TryParse<Role>(senderRole, ignoreCase: true, out senderRoleEnum))
+		{
+			GD.Print($"[PunchPlayer] Failed to parse sender role: {senderRole}");
+			return;
+		}
 		var senderPlayerState = _gameEngine.GameState.GetPlayerState(senderRoleEnum);
-		if (senderPlayerState != null && !senderPlayerState.Alive) return;
+		if (senderPlayerState != null && !senderPlayerState.Alive)
+		{
+			GD.Print($"[PunchPlayer] Sender {senderRole} is dead");
+			return;
+		}
 
 		// Get player controllers
-		if (!_playerControllers.TryGetValue(senderId, out var senderCtrl)) return;
-		if (!_playerControllers.TryGetValue(targetPlayerId, out var targetCtrl)) return;
+		if (!_playerControllers.TryGetValue(senderId, out var senderCtrl))
+		{
+			GD.Print($"[PunchPlayer] No controller for sender {senderId}");
+			return;
+		}
+		if (!_playerControllers.TryGetValue(targetPlayerId, out var targetCtrl))
+		{
+			GD.Print($"[PunchPlayer] No controller for target {targetPlayerId}");
+			return;
+		}
 
 		// Check range
 		float distance = senderCtrl.Position.DistanceTo(targetCtrl.Position);
-		if (distance > PUNCH_RANGE) return;
+		if (distance > PUNCH_RANGE)
+		{
+			GD.Print($"[PunchPlayer] Out of range: {distance} > {PUNCH_RANGE}");
+			return;
+		}
 
 		// Get target player state
 		Role targetRoleEnum;
-		if (!Enum.TryParse<Role>(targetRole, ignoreCase: true, out targetRoleEnum)) return;
+		if (!Enum.TryParse<Role>(targetRole, ignoreCase: true, out targetRoleEnum))
+		{
+			GD.Print($"[PunchPlayer] Failed to parse target role: {targetRole}");
+			return;
+		}
 		var targetPlayerState = _gameEngine.GameState.GetPlayerState(targetRoleEnum);
-		if (targetPlayerState == null) return;
+		if (targetPlayerState == null)
+		{
+			GD.Print($"[PunchPlayer] No player state for target role: {targetRole}");
+			return;
+		}
 
 		// Don't punch already-dead players
-		if (!targetPlayerState.Alive) return;
+		if (!targetPlayerState.Alive)
+		{
+			GD.Print($"[PunchPlayer] Target {targetRole} is dead");
+			return;
+		}
+
+		GD.Print($"[PunchPlayer] SUCCESS: {senderRole} punching {targetRole}");
 
 		// Increment punches taken
 		targetPlayerState.PunchesTaken = Math.Min(targetPlayerState.PunchesTaken + 1, PLAYER_PUNCHES_TO_KILL);
@@ -2377,19 +2401,9 @@ public partial class GameWorld : Node2D
 			}
 
 			string targetRole = playerInfo.Role;
-			bool isValidTarget = false;
-
-			// ADMIRER: can target Prophet/Producer
-			if (myRoleLower == "admirer")
-			{
-				isValidTarget = string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase) || 
-					string.Equals(targetRole, "Producer", StringComparison.OrdinalIgnoreCase);
-			}
-			// PROPHET/PRODUCER: can target Admirer
-			else if (myRoleLower == "prophet" || myRoleLower == "producer")
-			{
-				isValidTarget = string.Equals(targetRole, "Admirer", StringComparison.OrdinalIgnoreCase);
-			}
+			
+			// All players can target any other player
+			bool isValidTarget = !string.Equals(targetRole, myRoleLower, StringComparison.OrdinalIgnoreCase);
 
 			if (!isValidTarget)
 			{
@@ -2514,10 +2528,10 @@ public partial class GameWorld : Node2D
 					}
 				}
 			}
-			// PROPHET/PRODUCER: Can punch the Admirer
+			// PROPHET/PRODUCER: Can punch other players
 			else if (_myRole.ToLower() == "prophet" || _myRole.ToLower() == "producer")
 			{
-				// Check Players (Admirer only)
+				// Check Players (any other role)
 				foreach (var kvp in _playerControllers)
 				{
 					long playerId = kvp.Key;
@@ -2526,10 +2540,9 @@ public partial class GameWorld : Node2D
 					// Skip self
 					if (playerId == Multiplayer.GetUniqueId()) continue;
 
-					// Check if target is Admirer
+					// Get target role
 					if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
 					string role = playerInfo.Role;
-					if (!string.Equals(role, "Admirer", StringComparison.OrdinalIgnoreCase)) continue;
 
 					// Skip dead players (check cached player states)
 					var playerStates = _localGameState?["player_states"] as JObject;
