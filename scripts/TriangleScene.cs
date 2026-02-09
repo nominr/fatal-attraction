@@ -11,6 +11,8 @@ public partial class TriangleScene : Control
 	private readonly Vector2 _v3 = new Vector2(0, -28);
 	private readonly Vector2 _centerOffset = new Vector2(77, 82); // Position of Polygon2D/TriangleUi
 
+	private Label _npcNameLabel;
+
 	public override void _Ready()
 	{
 		// Instantiate the point sprite
@@ -22,6 +24,22 @@ public partial class TriangleScene : Control
 		// Initial position (center of triangle for now, or just hidden)
 		_pointSprite.Position = _centerOffset; // Start at center offset
 		AddChild(_pointSprite);
+		
+		_npcNameLabel = GetNodeOrNull<Label>("NpcNameLabel");
+	}
+	
+	public void Show(string npcName)
+	{
+		if (_npcNameLabel != null)
+		{
+			_npcNameLabel.Text = npcName;
+		}
+		Visible = true;
+	}
+	
+	public void HideScene()
+	{
+		Visible = false;
 	}
 
 	public override void _GuiInput(InputEvent @event)

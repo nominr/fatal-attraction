@@ -23,6 +23,7 @@ public partial class NPCDialogueUI : Control
 	private RichTextLabel _dialogueTextLabel;
 	private HBoxContainer _standardButtonsContainer; // HBox for standard actions
 	private Label _stateLabel; // Global screen label for state vector
+
 	
 	private Font _customFont;
 	private string _currentNpcId;
@@ -194,6 +195,7 @@ public partial class NPCDialogueUI : Control
 		_stateLabel.AddThemeFontSizeOverride("font_size", 20);
 		_stateLabel.HorizontalAlignment = HorizontalAlignment.Left;
 		AddChild(_stateLabel);
+
 		_stateLabel.Visible = false;
 
 		// Hide initially
@@ -215,6 +217,8 @@ public partial class NPCDialogueUI : Control
 			_stateLabel.Position = new Vector2(20, 20);
 			_stateLabel.Visible = true;
 		}
+		
+
 
 		_dialogueTextLabel.Text = npcDescription;
 
@@ -343,6 +347,7 @@ public partial class NPCDialogueUI : Control
 	{
 		Visible = false;
 		if (_stateLabel != null) _stateLabel.Visible = false;
+
 		_currentNpcId = null;
 		EmitSignal(SignalName.PanelClosed);
 	}
