@@ -90,8 +90,27 @@ namespace FatalAttraction.Engine
 		public string CurrentRoomId { get; set; } = "Hallways";
 		
 		// VECTOR STATE: [Admirer, Prophet, Producer]
-		public Vector3 State { get; set; } = new Vector3(0, 0, 0); // Raw accumulation
+		// VECTOR STATE: [Admirer, Prophet, Producer]
+		public Vector3 State { get; set; } = new Vector3(1, 1, 1); // Raw accumulation, starts at 1,1,1 to avoid zero division
 		public Vector3 NormalizedState => ScoringRules.NormalizeState(State);
+
+		public Vector2 TrianglePosition
+		{
+			get
+			{
+				var norm = NormalizedState;
+				// Barycentric mapping:
+				// Admirer (X) -> (-30, 24)
+				// Prophet (Y) -> (30, 24)
+				// Producer (Z) -> (0, -28)
+				
+				Vector2 v1 = new Vector2(-30, 24);
+				Vector2 v2 = new Vector2(30, 24);
+				Vector2 v3 = new Vector2(0, -28);
+				
+				return (v1 * norm.X) + (v2 * norm.Y) + (v3 * norm.Z);
+			}
+		}
 
 		public NPC(string id, string name, bool isLoveInterest = false, bool isTarget = false)
 		{
@@ -405,6 +424,19 @@ namespace FatalAttraction.Engine
 				}
 			}
 
+
+
+			// PROPHET: Resurrection Option (Dead NPC)
+			if (playerRole == Role.Prophet && !npc.Alive)
+			{
+				availableOptions.Add(new JObject
+				{
+					{ "id", "resurrect" },
+					{ "text", "Attempt Resurrection (20% Chance)" },
+					{ "requires", new JObject() }
+				});
+			}
+
 			return availableOptions;
 		}
 
@@ -422,9 +454,9 @@ namespace FatalAttraction.Engine
 
 		private bool IsOptionAvailable(JToken option, Role playerRole, NPC npc, PlayerState player = null)
 		{
-			// Dead NPCs cannot be interacted with (except "leave")
+			// Dead NPCs cannot be interacted with (except "leave" and "resurrect")
 			var actionId = option["id"]?.Value<string>();
-			if (!npc.Alive && actionId != "leave")
+			if (!npc.Alive && actionId != "leave" && actionId != "resurrect")
 				return false;
 
 			var requires = option["requires"];
@@ -705,8 +737,33 @@ namespace FatalAttraction.Engine
 			}
 
 			// Check if NPC is dead first
-			if (!npc.Alive && optionId != "leave")
+			if (!npc.Alive && optionId != "leave" && optionId != "resurrect")
 				return (false, $"{npc.Name} is no longer available");
+
+			// PROPHET RESURRECTION
+			if (optionId == "resurrect")
+			{
+				if (playerRole != Role.Prophet) return (false, "Only Prophet can resurrect.");
+				if (npc.Alive) return (false, "NPC is already alive.");
+
+				bool resurrectSuccess = _random.NextDouble() < 0.20; // 20% Chance
+				if (resurrectSuccess)
+				{
+					npc.Alive = true;
+					npc.PunchesTaken = 0; // Reset health to full (requires 50 punches again)
+					// Allow logic to flow or just notify?
+					// Probably just notify + update state field implies it will be synced
+					_gameState.AddNotification($"MIRACLE! {npc.Name} has been resurrected by the Prophet!");
+					
+					// Optional: Add Prophet Points for a miracle?
+					// npc.State += new Vector3(0, 5, 0); // Big boost?
+				}
+				else
+				{
+					_gameState.AddNotification($"Resurrection failed. {npc.Name} remains dead.");
+				}
+				return (true, null);
+			}
 
 
 

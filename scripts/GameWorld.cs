@@ -2714,11 +2714,13 @@ public partial class GameWorld : Node2D
 				{ "married", npc.Married },
 				{ "is_love_interest", npc.IsLoveInterest }, // Expose for UI filtering
 				{ "is_target", npc.IsTarget }, // Expose target status for Admirer
-				{ "state_x", npc.NormalizedState.X }, // Admirer Score
-				{ "state_y", npc.NormalizedState.Y }, // Prophet Score
-				{ "state_z", npc.NormalizedState.Z }  // Producer Score
+				{ "state_x", npc.State.X }, // Admirer Score
+				{ "state_y", npc.State.Y }, // Prophet Score
+				{ "state_z", npc.State.Z }, // Producer Score
+				{ "tri_x", npc.TrianglePosition.X },
+				{ "tri_y", npc.TrianglePosition.Y }
 			};
-			Console.WriteLine($"[DEBUG] Serializing {npc.Name}: {npc.NormalizedState} (Raw: {npc.State})");
+			Console.WriteLine($"[DEBUG] Serializing {npc.Name}: Norm={npc.NormalizedState} Tri={npc.TrianglePosition} (Raw: {npc.State})");
 			
 			// Include Position (SERVER AUTHORITY)
 			if (_npcEntities.TryGetValue(npc.Id, out var entity))
