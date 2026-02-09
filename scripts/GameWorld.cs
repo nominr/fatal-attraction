@@ -723,18 +723,14 @@ public partial class GameWorld : Node2D
 		manageCamsBtn.AddThemeColorOverride("font_focus_color", Colors.Black);
 		manageCamsBtn.MouseFilter = Control.MouseFilterEnum.Stop;
 
-		// Use Toggled to bind visibility directly to button state
+			// Use Toggled to bind visibility directly to button state
 		manageCamsBtn.Toggled += (pressed) => 
 		{
 			var panel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
 			if (panel != null) panel.Visible = pressed;
 			
-			// Mutual Exclusivity: Close Marriage Panel if opening Cameras
 			if (pressed)
 			{
-				var mBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-				if (mBtn != null && mBtn.ButtonPressed) mBtn.ButtonPressed = false;
-				
 				// Capture open position for distance check
 				if (_localPlayer != null) _cameraSelectPanelOpenPos = _localPlayer.Position;
 			}
@@ -2592,14 +2588,7 @@ public partial class GameWorld : Node2D
 	{
 		if (!GodotObject.IsInstanceValid(_localPlayer) || _localPlayer.Velocity.LengthSquared() < 100) return; // Not moving significantly
 
-		// Check Marriage Panel
-		var mPanel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
-		if (mPanel != null && mPanel.Visible)
-		{
-			mPanel.Visible = false;
-			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-			if (btn != null) btn.SetPressedNoSignal(false);
-		}
+
 
 		// Check Camera Panel
 		var cPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");

@@ -108,10 +108,6 @@
             "baseChance": 0.75
           }
         },
-        "cleanup_prank": {
-          "displayName": "Clean-Up Pranks",
-          "effects": []
-        },
         "report_admirer": {
           "displayName": "Report Admirer",
           "notes": "Admirer becomes observer"
@@ -229,91 +225,10 @@
               ]
             },
             {
-              "id": "prank_katy",
-              "text": "Prank Katy",
+              "id": "start_flirt",
+              "text": "Flirt with Katy",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Katy! Chaos increased."
-                },
-                {
-                  "npc": "katy",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_katy",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "katy",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "convert_katy",
-              "text": "Try to convert Katy",
-              "requires": {
-                "role": "prophet",
-                "npcStatus": "nonConverted"
-              },
-              "resolution": {
-                "type": "rps"
-              },
-              "effects_on_success": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You converted Katy!"
-                },
-                {
-                  "npc": "katy",
-                  "field": "convertedStatus",
-                  "value": true
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Katy resisted your conversion."
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -394,114 +309,10 @@
               ]
             },
             {
-              "id": "prank_john",
-              "text": "Prank John",
+              "id": "start_flirt",
+              "text": "Flirt with John",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked John! Chaos increased."
-                },
-                {
-                  "npc": "john",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_john",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "john",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "unconvert_john_admirer",
-              "text": "Unconvert John",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted John!"
-                },
-                {
-                  "npc": "john",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert John."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_john",
-              "text": "Unconvert John",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted John!"
-                },
-                {
-                  "npc": "john",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert John."
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -582,114 +393,10 @@
               ]
             },
             {
-              "id": "prank_rebecca",
-              "text": "Prank Rebecca",
+              "id": "start_flirt",
+              "text": "Flirt with Rebecca",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Rebecca! Chaos increased."
-                },
-                {
-                  "npc": "rebecca",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_rebecca",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "rebecca",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "unconvert_rebecca_admirer",
-              "text": "Unconvert Rebecca",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Rebecca!"
-                },
-                {
-                  "npc": "rebecca",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Rebecca."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_rebecca",
-              "text": "Unconvert Rebecca",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Rebecca!"
-                },
-                {
-                  "npc": "rebecca",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Rebecca."
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -719,6 +426,14 @@
                   "notification": "You flirted with Marcus!"
                 }
               ]
+            },
+            {
+              "id": "start_flirt",
+              "text": "Flirt with Marcus",
+              "requires": {
+                "role": "admirer"
+              },
+              "effects": []
             },
             {
               "id": "kill_marcus",
@@ -824,60 +539,10 @@
               ]
             },
             {
-              "id": "prank_marcus",
-              "text": "Prank Marcus",
+              "id": "start_flirt",
+              "text": "Start Flirt",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Marcus! Chaos increased."
-                },
-                {
-                  "npc": "marcus",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_marcus",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "marcus",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -994,60 +659,10 @@
               ]
             },
             {
-              "id": "prank_sofia",
-              "text": "Prank Sofia",
+              "id": "start_flirt",
+              "text": "Start Flirt",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Sofia! Chaos increased."
-                },
-                {
-                  "npc": "sofia",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_sofia",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "sofia",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -1164,60 +779,10 @@
               ]
             },
             {
-              "id": "prank_amir",
-              "text": "Prank Amir",
+              "id": "start_flirt",
+              "text": "Flirt with Amir",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Amir! Chaos increased."
-                },
-                {
-                  "npc": "amir",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_amir",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "amir",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -1334,60 +899,10 @@
               ]
             },
             {
-              "id": "prank_bella",
-              "text": "Prank Bella",
+              "id": "start_flirt",
+              "text": "Flirt with Bella",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Bella! Chaos increased."
-                },
-                {
-                  "npc": "bella",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_bella",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "bella",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -1504,60 +1019,10 @@
               ]
             },
             {
-              "id": "prank_chris",
-              "text": "Prank Chris",
+              "id": "start_flirt",
+              "text": "Flirt with Chris",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Chris! Chaos increased."
-                },
-                {
-                  "npc": "chris",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_chris",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "chris",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -1674,60 +1139,10 @@
               ]
             },
             {
-              "id": "prank_diana",
-              "text": "Prank Diana",
+              "id": "start_flirt",
+              "text": "Flirt with Diana",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Diana! Chaos increased."
-                },
-                {
-                  "npc": "diana",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_diana",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "diana",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }
@@ -1844,60 +1259,10 @@
               ]
             },
             {
-              "id": "prank_eli",
-              "text": "Prank Eli",
+              "id": "start_flirt",
+              "text": "Flirt with Eli",
               "requires": {
-                "role": "prophet"
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You pranked Eli! Chaos increased."
-                },
-                {
-                  "npc": "eli",
-                  "field": "prankActive",
-                  "value": true
-                }
-              ]
-            },
-            {
-              "id": "cleanup_eli",
-              "text": "Clean up mess",
-              "requires": {
-                "role": "producer",
-                "npcPrankActive": true
-              },
-              "effects": [
-                {
-                  "meter": "chaos",
-                  "delta": -1,
-                  "clampMin": 0
-                },
-                {
-                  "meter": "ratings",
-                  "delta": 1,
-                  "clampMax": 10
-                },
-                {
-                  "notification": "You cleaned up the mess! Chaos decreased, Ratings increased."
-                },
-                {
-                  "npc": "eli",
-                  "field": "prankActive",
-                  "value": false
-                }
-              ]
-            },
-            {
-              "id": "start_interview",
-              "text": "Start Interview",
-              "requires": {
-                "role": "producer"
+                "role": "admirer"
               },
               "effects": []
             }

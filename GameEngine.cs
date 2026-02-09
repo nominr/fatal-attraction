@@ -491,34 +491,7 @@ namespace FatalAttraction.Engine
 
 				if (optionId.StartsWith("marry_"))
 				{
-					// Expected format: marry_npc1_npc2
-					var parts = optionId.Split('_');
-					if (parts.Length == 3)
-					{
-						string n1 = parts[1];
-						string n2 = parts[2];
-						var npc1 = _gameState.GetNPC(n1);
-						var npc2 = _gameState.GetNPC(n2);
-						
-						if (npc1 != null && npc2 != null)
-						{
-							// Validation
-							if (npc1.Married || npc2.Married) return (false, "One or both are already married");
-							if (npc1 == npc2) return (false, "Cannot marry self");
-							if (npc1.IsLoveInterest || npc2.IsLoveInterest) return (false, "Cannot marry the Admirer's Love Interest!");
-
-							npc1.Married = true;
-							npc2.Married = true;
-							
-							// Ratings +1
-							var pState = _gameState.GetPlayerState(Role.Producer);
-							pState.GetMeter("ratings")?.Add(1);
-							
-							_gameState.AddNotification($"Producer married {Capitalize(n1)} and {Capitalize(n2)}! (+Rating)");
-							return (true, null);
-						}
-					}
-					return (false, "Invalid marriage target(s)");
+					return (false, "Marriage option is disabled.");
 				}
 				
 				if (optionId.StartsWith("set_focus_"))
@@ -607,16 +580,16 @@ namespace FatalAttraction.Engine
 			if (npc == null)
 				return (false, "NPC not found");
 
-			// INTERVIEW RESOLUTION
-			if (optionId == "start_interview")
+			// FLIRT RESOLUTION (Formerly Interview)
+			if (optionId == "start_flirt")
 			{
-				if (playerRole != Role.Producer) return (false, "Only Producer can interview.");
-				if (_gameState.ActiveInterviews.ContainsKey(playerRole)) return (false, "You are already interviewing someone!");
+				if (playerRole != Role.Admirer) return (false, "Only Admirer can flirt.");
+				if (_gameState.ActiveInterviews.ContainsKey(playerRole)) return (false, "You are already flirting with someone!");
 				
 				var interviewData = _gameState.InterviewData;
 				var introTopics = interviewData?["default"]?["intro_topics"] as JArray;
 				
-				if (introTopics == null || introTopics.Count == 0) return (false, "No interview topics found!");
+				if (introTopics == null || introTopics.Count == 0) return (false, "No flirting topics found!");
 
 				// Pick 3 random intro questions
 				var randomQuestions = introTopics.OrderBy(x => _random.Next()).Take(3)
@@ -627,12 +600,12 @@ namespace FatalAttraction.Engine
 					NpcId = npcId,
 					CurrentStage = "Intro",
 					CurrentScore = 0,
-					LastResponse = "The camera is rolling...", // Initial state
+					LastResponse = "The vibes are good...", // Initial state
 					AvailableQuestionIds = randomQuestions
 				};
 				
 				_gameState.ActiveInterviews[playerRole] = ctx;
-				_gameState.AddNotification($"Interview started with {npc.Name}!");
+				_gameState.AddNotification($"Flirting started with {npc.Name}!");
 				return (true, null);
 			}
 			// 0. (Removed explicit finish button block)
@@ -929,22 +902,20 @@ namespace FatalAttraction.Engine
 
 		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
 		{
-			// Add score to Ratings (if > 0)
-			// User request: "-1 ratings points" for bad, so we apply delta directly.
-			// However, ratings can't go below 0 usually, handled by Meter.
+			// Add score to LOVE (Admirer)
 			
 			var playerS = _gameState.GetPlayerState(playerRole);
-			var ratings = playerS?.GetMeter("ratings");
+			var love = playerS?.GetMeter("love");
 			
-			if (ratings != null)
+			if (love != null)
 			{
-				ratings.Add(ctx.CurrentScore);
+				love.Add(ctx.CurrentScore);
 			}
 
-			string resultMsg = ctx.CurrentScore > 0 ? "Great interview!" : (ctx.CurrentScore < 0 ? "Disastrous interview..." : "Average interview.");
-			 _gameState.AddNotification($"Interview finished. Score: {ctx.CurrentScore}. {resultMsg}");
+			string resultMsg = ctx.CurrentScore > 0 ? "They seem interested!" : (ctx.CurrentScore < 0 ? "That went poorly..." : "Hard to tell.");
+			 _gameState.AddNotification($"Flirting finished. Result: {resultMsg}");
 			 
-			 // Clear interview
+			 // Clear interview/flirt
 			 if (clearAndFinish)
 			 {
 				_gameState.ActiveInterviews.Remove(playerRole);
