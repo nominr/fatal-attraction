@@ -1265,18 +1265,18 @@ public partial class GameWorld : Node2D
 			float x = s["state_x"]?.Value<float>() ?? 0;
 			float y = s["state_y"]?.Value<float>() ?? 0;
 			float z = s["state_z"]?.Value<float>() ?? 0;
+			float tx = s["tri_x"]?.Value<float>() ?? 0;
+			float ty = s["tri_y"]?.Value<float>() ?? 0;
 			npcState = new Vector3(x, y, z);
+			
+			// Show Triangle Scene with fetched coordinates
+			if (_triangleScene != null)
+			{
+				_triangleScene.Show(npcName, new Vector2(tx, ty));
+			}
 		}
 		
 		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
-		
-		// Show Triangle Scene
-		if (_triangleScene != null)
-		{
-			_triangleScene.Show(npcName);
-			// Optional: Trigger random point movement or set meaningful data
-			// _triangleScene.AnimatePoint(...);
-		}
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -2898,6 +2898,7 @@ public partial class GameWorld : Node2D
 		}
 		
 		UpdateUI();
+		UpdateTrianglePosition(); // Realtime update for triangle scene
 		UpdateNPCVisuals();
 		UpdateGhostMode();
 
@@ -3686,6 +3687,23 @@ public partial class GameWorld : Node2D
 	}
 
 
+
+	private void UpdateTrianglePosition()
+	{
+		if (_triangleScene == null || !_triangleScene.Visible || string.IsNullOrEmpty(_currentInteractingNpcId)) return;
+
+		var npcStates = _localGameState?["npc_states"] as JObject;
+		if (npcStates != null && npcStates.ContainsKey(_currentInteractingNpcId))
+		{
+			var s = npcStates[_currentInteractingNpcId];
+			float tx = s["tri_x"]?.Value<float>() ?? 0;
+			float ty = s["tri_y"]?.Value<float>() ?? 0;
+			
+			// Directly update position without full re-show
+			// We need to expose a method in TriangleScene or just call Show again (it handles updates)
+			_triangleScene.Show(_triangleScene.GetNodeOrNull<Label>("NpcNameLabel")?.Text ?? "", new Vector2(tx, ty));
+		}
+	}
 
 	private void UpdateNPCVisuals()
 	{

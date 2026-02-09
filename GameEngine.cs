@@ -100,13 +100,13 @@ namespace FatalAttraction.Engine
 			{
 				var norm = NormalizedState;
 				// Barycentric mapping:
-				// Admirer (X) -> (-30, 24)
-				// Prophet (Y) -> (30, 24)
-				// Producer (Z) -> (0, -28)
+				// Admirer (X) -> (0, -28)   [Top]
+				// Prophet (Y) -> (-30, 24)  [Bottom Left]
+				// Producer (Z) -> (30, 24)  [Bottom Right]
 				
-				Vector2 v1 = new Vector2(-30, 24);
-				Vector2 v2 = new Vector2(30, 24);
-				Vector2 v3 = new Vector2(0, -28);
+				Vector2 v1 = new Vector2(0, -28);   // Admirer
+				Vector2 v2 = new Vector2(-30, 24);  // Prophet
+				Vector2 v3 = new Vector2(30, 24);   // Producer
 				
 				return (v1 * norm.X) + (v2 * norm.Y) + (v3 * norm.Z);
 			}

@@ -25,15 +25,40 @@ public partial class TriangleScene : Control
 		_pointSprite.Position = _centerOffset; // Start at center offset
 		AddChild(_pointSprite);
 		
+		// Disable mouse input to prevent blocking UI
+		MouseFilter = MouseFilterEnum.Ignore;
+		
 		_npcNameLabel = GetNodeOrNull<Label>("NpcNameLabel");
 	}
 	
-	public void Show(string npcName)
+	public void Show(string npcName, Vector2? pointPos = null)
 	{
 		if (_npcNameLabel != null)
 		{
 			_npcNameLabel.Text = npcName;
 		}
+		
+		if (pointPos.HasValue)
+		{
+			// Position relative to center offset
+			Vector2 targetPos = _centerOffset + pointPos.Value;
+			
+			// If already visible, animate to new position
+			if (Visible)
+			{
+				AnimatePoint(_pointSprite.Position, targetPos);
+			}
+			else
+			{
+				// Snap immediately if first showing
+				_pointSprite.Position = targetPos;
+			}
+		}
+		else
+		{
+			_pointSprite.Position = _centerOffset; // Default center
+		}
+		
 		Visible = true;
 	}
 	
@@ -42,16 +67,7 @@ public partial class TriangleScene : Control
 		Visible = false;
 	}
 
-	public override void _GuiInput(InputEvent @event)
-	{
-		// Temporary Debug: Click to move to random point
-		if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-		{
-			Vector2 randomPoint = GetRandomPointInTriangle();
-			// Move from current position to new random position
-			AnimatePoint(_pointSprite.Position, _centerOffset + randomPoint);
-		}
-	}
+
 
 	/// <summary>
 	/// Animates the point from startPos to endPos.
