@@ -701,7 +701,7 @@ public partial class NPCEntity : CharacterBody2D
 		_isAlive = alive;
 		_deadOverlay.Visible = !alive;
 		_convertedIndicator.Visible = converted;
-		_marriedIndicator.Visible = married;
+		_marriedIndicator.Visible = false; // Marriage removed from game
 		_targetIndicator.Visible = isTarget;
 		if (!alive && _punchHint != null)
 		{

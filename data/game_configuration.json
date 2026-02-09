@@ -108,23 +108,9 @@
             "baseChance": 0.75
           }
         },
-        "marry_npc": {
-          "displayName": "Marry NPCs",
-          "effects": [
-            {
-              "meter": "ratings",
-              "delta": 1
-            }
-          ]
-        },
         "cleanup_prank": {
           "displayName": "Clean-Up Pranks",
-          "effects": [
-            {
-              "meter": "chaos",
-              "delta": -1
-            }
-          ]
+          "effects": []
         },
         "report_admirer": {
           "displayName": "Report Admirer",
@@ -132,21 +118,11 @@
         }
       },
       "goals": {
-        "high_ratings": {
-          "displayName": "High Ratings"
-        },
         "catch_admirer": {
           "displayName": "Catch Admirer"
         }
       },
-      "meters": {
-        "ratings": {
-          "displayName": "Ratings",
-          "min": 0,
-          "max": 10,
-          "start": 0
-        }
-      }
+      "meters": {}
     }
   },
   "systems": {

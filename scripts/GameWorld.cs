@@ -89,7 +89,6 @@ public partial class GameWorld : Node2D
 
 
 	private Font _customFont;
-	private Texture2D _ratingMeterTexture;
 	
 	// Hover color for buttons
 	private Color _normalColor = new Color(1, 1, 1, 1); // White
@@ -99,9 +98,6 @@ public partial class GameWorld : Node2D
 	private Vector2 _worldSize = new Vector2(1200, 800);
 	private const int PROPHET_CONVERT_GOAL = 5;
 
-	// Marriage UI State
-	private string _marrySelectionA = "";
-	private string _marrySelectionB = "";
 
 	// Producer HUD Elements
 	private VBoxContainer _producerStatsContainer;
@@ -114,7 +110,6 @@ public partial class GameWorld : Node2D
 	private int _lastProcessedNotificationCount = 0;
 	
 	// Track where panels were opened to auto-close on distance
-	private Vector2 _marriagePanelOpenPos;
 	private Vector2 _cameraSelectPanelOpenPos;
 	
 	// +1 Rating Visual Feedback
@@ -696,174 +691,6 @@ public partial class GameWorld : Node2D
 
 	private void SetupProducerUI()
 	{
-		// Marriage Section (Visible)
-		var mPanel = new PanelContainer();
-		mPanel.Name = "MarriagePanel";
-		mPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center); // Center screen
-		mPanel.GrowHorizontal = Control.GrowDirection.Both; // Required for true center
-		mPanel.GrowVertical = Control.GrowDirection.Both;
-		mPanel.CustomMinimumSize = new Vector2(400, 400); // Wider for 2 columns
-		mPanel.Visible = false;
-		mPanel.ZIndex = 20; // Ensure it's above other UI elements
-		
-		var mVBoxMain = new VBoxContainer();
-		mVBoxMain.Name = "Container"; // Keeping name for reference finding
-		mVBoxMain.AddThemeConstantOverride("separation", 10);
-		mVBoxMain.MouseFilter = Control.MouseFilterEnum.Pass;
-		mPanel.AddChild(mVBoxMain);
-
-		// Header Row (Title + Close Button)
-		var headerHBox = new HBoxContainer();
-		headerHBox.Name = "HeaderHBox";
-		mVBoxMain.AddChild(headerHBox);
-
-		var mTitle = new Label();
-		mTitle.Text = "Select 2 NPCs to Marry:";
-		mTitle.HorizontalAlignment = HorizontalAlignment.Center;
-		mTitle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; // Center title
-		mTitle.AddThemeFontOverride("font", _customFont);
-		mTitle.AddThemeFontSizeOverride("font_size", 23);
-		headerHBox.AddChild(mTitle);
-
-		var mCloseInfoBtn = new Button();
-		mCloseInfoBtn.Text = "X";
-		mCloseInfoBtn.AddThemeFontOverride("font", _customFont);
-		mCloseInfoBtn.Flat = true;
-		mCloseInfoBtn.CustomMinimumSize = new Vector2(30, 30);
-		mCloseInfoBtn.Pressed += () => 
-		{
-			// Close Panel Logic
-			mPanel.Visible = false;
-			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-			if (btn != null) btn.ButtonPressed = false; 
-		};
-		headerHBox.AddChild(mCloseInfoBtn);
-
-		// Columns Container
-		var columnsHBox = new HBoxContainer();
-		columnsHBox.Name = "ColumnsContainer";
-		columnsHBox.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-		columnsHBox.AddThemeConstantOverride("separation", 20);
-		columnsHBox.MouseFilter = Control.MouseFilterEnum.Pass;
-		mVBoxMain.AddChild(columnsHBox);
-
-		// Column A
-		var colA = new VBoxContainer();
-		colA.Name = "ColumnA";
-		colA.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-		colA.MouseFilter = Control.MouseFilterEnum.Pass;
-		columnsHBox.AddChild(colA);
-		var lblA = new Label();
-		lblA.Text = "Partner 1";
-		lblA.HorizontalAlignment = HorizontalAlignment.Center;
-		lblA.AddThemeFontOverride("font", _customFont);
-		lblA.AddThemeFontSizeOverride("font_size", 21);
-		colA.AddChild(lblA);
-		// ScrollContainer for list A
-		var scrollA = new ScrollContainer();
-		scrollA.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-		scrollA.MouseFilter = Control.MouseFilterEnum.Pass; // Allow clicks to pass through if hitting empty space
-		colA.AddChild(scrollA);
-		var listA = new VBoxContainer();
-		listA.Name = "ListA";
-		listA.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-		listA.MouseFilter = Control.MouseFilterEnum.Pass;
-		scrollA.AddChild(listA);
-
-		// Column B
-		var colB = new VBoxContainer();
-		colB.Name = "ColumnB";
-		colB.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-		colB.MouseFilter = Control.MouseFilterEnum.Pass;
-		columnsHBox.AddChild(colB);
-		var lblB = new Label();
-		lblB.Text = "Partner 2";
-		lblB.HorizontalAlignment = HorizontalAlignment.Center;
-		lblB.AddThemeFontOverride("font", _customFont);
-		lblB.AddThemeFontSizeOverride("font_size", 21);
-		colB.AddChild(lblB);
-		// ScrollContainer for list B
-		var scrollB = new ScrollContainer();
-		scrollB.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-		scrollB.MouseFilter = Control.MouseFilterEnum.Pass;
-		colB.AddChild(scrollB);
-		var listB = new VBoxContainer();
-		listB.Name = "ListB";
-		listB.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-		listB.MouseFilter = Control.MouseFilterEnum.Pass;
-		scrollB.AddChild(listB);
-
-
-
-		// Confirm Button at bottom
-		var mConfirm = new Button();
-		mConfirm.Text = "CONFIRM MARRIAGE";
-		mConfirm.CustomMinimumSize = new Vector2(0, 50);
-		mConfirm.AddThemeFontOverride("font", _customFont);
-		mConfirm.AddThemeFontSizeOverride("font_size", 21);
-		
-		mConfirm.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
-		mConfirm.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-		mConfirm.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-		mConfirm.AddThemeColorOverride("font_color", Colors.Black);
-		mConfirm.AddThemeColorOverride("font_hover_color", Colors.Black);
-		mConfirm.AddThemeColorOverride("font_pressed_color", Colors.Black);
-		mConfirm.MouseFilter = Control.MouseFilterEnum.Stop;
-		
-		mConfirm.Pressed += OnMarryConfirm;
-		mVBoxMain.AddChild(mConfirm);
-
-		_uiLayer.AddChild(mPanel);
-
-		// Marriage Toggle Button
-		var marryBtn = new Button();
-		marryBtn.Name = "MarryButton";
-		marryBtn.Text = "Marry NPCs";
-		marryBtn.ToggleMode = true; // Stay pressed when active
-		marryBtn.AddThemeFontOverride("font", _customFont);
-		marryBtn.AddThemeFontSizeOverride("font_size", 26);
-		// Position bottom left (Swapped with Manage Cameras)
-		marryBtn.Position = new Vector2(20, 530);
-		marryBtn.CustomMinimumSize = new Vector2(180, 60);
-		marryBtn.Visible = false;
-		
-		// Trap Styling for Marry Button
-		// Normal/Hover match Trap Normal/Hover
-		marryBtn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
-		marryBtn.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-		
-		// Pressed matches Trap DISABLED (Dark Grey, No Border)
-		var mPressed = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
-		mPressed.SetBorderWidthAll(0);
-		marryBtn.AddThemeStyleboxOverride("pressed", mPressed);
-		
-		var mDisabled = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
-		mDisabled.SetBorderWidthAll(0);
-		marryBtn.AddThemeStyleboxOverride("disabled", mDisabled);
-		
-		marryBtn.AddThemeColorOverride("font_color", Colors.Black);
-		marryBtn.AddThemeColorOverride("font_hover_color", Colors.Black);
-		marryBtn.AddThemeColorOverride("font_pressed_color", Colors.Black);
-		marryBtn.AddThemeColorOverride("font_focus_color", Colors.Black);
-		marryBtn.MouseFilter = Control.MouseFilterEnum.Stop; 
-
-		// Use Toggled to bind visibility directly to button state
-		marryBtn.Toggled += (pressed) => 
-		{
-			var panel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
-			if (panel != null) panel.Visible = pressed;
-			
-			// Mutual Exclusivity: Close Camera Panel if opening Marriage
-			if (pressed)
-			{
-				var camBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
-				if (camBtn != null && camBtn.ButtonPressed) camBtn.ButtonPressed = false;
-				
-				// Capture open position for distance check
-				if (_localPlayer != null) _marriagePanelOpenPos = _localPlayer.Position;
-			}
-		};
-		_uiLayer.AddChild(marryBtn);
 		
 		// Manage Cameras Button (Restyled and Repositioned)
 		var manageCamsBtn = new Button();
@@ -1190,115 +1017,6 @@ public partial class GameWorld : Node2D
 		if (node != null) node.Visible = !node.Visible;
 	}
 
-	private void OnMarryConfirm()
-	{
-		if (!string.IsNullOrEmpty(_marrySelectionA) && !string.IsNullOrEmpty(_marrySelectionB))
-		{
-			OnActionSelected("producer_global", $"marry_{_marrySelectionA}_{_marrySelectionB}");
-			_uiLayer.GetNode<Control>("MarriagePanel").Visible = false;
-			
-			// Unpress the toggle button
-			var btn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-			if (btn != null) btn.ButtonPressed = false;
-			
-			// Reset selections
-			_marrySelectionA = "";
-			_marrySelectionB = "";
-			UpdateMarriageLists(); // Refresh UI to clear checks
-		}
-		else
-		{
-			// Show error? For now print
-			GD.Print("Must select 2 NPCs");
-		}
-	}
-
-	private void OnMarrySelectA(string npcId)
-	{
-		if (_marrySelectionA == npcId) _marrySelectionA = ""; // Toggle off
-		else _marrySelectionA = npcId;
-		
-		UpdateMarriageLists();
-	}
-
-	private void OnMarrySelectB(string npcId)
-	{
-		if (_marrySelectionB == npcId) _marrySelectionB = ""; // Toggle off
-		else _marrySelectionB = npcId;
-		
-		UpdateMarriageLists();
-	}
-
-	private void UpdateMarriageLists()
-	{
-		if (_localGameState == null) return;
-		var activeNpcs = _localGameState["active_npcs"]?.ToObject<List<string>>() ?? new();
-		
-		var panel = _uiLayer?.GetNodeOrNull("MarriagePanel");
-		if (panel == null) return;
-		
-		var listA = panel.FindChild("ListA", true, false) as VBoxContainer;
-		var listB = panel.FindChild("ListB", true, false) as VBoxContainer;
-		
-		if (listA == null || listB == null) return;
-
-		// Rebuild List A
-		PopulateMarriageList(listA, activeNpcs, _marrySelectionA, _marrySelectionB, true);
-		
-		// Rebuild List B
-		PopulateMarriageList(listB, activeNpcs, _marrySelectionB, _marrySelectionA, false);
-	}
-
-	private void PopulateMarriageList(VBoxContainer listContainer, List<string> npcs, string mySelection, string otherSelection, bool isListA)
-	{
-		// Ideally we reuse buttons instead of destroy/create every frame, but for low NPC count (10) it's fine
-		foreach (Node child in listContainer.GetChildren()) child.QueueFree();
-
-		var npcStates = _localGameState?["npc_states"] as JObject;
-
-		foreach (var npcId in npcs)
-		{
-			// Check if Love Interest - SKIP
-			if (npcStates != null && npcStates[npcId]?["is_love_interest"]?.Value<bool>() == true)
-			{
-				continue;
-			}
-
-			var btn = new Button();
-			btn.ToggleMode = true;
-			btn.Text = Capitalize(npcId);
-			btn.AddThemeFontOverride("font", _customFont);
-			btn.AddThemeFontSizeOverride("font_size", 21);
-			
-			// Trap Styling for List Items
-			btn.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
-			btn.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-			// Selected (Pressed) -> Black with White Border
-			btn.AddThemeStyleboxOverride("pressed", CreateTrapStyle(Colors.Black, Colors.White)); 
-			btn.AddThemeStyleboxOverride("disabled", CreateTrapStyle(Colors.Gray, Colors.Black));
-
-			btn.AddThemeColorOverride("font_color", Colors.Black);
-			btn.AddThemeColorOverride("font_hover_color", Colors.Black);
-			btn.AddThemeColorOverride("font_pressed_color", Colors.White); // White text when selected
-			btn.AddThemeColorOverride("font_focus_color", Colors.Black);
-			btn.MouseFilter = Control.MouseFilterEnum.Stop;
-			
-			// Check state
-			btn.ButtonPressed = (npcId == mySelection);
-			
-			// Disable if selected in other list
-			if (npcId == otherSelection)
-			{
-				btn.Disabled = true;
-			}
-			
-			// Connect signal
-			if (isListA) btn.Pressed += () => OnMarrySelectA(npcId);
-			else btn.Pressed += () => OnMarrySelectB(npcId);
-			
-			listContainer.AddChild(btn);
-		}
-	}
 
 	private void InitializeServer()
 	{
@@ -1490,14 +1208,12 @@ public partial class GameWorld : Node2D
 		// _myRole from network might be "producer" (lowercase).
 		
 		string roleKey = Capitalize(_myRole); // Ensure "Producer"
-		bool isInterview = false;
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
-				isInterview = true;
 			}
 		}
 
@@ -3203,14 +2919,12 @@ public partial class GameWorld : Node2D
 		// INTERVIEW UI OVERRIDE
 		var activeInterviews = _localGameState?["active_interviews"] as JObject;
 		string roleKey = Capitalize(_myRole); 
-		bool isInterview = false;
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
-				isInterview = true;
 			}
 		}
 
@@ -3391,12 +3105,8 @@ public partial class GameWorld : Node2D
 		}
 
 
-		// PRODUCER ACTIONS VISIBILITY
-		var marryBtn = _uiLayer.GetNodeOrNull<Button>("MarryButton");
-		var manageCamsBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
-		var cameraPanel = _uiLayer.GetNodeOrNull<Control>("CameraPanel");
 		bool isProducer = (_myRole?.ToLower() == "producer");
-		if (marryBtn != null) marryBtn.Visible = isProducer;
+		var manageCamsBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 		if (manageCamsBtn != null) manageCamsBtn.Visible = isProducer;
 		if (isProducer)
 		{
@@ -3512,31 +3222,6 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		if (isProducer)
-		{
-			// Update Marriage Panel List if needed
-			var mPanel = _uiLayer.GetNodeOrNull<Control>("MarriagePanel");
-			if (mPanel != null && mPanel.Visible)
-			{
-				var activeNpcs = _localGameState["active_npcs"]?.ToObject<List<string>>() ?? new();
-				var listA = mPanel.FindChild("ListA", true, false) as VBoxContainer;
-				
-				// Rebuild if empty or count mismatch (e.g. new NPC)
-				// FIX: Must filter activeNpcs same way PopulateMarriageList does to avoid infinite update loop
-				var npcStates = _localGameState?["npc_states"] as JObject;
-				int visibleNpcs = 0;
-				foreach (var npc in activeNpcs)
-				{
-					if (npcStates != null && npcStates[npc]?["is_love_interest"]?.Value<bool>() == true) continue;
-					visibleNpcs++;
-				}
-				
-				if (listA != null && listA.GetChildCount() != visibleNpcs)
-				{
-					UpdateMarriageLists();
-				}
-			}
-		}
 
 		// Refresh Interaction Panel if open (for dynamic content like Interview)
 		if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))

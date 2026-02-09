@@ -243,7 +243,6 @@ public partial class GoalsMenu : Control
 				goalsContent += "[b]Goals:[/b]\n";
 				goalsContent += "• Catch the Admirer\n";
 				goalsContent += "• Stop the Prophet\n";
-				goalsContent += "• Max ratings meter\n";
 				break;
 
 			default:
