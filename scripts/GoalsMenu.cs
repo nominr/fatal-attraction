@@ -219,18 +219,7 @@ public partial class GoalsMenu : Control
 			case "admirer":
 				goalsContent = "[center][b]ADMIRER[/b][/center]\n\n";
 				goalsContent += "[b]Goals:[/b]\n";
-				goalsContent += "• Marry love interest\n";
 				goalsContent += "• Kill three targets\n\n";
-				
-				goalsContent += "[b]Love Interest:[/b]\n";
-				if (!string.IsNullOrEmpty(_loveInterest))
-				{
-					foreach (var name in _loveInterest.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries))
-						goalsContent += $"• {name}\n";
-					goalsContent += "\n";
-				}
-				else
-					goalsContent += "• (None assigned)\n\n";
 				
 				goalsContent += "[b]Targets:[/b]\n";
 				if (!string.IsNullOrEmpty(_targets))

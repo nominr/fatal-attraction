@@ -463,9 +463,9 @@ public partial class GameWorld : Node2D
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		hudContainer.AddChild(_convertedLabel);
 
-		// Bomb Counter (Admirer only)
+		// Knife Counter (Admirer only)
 		_bombCounterLabel = new Label();
-		_bombCounterLabel.Text = $"BOMBS LEFT: {_bombsRemaining}";
+		_bombCounterLabel.Text = $"KNIVES LEFT: {_bombsRemaining}";
 		_bombCounterLabel.AddThemeFontOverride("font", _customFont);
 		_bombCounterLabel.AddThemeFontSizeOverride("font_size", 26);
 		_bombCounterLabel.AddThemeColorOverride("font_color", Colors.White);
@@ -620,16 +620,16 @@ public partial class GameWorld : Node2D
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
 
-		// Admirer Bomb Button
+		// Admirer Knife Button
 		var bombButton = new Button();
-		bombButton.Text = "Throw Bomb";
+		bombButton.Text = "Throw Knife";
 		bombButton.AddThemeFontOverride("font", _customFont);
 		bombButton.AddThemeFontSizeOverride("font_size", 26);
 		bombButton.Position = new Vector2(20, 600);
 		bombButton.CustomMinimumSize = new Vector2(180, 60);
 		
-		// Add Bomb Icon
-		var bombTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_bomb-nobg.png");
+		// Add Knife Icon
+		var bombTexture = ResourceLoader.Load<Texture2D>("res://assets/knife.png");
 		bombButton.Icon = bombTexture;
 		bombButton.ExpandIcon = true;
 		bombButton.IconAlignment = HorizontalAlignment.Left;
@@ -1828,14 +1828,14 @@ public partial class GameWorld : Node2D
 		
 		GD.Print($"[GameWorld] Slider stopped at {_sliderPosition}, in target zone: {inTargetZone}");
 		
-		// Decrement bomb counter
+		// Decrement knife counter
 		_bombsRemaining--;
 		if (_bombCounterLabel != null)
 		{
-			_bombCounterLabel.Text = $"BOMBS LEFT: {_bombsRemaining}";
+			_bombCounterLabel.Text = $"KNIVES LEFT: {_bombsRemaining}";
 		}
 		
-		// Hide bomb button if no bombs left
+		// Hide knife button if no knives left
 		if (_bombsRemaining <= 0)
 		{
 			var bombBtn = _uiLayer.GetNodeOrNull<Button>("BombButton");
@@ -1854,10 +1854,10 @@ public partial class GameWorld : Node2D
 		else
 		{
 			// Missed - show unsuccessful message
-			GD.Print("[GameWorld] Bomb missed!");
+			GD.Print("[GameWorld] Knife missed!");
 			if (_gameEngine != null)
 			{
-				_gameEngine.GameState.AddNotification("Bomb unsuccessful.");
+				_gameEngine.GameState.AddNotification("Knife unsuccessful.");
 				BroadcastGameState();
 			}
 		}
@@ -1902,7 +1902,7 @@ public partial class GameWorld : Node2D
 				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
 			}
 			
-			_gameEngine.GameState.AddNotification($"Bomb successful! {npc.Name} has been eliminated!");
+			_gameEngine.GameState.AddNotification($"Knife successful! {npc.Name} has been eliminated!");
 			BroadcastGameState();
 		}
 		else
@@ -1981,19 +1981,38 @@ public partial class GameWorld : Node2D
 		long senderId = Multiplayer.GetRemoteSenderId();
 		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
 
-		// Verify sender is Admirer
+		// Verify sender exists
 		if (!_networkManager.Players.TryGetValue(senderId, out var senderInfo)) return;
-		if (!string.Equals(senderInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
+		string senderRole = senderInfo.Role;
 
-		// Check if Admirer is dead (server-side verification)
-		var admirerState = _gameEngine.GameState.GetPlayerState(Role.Admirer);
-		if (admirerState != null && !admirerState.Alive) return;
-
-		// Verify target is Prophet or Producer
+		// Verify target exists
 		if (!_networkManager.Players.TryGetValue(targetPlayerId, out var targetInfo)) return;
 		string targetRole = targetInfo.Role;
-		if (!string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase) && 
-			!string.Equals(targetRole, "Producer", StringComparison.OrdinalIgnoreCase)) return;
+
+		// Validate punch is allowed:
+		// Admirer can punch Prophet/Producer
+		// Prophet/Producer can punch Admirer
+		bool isValidPunch = false;
+		if (string.Equals(senderRole, "Admirer", StringComparison.OrdinalIgnoreCase))
+		{
+			// Admirer punching Prophet or Producer
+			isValidPunch = string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase) || 
+				string.Equals(targetRole, "Producer", StringComparison.OrdinalIgnoreCase);
+		}
+		else if (string.Equals(senderRole, "Prophet", StringComparison.OrdinalIgnoreCase) || 
+			string.Equals(senderRole, "Producer", StringComparison.OrdinalIgnoreCase))
+		{
+			// Prophet/Producer punching Admirer
+			isValidPunch = string.Equals(targetRole, "Admirer", StringComparison.OrdinalIgnoreCase);
+		}
+		
+		if (!isValidPunch) return;
+
+		// Check if sender is dead (server-side verification)
+		Role senderRoleEnum;
+		if (!Enum.TryParse<Role>(senderRole, ignoreCase: true, out senderRoleEnum)) return;
+		var senderPlayerState = _gameEngine.GameState.GetPlayerState(senderRoleEnum);
+		if (senderPlayerState != null && !senderPlayerState.Alive) return;
 
 		// Get player controllers
 		if (!_playerControllers.TryGetValue(senderId, out var senderCtrl)) return;
@@ -2027,7 +2046,7 @@ public partial class GameWorld : Node2D
 				eliminatedPlayer.SetGhostMode(true);
 			}
 
-			_gameEngine.GameState.AddNotification($"{targetRole} has been eliminated by the Admirer!");
+			_gameEngine.GameState.AddNotification($"{targetRole} has been eliminated by the {senderRole}!");
 			BroadcastGameState();
 		}
 	}
@@ -2267,7 +2286,8 @@ public partial class GameWorld : Node2D
 
 	private void UpdatePunchHints()
 	{
-		if (string.IsNullOrEmpty(_myRole) || _myRole.ToLower() != "admirer")
+		// Hide all hints if no role assigned
+		if (string.IsNullOrEmpty(_myRole))
 		{
 			foreach (var kvp in _npcEntities)
 			{
@@ -2302,27 +2322,40 @@ public partial class GameWorld : Node2D
 			return;
 		}
 
-		// Update NPC punch hints
-		foreach (var kvp in _npcEntities)
+		string myRoleLower = _myRole.ToLower();
+
+		// ADMIRER: Update NPC punch hints
+		if (myRoleLower == "admirer")
 		{
-			if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive))
+			foreach (var kvp in _npcEntities)
+			{
+				if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive))
+				{
+					kvp.Value.SetPunchHintVisible(false);
+					continue;
+				}
+
+				if (!isTarget || !alive)
+				{
+					kvp.Value.SetPunchHintVisible(false);
+					continue;
+				}
+
+				float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+				bool inRange = distance <= PUNCH_RANGE;
+				kvp.Value.SetPunchHintVisible(inRange);
+			}
+		}
+		else
+		{
+			// Non-Adimirer: hide all NPC punch hints
+			foreach (var kvp in _npcEntities)
 			{
 				kvp.Value.SetPunchHintVisible(false);
-				continue;
 			}
-
-			if (!isTarget || !alive)
-			{
-				kvp.Value.SetPunchHintVisible(false);
-				continue;
-			}
-
-			float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
-			bool inRange = distance <= PUNCH_RANGE;
-			kvp.Value.SetPunchHintVisible(inRange);
 		}
 
-		// Update Player health hints (Prophet/Producer only)
+		// Update Player health hints based on role
 		var playerStates = _localGameState?["player_states"] as JObject;
 		foreach (var kvp in _playerControllers)
 		{
@@ -2336,16 +2369,29 @@ public partial class GameWorld : Node2D
 				continue;
 			}
 
-			// Check if target is Prophet or Producer
+			// Get target player's role
 			if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo))
 			{
 				playerCtrl.SetHealthHintVisible(false);
 				continue;
 			}
 
-			string role = playerInfo.Role;
-			if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
-				!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase))
+			string targetRole = playerInfo.Role;
+			bool isValidTarget = false;
+
+			// ADMIRER: can target Prophet/Producer
+			if (myRoleLower == "admirer")
+			{
+				isValidTarget = string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase) || 
+					string.Equals(targetRole, "Producer", StringComparison.OrdinalIgnoreCase);
+			}
+			// PROPHET/PRODUCER: can target Admirer
+			else if (myRoleLower == "prophet" || myRoleLower == "producer")
+			{
+				isValidTarget = string.Equals(targetRole, "Admirer", StringComparison.OrdinalIgnoreCase);
+			}
+
+			if (!isValidTarget)
 			{
 				playerCtrl.SetHealthHintVisible(false);
 				continue;
@@ -2358,7 +2404,7 @@ public partial class GameWorld : Node2D
 			if (inRange && playerStates != null)
 			{
 				// Get player health
-				string roleKey = role; // "Prophet" or "Producer"
+				string roleKey = targetRole; // "Prophet", "Producer", or "Admirer"
 				var playerState = playerStates[roleKey];
 				if (playerState != null)
 				{
@@ -2381,13 +2427,15 @@ public partial class GameWorld : Node2D
 	private void HandlePunchInput()
 	{
 		bool pressed = Input.IsKeyPressed(Key.P);
-		if (string.IsNullOrEmpty(_myRole) || _myRole.ToLower() != "admirer")
+		
+		// All roles can punch now
+		if (string.IsNullOrEmpty(_myRole))
 		{
 			_wasPunchPressed = pressed;
 			return;
 		}
 
-		// Don't allow dead Admirer to punch
+		// Don't allow dead players to punch
 		if (IsLocalPlayerDead())
 		{
 			_wasPunchPressed = pressed;
@@ -2415,51 +2463,89 @@ public partial class GameWorld : Node2D
 			long closestPlayerId = -1;
 			float closestDistance = float.MaxValue;
 
-			// Check NPCs
-			foreach (var kvp in _npcEntities)
+			// ADMIRER: Can punch target NPCs and Prophet/Producer
+			if (_myRole.ToLower() == "admirer")
 			{
-				if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive)) continue;
-				if (!isTarget || !alive) continue;
-
-				float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
-				if (distance <= PUNCH_RANGE && distance < closestDistance)
+				// Check NPCs
+				foreach (var kvp in _npcEntities)
 				{
-					closestDistance = distance;
-					closestNpcId = kvp.Key;
-					closestPlayerId = -1; // Reset player target
+					if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive)) continue;
+					if (!isTarget || !alive) continue;
+
+					float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+					if (distance <= PUNCH_RANGE && distance < closestDistance)
+					{
+						closestDistance = distance;
+						closestNpcId = kvp.Key;
+						closestPlayerId = -1; // Reset player target
+					}
+				}
+
+				// Check Players (Prophet and Producer only)
+				foreach (var kvp in _playerControllers)
+				{
+					long playerId = kvp.Key;
+					var playerCtrl = kvp.Value;
+
+					// Skip self
+					if (playerId == Multiplayer.GetUniqueId()) continue;
+
+					// Check if target is Prophet or Producer
+					if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
+					string role = playerInfo.Role;
+					if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
+						!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
+
+					// Skip dead players (check cached player states)
+					var playerStates = _localGameState?["player_states"] as JObject;
+					if (playerStates != null)
+					{
+						var targetState = playerStates[role];
+						bool targetAlive = targetState?["alive"]?.Value<bool>() ?? true;
+						if (!targetAlive) continue;
+					}
+
+					float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
+					if (distance <= PUNCH_RANGE && distance < closestDistance)
+					{
+						closestDistance = distance;
+						closestPlayerId = playerId;
+						closestNpcId = null; // Reset NPC target
+					}
 				}
 			}
-
-			// Check Players (Prophet and Producer only)
-			foreach (var kvp in _playerControllers)
+			// PROPHET/PRODUCER: Can punch the Admirer
+			else if (_myRole.ToLower() == "prophet" || _myRole.ToLower() == "producer")
 			{
-				long playerId = kvp.Key;
-				var playerCtrl = kvp.Value;
-
-				// Skip self
-				if (playerId == Multiplayer.GetUniqueId()) continue;
-
-				// Check if target is Prophet or Producer
-				if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
-				string role = playerInfo.Role;
-				if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
-					!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
-
-				// Skip dead players (check cached player states)
-				var playerStates = _localGameState?["player_states"] as JObject;
-				if (playerStates != null)
+				// Check Players (Admirer only)
+				foreach (var kvp in _playerControllers)
 				{
-					var targetState = playerStates[role];
-					bool targetAlive = targetState?["alive"]?.Value<bool>() ?? true;
-					if (!targetAlive) continue;
-				}
+					long playerId = kvp.Key;
+					var playerCtrl = kvp.Value;
 
-				float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
-				if (distance <= PUNCH_RANGE && distance < closestDistance)
-				{
-					closestDistance = distance;
-					closestPlayerId = playerId;
-					closestNpcId = null; // Reset NPC target
+					// Skip self
+					if (playerId == Multiplayer.GetUniqueId()) continue;
+
+					// Check if target is Admirer
+					if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
+					string role = playerInfo.Role;
+					if (!string.Equals(role, "Admirer", StringComparison.OrdinalIgnoreCase)) continue;
+
+					// Skip dead players (check cached player states)
+					var playerStates = _localGameState?["player_states"] as JObject;
+					if (playerStates != null)
+					{
+						var targetState = playerStates[role];
+						bool targetAlive = targetState?["alive"]?.Value<bool>() ?? true;
+						if (!targetAlive) continue;
+					}
+
+					float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
+					if (distance <= PUNCH_RANGE && distance < closestDistance)
+					{
+						closestDistance = distance;
+						closestPlayerId = playerId;
+					}
 				}
 			}
 
@@ -3232,25 +3318,45 @@ public partial class GameWorld : Node2D
 			_bombCounterLabel.Visible = isAdmirer;
 		}
 
-		// Player Health Label (Prophet/Producer only)
-		bool isProphetOrProducer = (_myRole?.ToLower() == "prophet") || (_myRole?.ToLower() == "producer");
+		// Player Health Label (All Roles)
 		if (_playerHealthLabel != null)
 		{
-			if (isProphetOrProducer)
+			if (!string.IsNullOrEmpty(_myRole))
 			{
 				// Get player health from game state
 				var playerStates = _localGameState?["player_states"] as JObject;
 				if (playerStates != null)
 				{
-					string myRoleKey = _myRole?.ToLower() == "prophet" ? "Prophet" : "Producer";
-					var myPlayerState = playerStates[myRoleKey];
-					if (myPlayerState != null)
+					string myRoleKey = _myRole?.ToLower() switch
 					{
-						int punchesTaken = myPlayerState["punches_taken"]?.Value<int>() ?? 0;
-						int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
-						_playerHealthLabel.Text = $"Health: {healthRemaining}/{PLAYER_PUNCHES_TO_KILL}";
-						_playerHealthLabel.Visible = true;
+						"prophet" => "Prophet",
+						"producer" => "Producer",
+						"admirer" => "Admirer",
+						_ => null
+					};
+					if (myRoleKey != null)
+					{
+						var myPlayerState = playerStates[myRoleKey];
+						if (myPlayerState != null)
+						{
+							int punchesTaken = myPlayerState["punches_taken"]?.Value<int>() ?? 0;
+							int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
+							_playerHealthLabel.Text = $"Health: {healthRemaining}/{PLAYER_PUNCHES_TO_KILL}";
+							_playerHealthLabel.Visible = true;
+						}
+						else
+						{
+							_playerHealthLabel.Visible = false;
+						}
 					}
+					else
+					{
+						_playerHealthLabel.Visible = false;
+					}
+				}
+				else
+				{
+					_playerHealthLabel.Visible = false;
 				}
 			}
 			else

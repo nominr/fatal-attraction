@@ -889,24 +889,8 @@ namespace FatalAttraction.Engine
 				{
 					return (false, "You cannot marry while rivals are still alive!");
 				}
-
-				// 2. Probability Math: (8 * score + 5) / 100
-				var loveMeter = player.GetMeter("love");
-				double loveScore = loveMeter?.Value ?? 0;
-				double chance = (8.0 * loveScore + 5.0) / 100.0;
 				
-				// Clamp chance to reasonable bounds if needed (max 1.0)
-				chance = Math.Min(chance, 1.0);
-
-				success = _random.NextDouble() < chance;
-
-				if (!success)
-				{
-					_gameState.AddNotification($"Marriage rejected! (Chance was {chance:P0})");
-					return (false, "Marriage proposal rejected. Try increasing Love.");
-				}
-				
-				// Success - let the effects be applied and win condition will be checked
+				// Marriage succeeds automatically once all rivals are eliminated
 				_gameState.AddNotification("Marriage successful! Love has conquered all!");
 			}
 			else
