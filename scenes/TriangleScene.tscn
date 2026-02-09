@@ -1,0 +1,40 @@
+[gd_scene load_steps=5 format=3 uid="uid://bdnaegtfsjdse"]
+
+[ext_resource type="Texture2D" uid="uid://cg54iwkpbqqfv" path="res://assets/triangle-ui.png" id="1_ly5c7"]
+[ext_resource type="Texture2D" uid="uid://bkmv723ydagl2" path="res://scenes/producer-btn.png" id="2_yejs0"]
+[ext_resource type="Texture2D" uid="uid://bw3fj1w2ku5qp" path="res://scenes/prophet-btn.png" id="3_slhhc"]
+[ext_resource type="Texture2D" uid="uid://bfsmt1ymtl54l" path="res://scenes/admirer-bttn.png" id="4_nasqx"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Polygon2D" type="Polygon2D" parent="."]
+position = Vector2(77, 82)
+color = Color(1, 1, 1, 0)
+polygon = PackedVector2Array(-30, 24, 30, 24, 0, -28)
+uv = PackedVector2Array(-30, 24, 30, 24, 0, -25)
+
+[node name="TriangleUi" type="Sprite2D" parent="."]
+position = Vector2(77, 81)
+scale = Vector2(1.1, 1.1)
+texture = ExtResource("1_ly5c7")
+
+[node name="ProducerBtn" type="Sprite2D" parent="."]
+position = Vector2(121, 110)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("2_yejs0")
+
+[node name="ProphetBtn" type="Sprite2D" parent="."]
+position = Vector2(33, 109)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("3_slhhc")
+
+[node name="AdmirerBttn" type="Sprite2D" parent="."]
+position = Vector2(76, 48)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("4_nasqx")
