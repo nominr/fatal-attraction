@@ -13,6 +13,9 @@ using FatalAttraction.Engine;
 /// </summary>
 public partial class GameWorld : Node2D
 {
+	// Triangle Scene Reference
+	private TriangleScene _triangleScene;
+
 	// Network
 	private NetworkManager _networkManager;
 
@@ -685,6 +688,21 @@ public partial class GameWorld : Node2D
 		// Producer UI Elements
 		SetupProducerUI();
 		
+		// Triangle Scene (Left Middle)
+		var triangleScenePrefab = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
+		_triangleScene = triangleScenePrefab.Instantiate<TriangleScene>();
+		_triangleScene.Visible = false; // Hidden by default
+		// Scale up by 2x as requested
+		_triangleScene.Scale = new Vector2(2.0f, 2.0f);
+		
+		// Position Left Middle:
+		// Viewport Height / 2 - (Triangle Scene Height / 2 approx)
+		// Triangle Center is roughly (7749, 82) * 2 = (154, 164)
+		// So visual height is around 160-200.
+		// Let's place it at (20, ScreenHeight/2 - 100)
+		_triangleScene.Position = new Vector2(20, GetViewportRect().Size.Y / 2 - 100);
+		_uiLayer.AddChild(_triangleScene);
+		
 		// Goals Menu System
 		SetupGoalsMenu();
 	}
@@ -1237,6 +1255,14 @@ public partial class GameWorld : Node2D
 
 		_currentInteractingNpcId = npcId;
 		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList);
+		
+		// Show Triangle Scene
+		if (_triangleScene != null)
+		{
+			_triangleScene.Show(npcName);
+			// Optional: Trigger random point movement or set meaningful data
+			// _triangleScene.AnimatePoint(...);
+		}
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -1960,6 +1986,12 @@ public partial class GameWorld : Node2D
 		_currentInteractingNpcId = null;
 		GD.Print("Interaction panel closed, requesting end of interaction");
 		
+		// Hide Triangle Scene
+		if (_triangleScene != null)
+		{
+			_triangleScene.HideScene();
+		}
+
 		// If on client, tell server to clear the active interview/interaction state
 		if (!Multiplayer.IsServer())
 		{
