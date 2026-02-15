@@ -6,6 +6,8 @@ namespace FatalAttraction.Engine
     public static class ScoringRules
     {
         // Vector Format: [Admirer, Prophet, Producer]
+        
+        public const float CaughtPenalty = 0.6f;
 
         public static Vector3 GetFlirtPoints(int score)
         {
