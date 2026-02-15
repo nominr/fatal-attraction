@@ -3113,6 +3113,19 @@ public partial class GameWorld : Node2D
 			}
 		}
 
+		// MONEY GAME UI OVERRIDE
+		var moneyGames = _localGameState?["active_money_games"] as JObject;
+		if (moneyGames != null && !string.IsNullOrEmpty(_myRole) && moneyGames.ContainsKey(_myRole))
+		{
+			var ctx = moneyGames[_myRole];
+			string mNpcId = ctx["npcId"]?.Value<string>();
+			if (mNpcId == npcId)
+			{
+				int target = ctx["target"]?.Value<int>() ?? 0;
+				desc = $"{npcName} requests exactly [b]{target} coins[/b] from you.";
+			}
+		}
+
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
 		
 		Vector3 npcState = Vector3.Zero;

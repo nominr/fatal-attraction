@@ -36,6 +36,11 @@ public partial class NPCDialogueUI : Control
 		this.MouseFilter = MouseFilterEnum.Pass; // Allow non-handled clicks to pass
 
 		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		
+		// Create a synthetic bold variation
+		var boldFont = new FontVariation();
+		boldFont.BaseFont = _customFont;
+		boldFont.VariationEmbolden = 1.1f; // Make it thicker
 
 		// Initialize logic containers EARLY to prevent crashes in ShowForNPC
 		// Even if visual boxes are missing, these must exist for logic to run safely (even if invisible)
@@ -146,7 +151,10 @@ public partial class NPCDialogueUI : Control
 			_dialogueTextLabel = new RichTextLabel();
 			_dialogueTextLabel.AddThemeFontOverride("normal_font", _customFont);
 			_dialogueTextLabel.AddThemeFontSizeOverride("normal_font_size", 24);
+			_dialogueTextLabel.AddThemeFontOverride("bold_font", boldFont);
+			_dialogueTextLabel.AddThemeFontSizeOverride("bold_font_size", 24);
 			_dialogueTextLabel.AddThemeColorOverride("default_color", Colors.Black);
+			_dialogueTextLabel.BbcodeEnabled = true;
 			_dialogueTextLabel.SizeFlagsVertical = SizeFlags.ExpandFill;
 			_dialogueTextLabel.FitContent = true; // Use FitContent to ensure all lines show if possible
 			_dialogueTextLabel.ScrollActive = false; // Disable scrollbar as requested
