@@ -188,16 +188,144 @@ public partial class NPCDialogueUI : Control
 		_npcNameLabel.AddThemeConstantOverride("outline_size", 2);
 		dialogueContent.AddChild(_npcNameLabel); // Add back to VBox for reliable rendering
 		
+		// Create a synthetic bold variation
+		var boldFont = new FontVariation();
+		boldFont.BaseFont = _customFont;
+		boldFont.VariationEmbolden = 1.1f; // Make it thicker
+		
 		// Dialogue Text
 		_dialogueTextLabel = new RichTextLabel();
+		_dialogueTextLabel.BbcodeEnabled = true; // Enable BBCode for bold/formatting
 		_dialogueTextLabel.FitContent = true;
 		_dialogueTextLabel.ScrollActive = false;
 		_dialogueTextLabel.AddThemeFontOverride("normal_font", _customFont);
 		_dialogueTextLabel.AddThemeFontSizeOverride("normal_font_size", 28);
+		_dialogueTextLabel.AddThemeFontOverride("bold_font", boldFont); // Add bold font
+		_dialogueTextLabel.AddThemeFontSizeOverride("bold_font_size", 28);
 		_dialogueTextLabel.AddThemeColorOverride("default_color", Colors.White);
 		_dialogueTextLabel.CustomMinimumSize = new Vector2(0, 0); // Removed fixed width
 		_dialogueTextLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill; // Fill available width
 		dialogueContent.AddChild(_dialogueTextLabel);
+		
+
+		// Initialize logic containers EARLY to prevent crashes in ShowForNPC
+		// Even if visual boxes are missing, these must exist for logic to run safely (even if invisible)
+		// _interviewOptionsContainer = new VBoxContainer(); // This was removed as it's not used and causes issues
+		// _interviewOptionsContainer.Name = "InterviewOptions";
+		// AddChild(_interviewOptionsContainer); // Add to root initially
+		
+		// Configure Interview Container (Top of UI)
+		// _interviewOptionsContainer.SetAnchorsPreset(LayoutPreset.TopWide);
+		// _interviewOptionsContainer.GrowVertical = GrowDirection.Begin; // Up (Stack grows upwards from bottom anchor)
+		
+		// Align Bottom of container to Bottom of UI (minus name box height approx)
+		// _interviewOptionsContainer.AnchorTop = 0; // Can stretch up depending on content
+		// _interviewOptionsContainer.AnchorBottom = 1.0f; 
+		// _interviewOptionsContainer.OffsetBottom = -130; // Just above Name Box/Bottom Edge
+		
+		// Constrain width to 50% of box, starting at Center (0.5)
+		// _interviewOptionsContainer.AnchorLeft = 0.4f; 
+		// _interviewOptionsContainer.AnchorRight = 1.1f; // Ends at right edge 
+		
+		// _interviewOptionsContainer.GrowVertical = GrowDirection.Begin;
+		// _interviewOptionsContainer.Alignment = BoxContainer.AlignmentMode.End; // Stack items at bottom
+
+		// --- FIND NODES ROBUSTLY (Recursive) ---
+		Control FindNodeRecursive(Node parent, string name)
+		{
+			if (parent == null) return null;
+			var child = parent.GetNodeOrNull<Control>(name);
+			if (child != null) return child;
+			foreach (Node kid in parent.GetChildren())
+			{
+				var res = FindNodeRecursive(kid, name);
+				if (res != null) return res;
+			}
+			return null;
+		}
+
+		// _dialogueBoxContainer = FindNodeRecursive(this, "DialogueBox"); // Removed as it's not used and causes issues
+		// _nameBoxContainer = FindNodeRecursive(this, "NPCNameBox"); // Removed as it's not used and causes issues
+		
+		// Find TextureRect (might be named TextureRect or just be a TextureRect)
+		TextureRect texture = null;
+		var container = GetNodeOrNull<Control>("Container");
+		if (container != null) 
+		{
+			container.MouseFilter = MouseFilterEnum.Pass; 
+			texture = container.GetNodeOrNull<TextureRect>("TextureRect");
+		}
+		
+		if (texture == null)
+		{
+			// Search recursively for ANY TextureRect if specific name not found?
+			// Or just search by name "TextureRect"
+			var possibleTexture = FindNodeRecursive(this, "TextureRect");
+			if (possibleTexture is TextureRect tr) texture = tr;
+		}
+
+		// if (_dialogueBoxContainer == null || _nameBoxContainer == null) // Removed as it's not used and causes issues
+		// {
+		// 	GD.PrintErr("NPCDialogueUI: Critical Nodes (DialogueBox, NPCNameBox) missing! UI will not display correctly.");
+		// 	// We DO NOT return here, to allow logic containers to exist and prevent NRE.
+		// 	// But visuals will break.
+		// }
+
+		// --- ROOT SETUP ---
+		var viewportSize = GetViewportRect().Size;
+		float width = viewportSize.X * 0.33f;
+		float height = viewportSize.Y * 0.25f;
+
+		this.SetAnchorsPreset(LayoutPreset.CenterBottom);
+		this.Size = new Vector2(width, height);
+		this.Position = new Vector2((viewportSize.X - width) / 2, viewportSize.Y - height - 40);
+
+		// --- TEXTURE SETUP ---
+		if (texture != null)
+		{
+			texture.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+			texture.StretchMode = TextureRect.StretchModeEnum.Scale;
+			// Ensure it fills its parent (likely Container or Root) to act as background
+			texture.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			if (texture.GetParent() is Control p && p != this) 
+			{
+				// If texture is inside a container, make sure that container fills our Root
+				p.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			}
+		}
+		
+		// --- CONTAINER LAYOUT FIX ---
+		// The 'Container' holding the boxes might be tiny (pixel art size). 
+		// We must force it to fill the root so the anchors on boxes work relative to the big UI.
+		if (container != null)
+		{
+			container.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			// Also ensure it doesn't block mouse
+			container.MouseFilter = MouseFilterEnum.Pass;
+		}
+
+		// --- CONTENT INJECTION ---
+		// if (_dialogueBoxContainer != null) // Removed as it's not used and causes issues
+		// {
+		// 	foreach (Node child in _dialogueBoxContainer.GetChildren()) child.QueueFree();
+
+		// 	var dbContentLayout = new VBoxContainer();
+		// 	dbContentLayout.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		// 	_dialogueBoxContainer.AddChild(dbContentLayout);
+
+		// 	// Text
+		// 	_dialogueTextLabel = new RichTextLabel();
+		// 	_dialogueTextLabel.AddThemeFontOverride("normal_font", _customFont);
+		// 	_dialogueTextLabel.AddThemeFontSizeOverride("normal_font_size", 24);
+		// 	_dialogueTextLabel.AddThemeFontOverride("bold_font", boldFont);
+		// 	_dialogueTextLabel.AddThemeFontSizeOverride("bold_font_size", 24);
+		// 	_dialogueTextLabel.AddThemeColorOverride("default_color", Colors.Black);
+		// 	_dialogueTextLabel.BbcodeEnabled = true;
+		// 	_dialogueTextLabel.SizeFlagsVertical = SizeFlags.ExpandFill;
+		// 	_dialogueTextLabel.FitContent = true; // Use FitContent to ensure all lines show if possible
+		// 	_dialogueTextLabel.ScrollActive = false; // Disable scrollbar as requested
+		// 	dbContentLayout.AddChild(_dialogueTextLabel);
+		// }
 
 
 		// --- OPTIONS SECTION ---
