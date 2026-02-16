@@ -33,6 +33,7 @@ public partial class NPCDialogueUI : Control
 
 	// State
 	private string _currentNpcId;
+	private string _lastActionsHash;
 
 	public override void _Ready()
 	{
@@ -297,11 +298,8 @@ public partial class NPCDialogueUI : Control
 		_lastActionsHash = currentHash;
 
 
-		// Clear containers
-		foreach (Node child in _standardButtonsContainer.GetChildren()) child.QueueFree();
-		foreach (Node child in _interviewOptionsContainer.GetChildren()) child.QueueFree();
-
-		Button leaveBtn = null;
+	// Note: leaveBtn was originally used but the value is never read
+	// Button leaveBtn = null;
 
 		// Rebuild Buttons
 		foreach (Node child in _optionsGrid.GetChildren()) child.QueueFree();
@@ -383,5 +381,21 @@ public partial class NPCDialogueUI : Control
 		_currentNpcId = null;
 		if (_stateLabel != null) _stateLabel.Visible = false;
 		EmitSignal(SignalName.PanelClosed);
+	}
+
+	// Generate a hash of the actions list to detect changes
+	private string GenerateActionsHash(List<JToken> actions)
+	{
+		if (actions == null || actions.Count == 0) return "";
+		
+		var hashParts = new List<string>();
+		foreach (var action in actions)
+		{
+			string actionId = action["id"]?.Value<string>() ?? "";
+			string actionText = action["text"]?.Value<string>() ?? "";
+			hashParts.Add($"{actionId}:{actionText}");
+		}
+		
+		return string.Join("|", hashParts);
 	}
 }
