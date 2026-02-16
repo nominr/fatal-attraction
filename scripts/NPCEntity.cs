@@ -21,7 +21,7 @@ public partial class NPCEntity : CharacterBody2D
 	public Color NpcColor { get; set; } = Colors.Blue;
 
 	// Visual elements
-	private Sprite2D _sprite;
+	private AnimatedSprite2D _sprite;
 	private Label _nameLabel;
 	private CollisionShape2D _collisionShape;
 	private Font _customFont;
@@ -102,6 +102,9 @@ public partial class NPCEntity : CharacterBody2D
 	// Interview immobilization
 	private bool _isFrozen = false;
 
+	// Animation state
+	private string _lastFacingHorizontal = "right"; // "left" or "right"
+
 	public override void _Ready()
 	{
 		// Enable Y-sort for proper overlap rendering (NPCs further down screen render in front)
@@ -173,6 +176,62 @@ public partial class NPCEntity : CharacterBody2D
 		}
 
 		UpdateWandering(delta);
+		UpdateAnimation();
+	}
+
+	private void UpdateAnimation()
+	{
+		if (_sprite == null) return;
+		if (_isSlipping || !_isAlive) 
+		{
+			_sprite.Pause();
+			return;
+		}
+
+		Vector2 velocity = Velocity;
+		
+		// Use a small threshold to detect movement
+		if (velocity.Length() > 5.0f)
+		{
+			if (Mathf.Abs(velocity.X) > Mathf.Abs(velocity.Y))
+			{
+				// Horizontal movement
+				if (velocity.X > 0)
+				{
+					_sprite.Play("walk_right");
+					_lastFacingHorizontal = "right";
+				}
+				else
+				{
+					_sprite.Play("walk_left");
+					_lastFacingHorizontal = "left";
+				}
+			}
+			else
+			{
+				// Vertical movement
+				if (velocity.Y > 0)
+				{
+					_sprite.Play("walk_down");
+				}
+				else
+				{
+					_sprite.Play("walk_up");
+				}
+			}
+		}
+		else
+		{
+			// Idle
+			if (_lastFacingHorizontal == "right")
+			{
+				_sprite.Play("idle_right");
+			}
+			else
+			{
+				_sprite.Play("idle_left");
+			}
+		}
 	}
 
 	private void UpdateWandering(double delta)
@@ -427,7 +486,7 @@ public partial class NPCEntity : CharacterBody2D
 	private void SetupVisuals()
 	{
 		// Main NPC sprite - load from file based on NPC ID
-		_sprite = new Sprite2D();
+		_sprite = new AnimatedSprite2D();
 		_sprite.YSortEnabled = true; // Participate in Y-sort
 		LoadSpriteForNPC();
 		AddChild(_sprite);
@@ -505,55 +564,101 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void LoadSpriteForNPC()
 	{
-		// Map NPC IDs to sprite numbers (1-10)
-		var npcSpriteMap = new System.Collections.Generic.Dictionary<string, int>
-		{
-			{ "katy", 1 },
-			{ "john", 2 },
-			{ "rebecca", 3 },
-			{ "marcus", 4 },
-			{ "sofia", 5 },
-			{ "amir", 6 },
-			{ "bella", 7 },
-			{ "chris", 8 },
-			{ "diana", 9 },
-			{ "eli", 10 }
-		};
+		if (_sprite == null) return;
 
+		string id = NpcId.ToLower();
+		string spritePath = "";
 
-		int spriteNum = 1; // default
-		if (!npcSpriteMap.TryGetValue(NpcId.ToLower(), out spriteNum))
+		// Gender Mapping:
+		// Women: Katy, Rebecca, Sofia, Bella, Diana
+		// Men: John, Marcus, Amir, Chris, Eli
+
+		if (id == "katy" || id == "bella") spritePath = "res://assets/ai-woman-1-npc-animation.png";
+		else if (id == "rebecca" || id == "diana") spritePath = "res://assets/ai-woman-2-npc-animation.png";
+		else if (id == "sofia") spritePath = "res://assets/ai-woman-3-npc-animation.png";
+		else if (id == "john" || id == "chris") spritePath = "res://assets/ai-man-1-npc-animation.png";
+		else if (id == "marcus" || id == "eli") spritePath = "res://assets/ai-man-2-npc-animation.png";
+		else if (id == "amir") spritePath = "res://assets/ai-man-3-npc-animation.png";
+		else 
 		{
-			spriteNum = 1; // Use sprite 1 as fallback for unknown NPCs
+			// Fallback logic
+			// Randomly assign one of the defaults if ID is unknown but preserve across runs ideally (using hash?)
+			// specific defaults for unknowns:
+			spritePath = "res://assets/ai-man-1-npc-animation.png";
 		}
-		string spritePath = $"res://assets/sprite-{spriteNum:D4}.png";
-
 		
 		var texture = GD.Load<Texture2D>(spritePath);
 		
 		if (texture != null)
 		{
-			_sprite.Texture = texture;
-			// Scale sprite to match tile height (4x for better visibility)
-			_sprite.Scale = new Vector2(4.0f, 4.0f);
-			GD.Print($"Loaded NPC sprite for {NpcId}: {spritePath}");
+			var frames = new SpriteFrames();
+			
+			// Texture dimensions: 240 width x 300 height per frame
+			// Total assumed width: 2400 (10 frames)
+			int frameWidth = 240;
+			int frameHeight = 300;
+			
+			// Helper to create AtlasTexture
+			AtlasTexture GetFrame(int index)
+			{
+				var atlasKey = new AtlasTexture();
+				atlasKey.Atlas = texture;
+				atlasKey.Region = new Rect2(index * frameWidth, 0, frameWidth, frameHeight);
+				return atlasKey;
+			}
+
+			// 0-1: Walk Fwd (Down)
+			frames.AddAnimation("walk_down");
+			frames.AddFrame("walk_down", GetFrame(0));
+			frames.AddFrame("walk_down", GetFrame(1));
+			frames.SetAnimationLoop("walk_down", true);
+			frames.SetAnimationSpeed("walk_down", 5.0f);
+
+			// 2-3: Walk Back (Up)
+			frames.AddAnimation("walk_up");
+			frames.AddFrame("walk_up", GetFrame(2));
+			frames.AddFrame("walk_up", GetFrame(3));
+			frames.SetAnimationLoop("walk_up", true);
+			frames.SetAnimationSpeed("walk_up", 5.0f);
+
+			// 4: Walk Right
+			frames.AddAnimation("walk_right");
+			frames.AddFrame("walk_right", GetFrame(4));
+			frames.SetAnimationLoop("walk_right", true);
+			frames.SetAnimationSpeed("walk_right", 5.0f);
+
+			// 5: Walk Left
+			frames.AddAnimation("walk_left");
+			frames.AddFrame("walk_left", GetFrame(5));
+			frames.SetAnimationLoop("walk_left", true);
+			frames.SetAnimationSpeed("walk_left", 5.0f);
+
+			// 6-7: Idle Left
+			frames.AddAnimation("idle_left");
+			frames.AddFrame("idle_left", GetFrame(6));
+			frames.AddFrame("idle_left", GetFrame(7));
+			frames.SetAnimationLoop("idle_left", true);
+			frames.SetAnimationSpeed("idle_left", 2.0f);
+
+			// 8-9: Idle Right
+			frames.AddAnimation("idle_right");
+			frames.AddFrame("idle_right", GetFrame(8));
+			frames.AddFrame("idle_right", GetFrame(9));
+			frames.SetAnimationLoop("idle_right", true);
+			frames.SetAnimationSpeed("idle_right", 2.0f); // Slower idle
+
+			_sprite.SpriteFrames = frames;
+			
+			// Scale down: 300px * 0.4 = 120px height
+			_sprite.Scale = new Vector2(0.4f, 0.4f);
+			
+			_sprite.Play("idle_right");
+			GD.Print($"Loaded animated sprite for NPC {NpcId}: {spritePath}");
 		}
 		else
 		{
-			GD.PrintErr($"Failed to load NPC sprite: {spritePath}, using fallback");
-			// Fallback to gradient texture
-			var fallbackTexture = new GradientTexture2D();
-			fallbackTexture.Width = 64;
-			fallbackTexture.Height = 64;
-			fallbackTexture.Fill = GradientTexture2D.FillEnum.Radial;
-			fallbackTexture.FillFrom = new Vector2(0.5f, 0.5f);
-			fallbackTexture.FillTo = new Vector2(1f, 0.5f);
-			var gradient = new Gradient();
-			gradient.SetColor(0, NpcColor);
-			gradient.SetColor(1, NpcColor.Darkened(0.3f));
-			fallbackTexture.Gradient = gradient;
-			_sprite.Texture = fallbackTexture;
-			_sprite.Scale = new Vector2(4.0f, 4.0f);
+			GD.PrintErr($"Failed to load NPC sprite: {spritePath}");
+			// Fallback to generated texture?
 		}
 	}
 
@@ -757,12 +862,8 @@ public partial class NPCEntity : CharacterBody2D
 	public void SetColor(Color color)
 	{
 		NpcColor = color;
-		if (_sprite?.Texture is GradientTexture2D gradientTexture)
-		{
-			var gradient = gradientTexture.Gradient;
-			gradient.SetColor(0, color);
-			gradient.SetColor(1, color.Darkened(0.3f));
-		}
+		// AnimatedSprite2D doesn't easily support gradient override without shaders. 
+		// We can just tint it if needed, but for now we skip specific color overrides to preserve sprite colors.
 	}
 
 	/// <summary>

@@ -1,21 +1,20 @@
 [gd_scene load_steps=7 format=3 uid="uid://bdnaegtfsjdse"]
 
-[ext_resource type="Script" path="res://scripts/TriangleScene.cs" id="1_script"]
-
 [ext_resource type="Texture2D" uid="uid://cg54iwkpbqqfv" path="res://assets/triangle-ui.png" id="1_ly5c7"]
+[ext_resource type="Script" uid="uid://bqyr1x7fjmh6f" path="res://scripts/TriangleScene.cs" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bkmv723ydagl2" path="res://scenes/producer-btn.png" id="2_yejs0"]
 [ext_resource type="Texture2D" uid="uid://bw3fj1w2ku5qp" path="res://scenes/prophet-btn.png" id="3_slhhc"]
 [ext_resource type="Texture2D" uid="uid://bfsmt1ymtl54l" path="res://scenes/admirer-bttn.png" id="4_nasqx"]
 [ext_resource type="FontFile" uid="uid://blsedfirwex13" path="res://assets/Pixer-Regular.otf" id="5_font"]
 
 [node name="Control" type="Control"]
-script = ExtResource("1_script")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_script")
 
 [node name="Polygon2D" type="Polygon2D" parent="."]
 position = Vector2(77, 82)
@@ -52,7 +51,7 @@ offset_bottom = 36.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
-theme_override_fonts/font = ExtResource("5_font") 
+theme_override_fonts/font = ExtResource("5_font")
 theme_override_font_sizes/font_size = 16
 text = "NPC Name"
 horizontal_alignment = 1
