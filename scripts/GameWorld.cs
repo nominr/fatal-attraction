@@ -547,6 +547,8 @@ public partial class GameWorld : Node2D
 		healthFillStyle.BgColor = new Color(0.9f, 0.2f, 0.2f, 1); // Red fill
 		healthFillStyle.SetCornerRadiusAll(0); // Sharp pixelated corners
 		healthFillStyle.AntiAliasing = false; // Pixelated look
+		healthFillStyle.BorderColor = Colors.Black; // Sharp black border
+		healthFillStyle.SetBorderWidthAll(3);
 		_playerHealthBar.AddThemeStyleboxOverride("fill", healthFillStyle);
 
 		// Background removed per user request
