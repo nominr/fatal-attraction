@@ -140,6 +140,12 @@ public partial class GameWorld : Node2D
 	// Room 5 Health Regeneration
 	private double _room5RegenAccumulator = 0;
 
+	// Notification System Enhancements
+	private Dictionary<string, string> _previousNpcZones = new();
+	private Dictionary<string, int> _previousZoneCounts = new() { { "prophet", 0 }, { "admirer", 0 }, { "producer", 0 } };
+	private List<NotificationItem> _activeNotificationItems = new();
+	private const int WIN_THRESHOLD = 5;
+
 	// Helper for Trap-Like UI Style
 	private StyleBoxFlat CreateTrapStyle(Color bgColor, Color borderColor)
 	{
@@ -723,6 +729,9 @@ public partial class GameWorld : Node2D
 		
 		// Goals Menu System
 		SetupGoalsMenu();
+		
+		// TEST NOTIFICATION
+		CallDeferred(MethodName.AddSlidingNotification, "Notification System Online!");
 	}
 
 	private void SetupProducerUI()
@@ -2858,9 +2867,22 @@ public partial class GameWorld : Node2D
 				_timeRemaining = 0;
 				_gameActive = false;
 				
-				// Producer Wins on Time Out
-				_gameEngine.GameState.Winner = "Producer";
-				_gameEngine.GameState.AddNotification("GAME OVER - TIME UP! Producer Wins (Schedule Kept)!");
+				// Determine winner based on most influence
+				var endCounts = new Dictionary<string, int> { { "Prophet", 0 }, { "Admirer", 0 }, { "Producer", 0 } };
+				if (_leaderboardTriangle != null)
+				{
+					var npcStates = _gameEngine.GameState.NPCs;
+					foreach (var npc in npcStates.Values)
+					{
+						string zone = _leaderboardTriangle.GetInfluenceZone(new Vector2(npc.TrianglePosition.X, npc.TrianglePosition.Y));
+						string role = zone == "neutral" ? "Neutral" : Capitalize(zone);
+						if (endCounts.ContainsKey(role)) endCounts[role]++;
+					}
+				}
+				
+				string finalWinner = endCounts.OrderByDescending(x => x.Value).First().Key;
+				_gameEngine.GameState.Winner = finalWinner;
+				_gameEngine.GameState.AddNotification($"GAME OVER - TIME UP! {finalWinner} Wins with {endCounts[finalWinner]} influenced contestants!");
 				
 				BroadcastGameState();
 			}
@@ -3220,6 +3242,8 @@ public partial class GameWorld : Node2D
 					states[prop.Name] = new Vector2(tx, ty);
 				}
 				_leaderboardTriangle.UpdateActiveStates(states);
+				
+				ProcessInfluenceNotifications(states);
 
 				// If leaderboard is open, refresh visuals
 				if (_isLeaderboardOpen)
@@ -4584,5 +4608,126 @@ public partial class GameWorld : Node2D
 				BroadcastGameState();
 			}
 		}
+	}
+
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (@event is InputEventKey keyEvent && keyEvent.Pressed && keyEvent.Keycode == Key.N)
+		{
+			AddSlidingNotification("MANUAL TEST: Influence Gained!");
+		}
+	}
+
+	private void ProcessInfluenceNotifications(Dictionary<string, Vector2> states)
+	{
+		if (string.IsNullOrEmpty(_myRole)) 
+		{
+			return;
+		}
+		if (states.Count == 0) return;
+
+		string myRoleLower = _myRole.ToLower();
+		var currentCounts = new Dictionary<string, int> { { "prophet", 0 }, { "admirer", 0 }, { "producer", 0 }, { "neutral", 0 } };
+
+		foreach (var kvp in states)
+		{
+			string npcId = kvp.Key;
+			Vector2 pos = kvp.Value;
+			
+			if (_leaderboardTriangle == null) continue;
+			string zone = _leaderboardTriangle.GetInfluenceZone(pos);
+			
+			// Track counts
+			if (currentCounts.ContainsKey(zone)) currentCounts[zone]++;
+
+			// Check for transitions
+			if (_previousNpcZones.TryGetValue(npcId, out string prevZone))
+			{
+				if (zone != prevZone)
+				{
+					string npcName = _npcEntities.TryGetValue(npcId, out var entity) ? entity.NpcName : npcId;
+					
+					// Local player notifications
+					if (zone == myRoleLower)
+						AddSlidingNotification($"YOU are influencing {npcName} now.");
+					else if (prevZone == myRoleLower)
+						AddSlidingNotification($"YOU have lost influence over {npcName}!");
+					
+					// Other player notifications
+					else if (zone != "neutral" && zone != myRoleLower)
+						AddSlidingNotification($"{Capitalize(zone)} has gained influence over {npcName}!");
+					else if (prevZone != "neutral" && prevZone != myRoleLower)
+						AddSlidingNotification($"{Capitalize(prevZone)} has lost influence over {npcName}!");
+				}
+			}
+			_previousNpcZones[npcId] = zone;
+		}
+
+		// Check proximity to win
+		foreach (var role in new[] { "prophet", "admirer", "producer" })
+		{
+			int currentCount = currentCounts[role];
+			if (!_previousZoneCounts.ContainsKey(role)) _previousZoneCounts[role] = 0;
+			int prevCount = _previousZoneCounts[role];
+
+			if (currentCount != prevCount)
+			{
+				if (currentCount == WIN_THRESHOLD - 1 && prevCount < currentCount)
+				{
+					if (role == myRoleLower)
+						AddSlidingNotification("YOU are one contestant away from winning!");
+					else
+						AddSlidingNotification($"{Capitalize(role)} is one contestant away from winning!");
+				}
+				else if (currentCount == WIN_THRESHOLD - 2 && prevCount < currentCount)
+				{
+					if (role == myRoleLower)
+						AddSlidingNotification("YOU are two contestants away from winning!");
+					else
+						AddSlidingNotification($"{Capitalize(role)} is two contestants away from winning!");
+				}
+				_previousZoneCounts[role] = currentCount;
+			}
+		}
+
+		// Server side: Check for actual win condition
+		if (Multiplayer.IsServer() && _gameActive)
+		{
+			foreach (var role in new[] { "prophet", "admirer", "producer" })
+			{
+				if (currentCounts[role] >= WIN_THRESHOLD)
+				{
+					_gameActive = false;
+					_gameEngine.GameState.Winner = Capitalize(role);
+					_gameEngine.GameState.AddNotification($"GAME OVER - {Capitalize(role)} has won by influencing {WIN_THRESHOLD} contestants!");
+					BroadcastGameState();
+					break;
+				}
+			}
+		}
+	}
+
+	private void AddSlidingNotification(string message, double duration = 3.0)
+	{
+		GD.Print($"[Notification] {message}");
+		
+		// Position logic: Slide down from top-middle
+		Vector2 viewportSize = GetViewportRect().Size;
+		float itemWidth = 630; // Matching NotificationItem width
+		float itemHeight = 110; // Shorter height
+		
+		Vector2 startPos = new Vector2((viewportSize.X - itemWidth) / 2, -itemHeight);
+		
+		// Calculate target Y based on active notifications (near very top)
+		float targetY = 10 + (_activeNotificationItems.Count * 15);
+		Vector2 targetPos = new Vector2(startPos.X, targetY);
+
+		var item = NotificationItem.Create(message, _customFont, startPos, targetPos, duration);
+		_uiLayer.AddChild(item);
+		_activeNotificationItems.Add(item);
+		
+		item.OnFinished += (finishedItem) => {
+			_activeNotificationItems.Remove(finishedItem);
+		};
 	}
 }
