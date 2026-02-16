@@ -46,8 +46,20 @@ public partial class GameWorld : Node2D
 	private CanvasLayer _uiLayer;
 	private GoalsMenu _goalsMenu;
 	private TextureButton _goalsButton;
+	private TextureButton _aiLeaderboardButton;
+	private TextureRect _aiLeaderboardPanel;
+	private TriangleScene _leaderboardTriangle;
+	private Label _leaderboardInfluenceLabel;
+	private Label _leaderboardDetailsLabel;
 	// Editorial asset content node (holds room Area2D children)
 	private Node2D _editorialContentNode;
+	
+	// Leaderboard Enhancements
+	private ColorRect _leaderboardBgDim;
+	private VBoxContainer _leaderboardDetailsContainer;
+	private GridContainer _leaderboardGrid;
+	private bool _isLeaderboardOpen = false;
+	private float _leaderboardPanelWidth;
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
@@ -943,24 +955,173 @@ public partial class GameWorld : Node2D
 		_goalsMenu.MenuClosed += OnGoalsMenuClosed;
 		_uiLayer.AddChild(_goalsMenu);
 
-		// Goals Button (upper right corner) - Phone Icon
+		// Goals Button (upper right corner) - Info Icon
 		var viewportSize = GetViewportRect().Size;
+		var infoIconTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_info_icon.png");
 		var phoneTexture = ResourceLoader.Load<Texture2D>("res://assets/phone-menu.png");
 
+		// buttonWidth based on original phone texture for layout reference
+		float buttonWidth = phoneTexture != null ? phoneTexture.GetWidth() * 2 : 40;
+		float aiButtonWidth = buttonWidth * 0.7f;
+
 		_goalsButton = new TextureButton();
-		_goalsButton.TextureNormal = phoneTexture;
-		_goalsButton.IgnoreTextureSize = false;
+		_goalsButton.TextureNormal = infoIconTexture;
+		_goalsButton.IgnoreTextureSize = true;
 		_goalsButton.StretchMode = TextureButton.StretchModeEnum.Scale;
-		// Scale the phone icon (2x scale for reasonable size)
-		_goalsButton.Scale = new Vector2(2.0f, 2.0f);
+		// Match the AI leaderboard button size
+		float infoScale = infoIconTexture != null ? aiButtonWidth / (float)infoIconTexture.GetWidth() : 1;
+		float infoButtonHeight = infoIconTexture != null ? infoIconTexture.GetHeight() * infoScale : aiButtonWidth;
+		_goalsButton.CustomMinimumSize = new Vector2(aiButtonWidth, infoButtonHeight);
+		_goalsButton.Size = new Vector2(aiButtonWidth, infoButtonHeight);
 		
 		// Position in upper right corner
-		float buttonWidth = phoneTexture != null ? phoneTexture.GetWidth() * 2 : 40;
+		float phoneButtonHeight = infoButtonHeight;
 		_goalsButton.Position = new Vector2(
-			Mathf.Max(20, viewportSize.X - buttonWidth - 30),
+			Mathf.Max(20, viewportSize.X - aiButtonWidth - 30),
 			20);
 		_goalsButton.Pressed += OnGoalsButtonPressed;
 		_uiLayer.AddChild(_goalsButton);
+
+		// AI Leaderboard Button (below phone button, same width)
+		var aiLeaderboardTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_leaderboard_button.png");
+		if (aiLeaderboardTexture != null)
+		{
+			_aiLeaderboardButton = new TextureButton();
+			_aiLeaderboardButton.TextureNormal = aiLeaderboardTexture;
+			_aiLeaderboardButton.IgnoreTextureSize = true;
+			_aiLeaderboardButton.StretchMode = TextureButton.StretchModeEnum.Scale;
+			// Uses aiButtonWidth from outer scope (70% of phone button width)
+			float aiScale = aiButtonWidth / (float)aiLeaderboardTexture.GetWidth();
+			_aiLeaderboardButton.CustomMinimumSize = new Vector2(aiButtonWidth, aiLeaderboardTexture.GetHeight() * aiScale);
+			_aiLeaderboardButton.Size = new Vector2(aiButtonWidth, aiLeaderboardTexture.GetHeight() * aiScale);
+			// Position below the info button with minimal gap
+			_aiLeaderboardButton.Position = new Vector2(
+				Mathf.Max(20, viewportSize.X - aiButtonWidth - 30),
+				20 + phoneButtonHeight + 2);
+			_aiLeaderboardButton.Pressed += OnAiLeaderboardButtonPressed;
+			_uiLayer.AddChild(_aiLeaderboardButton);
+		}
+		else
+		{
+			GD.PrintErr("[GameWorld] Failed to load ai_leaderboard_button.png");
+		}
+
+		// AI Leaderboard Panel (right side of screen, initially hidden)
+		var leaderboardBgTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_leaderboard_background.png");
+		if (leaderboardBgTexture != null)
+		{
+			// Background Dimming Overlay
+			_leaderboardBgDim = new ColorRect();
+			_leaderboardBgDim.Color = new Color(0, 0, 0, 0.4f);
+			_leaderboardBgDim.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+			_leaderboardBgDim.Visible = false;
+			_leaderboardBgDim.MouseFilter = Control.MouseFilterEnum.Stop;
+			_leaderboardBgDim.GuiInput += (ev) => {
+				if (ev is InputEventMouseButton mb && mb.Pressed)
+					OnAiLeaderboardButtonPressed(); // Close on click outside
+			};
+			_uiLayer.AddChild(_leaderboardBgDim);
+
+			_aiLeaderboardPanel = new TextureRect();
+			_aiLeaderboardPanel.Texture = leaderboardBgTexture;
+			_aiLeaderboardPanel.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+			_aiLeaderboardPanel.StretchMode = TextureRect.StretchModeEnum.Scale;
+			
+			float panelHeight = 720;
+			float aspectRatio = (float)leaderboardBgTexture.GetWidth() / (float)leaderboardBgTexture.GetHeight();
+			_leaderboardPanelWidth = panelHeight * aspectRatio;
+			_aiLeaderboardPanel.Size = new Vector2(_leaderboardPanelWidth, panelHeight);
+			
+			// Initial position: off-screen
+			_aiLeaderboardPanel.Position = new Vector2(viewportSize.X, 0);
+			_aiLeaderboardPanel.Visible = false;
+			_uiLayer.AddChild(_aiLeaderboardPanel);
+
+			float borderLeft  = _leaderboardPanelWidth  * 0.15f + 5;
+			float borderRight = _leaderboardPanelWidth  * 0.15f + 5;
+			float contentWidth = _leaderboardPanelWidth - borderLeft - borderRight;
+
+			// 1. INFLUENCE TEXT (Moving up by 5% from previous 11%)
+			float textTop = panelHeight * 0.06f; 
+			_leaderboardInfluenceLabel = new Label();
+			_leaderboardInfluenceLabel.Text = "";
+			_leaderboardInfluenceLabel.AddThemeFontOverride("font", _customFont);
+			_leaderboardInfluenceLabel.AddThemeFontSizeOverride("font_size", 26);
+			_leaderboardInfluenceLabel.AddThemeColorOverride("font_color", Colors.White);
+			_leaderboardInfluenceLabel.AddThemeColorOverride("font_shadow_color", Colors.Black);
+			_leaderboardInfluenceLabel.AddThemeConstantOverride("shadow_offset_x", 2);
+			_leaderboardInfluenceLabel.AddThemeConstantOverride("shadow_offset_y", 2);
+			_leaderboardInfluenceLabel.AutowrapMode = TextServer.AutowrapMode.Word;
+			_leaderboardInfluenceLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			_leaderboardInfluenceLabel.Position = new Vector2(borderLeft, textTop);
+			_leaderboardInfluenceLabel.Size = new Vector2(contentWidth, panelHeight * 0.10f);
+			_aiLeaderboardPanel.AddChild(_leaderboardInfluenceLabel);
+
+			// 2. TRIANGLE (RESTORING to 0.02f as it was before)
+			var lbTrianglePrefab = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
+			_leaderboardTriangle = lbTrianglePrefab.Instantiate<TriangleScene>();
+			_leaderboardTriangle.Scale = new Vector2(3.125f, 3.125f);
+			_leaderboardTriangle.Position = new Vector2(_leaderboardPanelWidth / 2 - 77 * 3.125f, panelHeight * 0.02f); 
+			_leaderboardTriangle.Visible = true;
+			_aiLeaderboardPanel.AddChild(_leaderboardTriangle);
+			_leaderboardTriangle.ShowAllPoints();
+
+			// 3. DETAILS (Separated from triangle)
+			float triangleHeight = (82 + 24) * 3.125f;
+			float detailsTop = panelHeight * 0.02f + triangleHeight + 15; 
+			var detailsWrapper = new ScrollContainer();
+			detailsWrapper.Position = new Vector2(borderLeft, detailsTop);
+			float borderBottom = panelHeight * 0.03f + 5;
+			detailsWrapper.Size = new Vector2(contentWidth, panelHeight - detailsTop - borderBottom - 80);
+			_aiLeaderboardPanel.AddChild(detailsWrapper);
+
+			_leaderboardDetailsContainer = new VBoxContainer();
+			_leaderboardDetailsContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			_leaderboardDetailsContainer.AddThemeConstantOverride("separation", 10);
+			detailsWrapper.AddChild(_leaderboardDetailsContainer);
+
+			_leaderboardDetailsLabel = new Label();
+			_leaderboardDetailsLabel.Text = "DETAILS";
+			_leaderboardDetailsLabel.AddThemeFontOverride("font", _customFont);
+			_leaderboardDetailsLabel.AddThemeFontSizeOverride("font_size", 24);
+			_leaderboardDetailsLabel.AddThemeColorOverride("font_color", Colors.SkyBlue);
+			_leaderboardDetailsLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			_leaderboardDetailsContainer.AddChild(_leaderboardDetailsLabel);
+
+			_leaderboardGrid = new GridContainer();
+			_leaderboardGrid.Columns = 2;
+			_leaderboardGrid.AddThemeConstantOverride("h_separation", 15);
+			_leaderboardGrid.AddThemeConstantOverride("v_separation", 10);
+			_leaderboardDetailsContainer.AddChild(_leaderboardGrid);
+
+			// Close button
+			var closeLeaderboardBtn = new Button();
+			closeLeaderboardBtn.Text = "Close";
+			closeLeaderboardBtn.AddThemeFontOverride("font", _customFont);
+			closeLeaderboardBtn.AddThemeFontSizeOverride("font_size", 27);
+			closeLeaderboardBtn.CustomMinimumSize = new Vector2(120, 40);
+			var closeBtnStyle = new StyleBoxFlat();
+			closeBtnStyle.BgColor = new Color(0.15f, 0.15f, 0.3f, 0.9f);
+			closeBtnStyle.SetCornerRadiusAll(6);
+			closeBtnStyle.SetContentMarginAll(8);
+			closeLeaderboardBtn.AddThemeStyleboxOverride("normal", closeBtnStyle);
+			var closeBtnHover = new StyleBoxFlat();
+			closeBtnHover.BgColor = new Color(0.25f, 0.25f, 0.45f, 0.9f);
+			closeBtnHover.SetCornerRadiusAll(6);
+			closeBtnHover.SetContentMarginAll(8);
+			closeLeaderboardBtn.AddThemeStyleboxOverride("hover", closeBtnHover);
+			closeLeaderboardBtn.AddThemeColorOverride("font_color", Colors.White);
+			float closeBtnX = (_leaderboardPanelWidth - 120) / 2;
+			float closeBtnY = panelHeight - 60 - (panelHeight * 0.05f);
+			closeLeaderboardBtn.Position = new Vector2(closeBtnX, closeBtnY);
+			closeLeaderboardBtn.Pressed += OnAiLeaderboardButtonPressed;
+			closeLeaderboardBtn.Visible = true;
+			_aiLeaderboardPanel.AddChild(closeLeaderboardBtn);
+		}
+		else
+		{
+			GD.PrintErr("[GameWorld] Failed to load ai_leaderboard_background.png");
+		}
 	}
 
 	private void OnGoalsButtonPressed()
@@ -1029,6 +1190,147 @@ public partial class GameWorld : Node2D
 	private void OnGoalsMenuClosed()
 	{
 		// Optional: Handle any logic when goals menu is closed
+	}
+
+	private void OnAiLeaderboardButtonPressed()
+	{
+		if (_aiLeaderboardPanel == null) return;
+
+		_isLeaderboardOpen = !_isLeaderboardOpen;
+		bool opening = _isLeaderboardOpen;
+		
+		var tween = GetTree().CreateTween();
+		tween.SetParallel(true);
+		tween.SetTrans(Tween.TransitionType.Cubic);
+		tween.SetEase(Tween.EaseType.Out);
+
+		var viewportSize = GetViewportRect().Size;
+		float targetX = opening ? (viewportSize.X - _leaderboardPanelWidth + (_leaderboardPanelWidth * 0.1f)) : viewportSize.X;
+
+		if (opening)
+		{
+			_aiLeaderboardPanel.Visible = true;
+			_leaderboardBgDim.Visible = true;
+			_leaderboardBgDim.Modulate = new Color(1, 1, 1, 0);
+			tween.TweenProperty(_leaderboardBgDim, "modulate:a", 1.0f, 0.3f);
+			UpdateLeaderboardText();
+		}
+		else
+		{
+			tween.TweenProperty(_leaderboardBgDim, "modulate:a", 0.0f, 0.3f);
+		}
+
+		tween.TweenProperty(_aiLeaderboardPanel, "position:x", targetX, 0.4f);
+		
+		if (!opening)
+		{
+			tween.Chain().TweenCallback(OfCallable(() => {
+				_aiLeaderboardPanel.Visible = false;
+				_leaderboardBgDim.Visible = false;
+			}));
+		}
+	}
+
+	// Helper for clean syntax in Tween callbacks
+	private Callable OfCallable(Action action) => Callable.From(action);
+
+	private void UpdateLeaderboardText()
+	{
+		if (_leaderboardInfluenceLabel == null || _leaderboardTriangle == null || _leaderboardGrid == null) return;
+
+		// Get counts per role
+		int admirerCount  = _leaderboardTriangle.AdmirerZoneCount;
+		int prophetCount  = _leaderboardTriangle.ProphetZoneCount;
+		int producerCount = _leaderboardTriangle.ProducerZoneCount;
+
+		// Build sorted list for ranking
+		var rankings = new List<(string role, int count)>
+		{
+			("admirer",  admirerCount),
+			("prophet",  prophetCount),
+			("producer", producerCount)
+		};
+		rankings.Sort((a, b) => b.count.CompareTo(a.count));
+
+		string myRole = _myRole?.ToLower() ?? "";
+		int myCount = myRole switch
+		{
+			"admirer"  => admirerCount,
+			"prophet"  => prophetCount,
+			"producer" => producerCount,
+			_ => 0
+		};
+
+		int myPlace = 1;
+		foreach (var r in rankings)
+		{
+			if (r.count > myCount) myPlace++;
+		}
+
+		var tiedWith = new List<string>();
+		foreach (var r in rankings)
+		{
+			if (r.role != myRole && r.count == myCount)
+				tiedWith.Add(Capitalize(r.role));
+		}
+
+		string placeStr = myPlace switch { 1 => "1st", 2 => "2nd", _ => "3rd" };
+		string text = $"You have influenced {myCount} contestants. ";
+
+		if (tiedWith.Count > 0)
+			text += $"You are tied for {placeStr} place with {string.Join(" and ", tiedWith)}.";
+		else
+			text += $"You are in {placeStr} place.";
+
+		_leaderboardInfluenceLabel.Text = text;
+
+		// Update grid with icons and aligned neutral count
+		foreach (var child in _leaderboardGrid.GetChildren())
+		{
+			child.QueueFree();
+		}
+
+		int neutralCount = _leaderboardTriangle.NeutralZoneCount;
+		
+		// Add rows for each role
+		CreateDetailRow("prophet", prophetCount, myRole == "prophet");
+		CreateDetailRow("producer", producerCount, myRole == "producer");
+		CreateDetailRow("admirer", admirerCount, myRole == "admirer");
+		
+		// Neutral row (aligned using a dummy icon space)
+		var dummyIcon = new Control();
+		dummyIcon.CustomMinimumSize = new Vector2(40, 40);
+		_leaderboardGrid.AddChild(dummyIcon);
+
+		var neutralLabel = new Label();
+		neutralLabel.Text = $"Neutral: {neutralCount}";
+		neutralLabel.AddThemeFontOverride("font", _customFont);
+		neutralLabel.AddThemeFontSizeOverride("font_size", 22);
+		neutralLabel.AddThemeColorOverride("font_color", Colors.White);
+		_leaderboardGrid.AddChild(neutralLabel);
+	}
+
+	private void CreateDetailRow(string role, int count, bool isLocalPlayer)
+	{
+		var iconRect = new TextureRect();
+		string iconPath = role switch {
+			"prophet" => "res://assets/prophet-btn.png",
+			"producer" => "res://assets/producer-btn.png",
+			_ => "res://assets/admirer-bttn.png"
+		};
+		iconRect.Texture = ResourceLoader.Load<Texture2D>(iconPath);
+		iconRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+		iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+		iconRect.CustomMinimumSize = new Vector2(40, 40);
+		_leaderboardGrid.AddChild(iconRect);
+
+		var label = new Label();
+		label.Text = $"{Capitalize(role)}: {count}";
+		if (isLocalPlayer) label.Text += " (YOU)";
+		label.AddThemeFontOverride("font", _customFont);
+		label.AddThemeFontSizeOverride("font_size", 22);
+		label.AddThemeColorOverride("font_color", isLocalPlayer ? Colors.Yellow : Colors.White);
+		_leaderboardGrid.AddChild(label);
 	}
 
 	private void TogglePanel(string name)

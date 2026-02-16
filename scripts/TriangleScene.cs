@@ -1,15 +1,94 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 public partial class TriangleScene : Control
 {
+	/// <summary>
+	/// Dummy NPC state vectors for testing/display.
+	/// Values are local triangle coordinates (before center offset).
+	/// Admirer zone = top, Prophet zone = bottom-left, Producer zone = bottom-right.
+	/// </summary>
+	public static readonly Dictionary<string, Vector2> DummyNpcStateVectors = new()
+	{
+		/*
+		// Admirer zone (top corner, vertex at 0,-28)
+		{ "katy",    new Vector2(  0, -22) },  // very much under Admirer influence
+		{ "amir",    new Vector2(  2, -10) },  // middling under Admirer influence
+
+		// Prophet zone (bottom-left corner, vertex at -30,24)
+		{ "john",    new Vector2(-22,  18) },  // much under Prophet influence
+		{ "sofia",   new Vector2(-18,  14) },  // a little under Prophet influence
+
+		// Producer zone (bottom-right corner, vertex at 30,24)
+		{ "rebecca", new Vector2( 22,  18) },  // much under Producer influence
+		{ "bella",   new Vector2( 18,  14) },  // a little under Producer influence
+
+		// Neutral (inside the inner medial triangle)
+		{ "marcus",  new Vector2( -3,  10) },
+		{ "diana",   new Vector2(  3,   5) },
+		{ "chris",   new Vector2(  5,  12) },
+		{ "eli",     new Vector2( -4,  15) },
+		*/
+	};
+
+	/// <summary>
+	/// Imbalanced NPC state vectors: Bella moved from Producer to Admirer zone.
+	/// Result: Admirer=3, Prophet=2, Producer=1, Neutral=4.
+	/// </summary>
+	public static readonly Dictionary<string, Vector2> ImbalancedNpcStateVectors = new()
+	{
+		/*
+		// Admirer zone (top corner, vertex at 0,-28)
+		{ "katy",    new Vector2(  0, -22) },  // very much under Admirer influence
+		{ "amir",    new Vector2(  2, -10) },  // middling under Admirer influence
+		{ "bella",   new Vector2( -2, -12) },  // middling under Admirer influence (moved from Producer)
+
+		// Prophet zone (bottom-left corner, vertex at -30,24)
+		{ "john",    new Vector2(-22,  18) },  // much under Prophet influence
+		{ "sofia",   new Vector2(-18,  14) },  // a little under Prophet influence
+
+		// Producer zone (bottom-right corner, vertex at 30,24)
+		{ "rebecca", new Vector2( 22,  18) },  // much under Producer influence
+
+		// Neutral (inside the inner medial triangle)
+		{ "marcus",  new Vector2( -3,  10) },
+		{ "diana",   new Vector2(  3,   5) },
+		{ "chris",   new Vector2(  5,  12) },
+		{ "eli",     new Vector2( -4,  15) },
+		*/
+	};
+
 	private Sprite2D _pointSprite;
 	private Tween _movementTween;
 	
-	private readonly Vector2 _v1 = new Vector2(-30, 24);
-	private readonly Vector2 _v2 = new Vector2(30, 24);
-	private readonly Vector2 _v3 = new Vector2(0, -28);
+	// Outer triangle vertices (local coords, before center offset)
+	private readonly Vector2 _v1 = new Vector2(-30, 24);   // Bottom-left  (Prophet)
+	private readonly Vector2 _v2 = new Vector2(30, 24);    // Bottom-right (Producer)
+	private readonly Vector2 _v3 = new Vector2(0, -28);    // Top          (Admirer)
 	private readonly Vector2 _centerOffset = new Vector2(77, 82); // Position of Polygon2D/TriangleUi
+
+	// Inner medial triangle: midpoints of outer triangle edges
+	private Vector2 _m12; // midpoint of v1-v2 (bottom edge)
+	private Vector2 _m13; // midpoint of v1-v3 (left edge)
+	private Vector2 _m23; // midpoint of v2-v3 (right edge)
+
+	// Zone colors (semi-transparent tints)
+	private readonly Color _prophetZoneColor  = new Color(0.3f, 0.5f, 1.0f, 0.18f); // Blue tint
+	private readonly Color _producerZoneColor = new Color(1.0f, 0.3f, 0.3f, 0.18f); // Red tint
+	private readonly Color _admirerZoneColor  = new Color(0.3f, 1.0f, 0.5f, 0.18f); // Green tint
+	private readonly Color _boundaryColor     = new Color(1.0f, 1.0f, 1.0f, 0.55f); // White lines
+
+	// ── Zone membership tracking ────────────────────────────────────
+	public List<string> ProphetZoneNpcs  { get; private set; } = new();
+	public List<string> AdmirerZoneNpcs  { get; private set; } = new();
+	public List<string> ProducerZoneNpcs { get; private set; } = new();
+	public List<string> NeutralZoneNpcs  { get; private set; } = new();
+
+	public int ProphetZoneCount  => ProphetZoneNpcs.Count;
+	public int AdmirerZoneCount  => AdmirerZoneNpcs.Count;
+	public int ProducerZoneCount => ProducerZoneNpcs.Count;
+	public int NeutralZoneCount  => NeutralZoneNpcs.Count;
 
 	private Label _npcNameLabel;
 
@@ -29,6 +108,38 @@ public partial class TriangleScene : Control
 		MouseFilter = MouseFilterEnum.Ignore;
 		
 		_npcNameLabel = GetNodeOrNull<Label>("NpcNameLabel");
+
+		// Compute inner medial triangle midpoints
+		_m12 = (_v1 + _v2) / 2f; // (0, 24)   — bottom midpoint
+		_m13 = (_v1 + _v3) / 2f; // (-15, -2) — left midpoint
+		_m23 = (_v2 + _v3) / 2f; // (15, -2)  — right midpoint
+
+		ComputeZoneMembership();
+	}
+
+	/// <summary>
+	/// Classifies every NPC in ImbalancedNpcStateVectors into its influence zone.
+	/// Populates ProphetZoneNpcs, AdmirerZoneNpcs, ProducerZoneNpcs, NeutralZoneNpcs.
+	/// Call again to refresh after state vectors change.
+	/// </summary>
+	public void ComputeZoneMembership()
+	{
+		ProphetZoneNpcs.Clear();
+		AdmirerZoneNpcs.Clear();
+		ProducerZoneNpcs.Clear();
+		NeutralZoneNpcs.Clear();
+
+		foreach (var kvp in ImbalancedNpcStateVectors)
+		{
+			string zone = GetInfluenceZone(kvp.Value);
+			switch (zone)
+			{
+				case "prophet":  ProphetZoneNpcs.Add(kvp.Key);  break;
+				case "admirer":  AdmirerZoneNpcs.Add(kvp.Key);  break;
+				case "producer": ProducerZoneNpcs.Add(kvp.Key); break;
+				default:         NeutralZoneNpcs.Add(kvp.Key);  break;
+			}
+		}
 	}
 	
 	public void Show(string npcName, Vector2? pointPos = null)
@@ -97,6 +208,31 @@ public partial class TriangleScene : Control
 			.SetEase(Tween.EaseType.Out);
 	}
 	
+	/// <summary>
+	/// Displays all NPC state vectors from ImbalancedNpcStateVectors as individual points.
+	/// Hides the single-point sprite and NPC name label.
+	/// </summary>
+	public void ShowAllPoints()
+	{
+		// Hide single-point sprite and name label
+		if (_pointSprite != null) _pointSprite.Visible = false;
+		if (_npcNameLabel != null) _npcNameLabel.Visible = false;
+
+		var heartTexture = GD.Load<Texture2D>("res://assets/black-heart-ui.png");
+
+		foreach (var kvp in ImbalancedNpcStateVectors)
+		{
+			var dot = new Sprite2D();
+			dot.Texture = heartTexture;
+			dot.Scale = new Vector2(0.45f, 0.45f); // Small dots for multi-point view
+			dot.Position = _centerOffset + kvp.Value;
+			dot.ZIndex = 1;
+			AddChild(dot);
+		}
+
+		Visible = true;
+	}
+
 	private Vector2 GetRandomPointInTriangle()
 	{
 		// Barycentric coordinates
@@ -112,5 +248,82 @@ public partial class TriangleScene : Control
 		float r3 = 1 - r1 - r2;
 		
 		return (_v1 * r1) + (_v2 * r2) + (_v3 * r3);
+	}
+
+	// ── Zone of Influence Drawing ──────────────────────────────────
+
+	public override void _Draw()
+	{
+		// All positions are in screen space (offset by _centerOffset)
+		Vector2 ov1 = _centerOffset + _v1;  // outer bottom-left  (Prophet)
+		Vector2 ov2 = _centerOffset + _v2;  // outer bottom-right (Producer)
+		Vector2 ov3 = _centerOffset + _v3;  // outer top          (Admirer)
+
+		Vector2 im12 = _centerOffset + _m12; // inner bottom
+		Vector2 im13 = _centerOffset + _m13; // inner left
+		Vector2 im23 = _centerOffset + _m23; // inner right
+
+		// Draw the 3 corner zone tints as filled polygons
+		// Prophet zone: outer bottom-left corner (v1, m12, m13)
+		DrawPolygon(new Vector2[] { ov1, im12, im13 }, new Color[] { _prophetZoneColor, _prophetZoneColor, _prophetZoneColor });
+
+		// Producer zone: outer bottom-right corner (v2, m12, m23)
+		DrawPolygon(new Vector2[] { ov2, im12, im23 }, new Color[] { _producerZoneColor, _producerZoneColor, _producerZoneColor });
+
+		// Admirer zone: outer top corner (v3, m13, m23)
+		DrawPolygon(new Vector2[] { ov3, im13, im23 }, new Color[] { _admirerZoneColor, _admirerZoneColor, _admirerZoneColor });
+
+		// Draw inner triangle boundary lines
+		float lineWidth = 1.5f;
+		DrawLine(im12, im13, _boundaryColor, lineWidth);
+		DrawLine(im13, im23, _boundaryColor, lineWidth);
+		DrawLine(im23, im12, _boundaryColor, lineWidth);
+	}
+
+	// ── Zone Query ─────────────────────────────────────────────────
+
+	/// <summary>
+	/// Returns which player's zone of influence the given local point
+	/// (relative to triangle origin, WITHOUT center offset) falls in.
+	/// Returns "prophet", "producer", "admirer", or "neutral".
+	/// </summary>
+	public string GetInfluenceZone(Vector2 point)
+	{
+		// If inside the inner medial triangle → neutral
+		if (PointInTriangle(point, _m12, _m13, _m23))
+			return "neutral";
+
+		// Check each corner sub-triangle
+		if (PointInTriangle(point, _v1, _m12, _m13))
+			return "prophet";
+
+		if (PointInTriangle(point, _v2, _m12, _m23))
+			return "producer";
+
+		if (PointInTriangle(point, _v3, _m13, _m23))
+			return "admirer";
+
+		// Outside the triangle entirely
+		return "neutral";
+	}
+
+	/// <summary>
+	/// Standard sign-area point-in-triangle test.
+	/// </summary>
+	private static bool PointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
+	{
+		float d1 = Sign(p, a, b);
+		float d2 = Sign(p, b, c);
+		float d3 = Sign(p, c, a);
+
+		bool hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+		bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+		return !(hasNeg && hasPos);
+	}
+
+	private static float Sign(Vector2 p1, Vector2 p2, Vector2 p3)
+	{
+		return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y);
 	}
 }
