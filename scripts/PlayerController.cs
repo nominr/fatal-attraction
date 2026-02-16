@@ -23,7 +23,7 @@ public partial class PlayerController : CharacterBody2D
 	public int PlayerIndex { get; set; } = 1; // 1, 2, or 3 for sprite selection
 
 	// Visual elements
-	private Sprite2D _sprite;
+	private AnimatedSprite2D _sprite;
 	private Label _nameLabel;
 	private Label _roleLabel;
 	private Label _healthHintLabel;
@@ -48,6 +48,9 @@ public partial class PlayerController : CharacterBody2D
 	// Ghost mode state (for eliminated players)
 	private bool _isGhostMode = false;
 
+	// Animation state
+	private string _lastFacingHorizontal = "right"; // "left" or "right"
+
 	public override void _Ready()
 	{
 		// Load custom font
@@ -70,12 +73,11 @@ public partial class PlayerController : CharacterBody2D
 	private void SetupVisuals()
 	{
 		// Create collision shape
-		// Create collision shape
 		var collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
 		
-		// Sprite is scaled 4x (approx 128px height)
-		// Set collision to match height (128) and reduced width (80) for playability
+		// Sprite is scaled 0.4x (300 * 0.4 = 120px height)
+		// Set collision to match height (120) and reasonable width (e.g. 60)
 		shape.Size = new Vector2(60, 120); 
 		collisionShape.Shape = shape;
 		// Position centered (0,0) matches sprite center
@@ -83,7 +85,7 @@ public partial class PlayerController : CharacterBody2D
 		AddChild(collisionShape);
 
 		// Player sprite - will be loaded when role is set
-		_sprite = new Sprite2D();
+		_sprite = new AnimatedSprite2D();
 		AddChild(_sprite);
 		
 		// Load sprite based on role (will be called again when role is set)
@@ -168,6 +170,62 @@ public partial class PlayerController : CharacterBody2D
 				}
 			}
 		}
+
+		UpdateAnimation();
+	}
+
+	private void UpdateAnimation()
+	{
+		if (_sprite == null) return;
+		if (_isSlipping) 
+		{
+			_sprite.Pause();
+			return;
+		}
+
+		Vector2 velocity = Velocity;
+		
+		if (velocity.Length() > 0.1f)
+		{
+			if (Mathf.Abs(velocity.X) > Mathf.Abs(velocity.Y))
+			{
+				// Horizontal movement
+				if (velocity.X > 0)
+				{
+					_sprite.Play("walk_right");
+					_lastFacingHorizontal = "right";
+				}
+				else
+				{
+					_sprite.Play("walk_left");
+					_lastFacingHorizontal = "left";
+				}
+			}
+			else
+			{
+				// Vertical movement
+				if (velocity.Y > 0)
+				{
+					_sprite.Play("walk_down");
+				}
+				else
+				{
+					_sprite.Play("walk_up");
+				}
+			}
+		}
+		else
+		{
+			// Idle
+			if (_lastFacingHorizontal == "right")
+			{
+				_sprite.Play("idle_right");
+			}
+			else
+			{
+				_sprite.Play("idle_left");
+			}
+		}
 	}
 
 
@@ -175,33 +233,113 @@ public partial class PlayerController : CharacterBody2D
 	{
 		if (_sprite == null) return;
 		
-		// Map role to role-specific sprite file
-		string spritePath = role.ToLower() switch
-		{
-			"admirer" => "res://assets/admirer-sprite.png",
-			"prophet" => "res://assets/prophet-sprite.png",
-			"producer" => "res://assets/producer-sprite.png",
-			_ => "res://assets/admirer-sprite.png" // default to admirer
-		};
+		string roleLower = role.ToLower();
+		string spritePath = "";
+		
+		if (roleLower == "admirer") spritePath = "res://assets/ai-admirer-animation.png";
+		else if (roleLower == "prophet") spritePath = "res://assets/ai-prophet-animation.png";
+		else if (roleLower == "producer") spritePath = "res://assets/ai-producer-animation.png";
+		else spritePath = "res://assets/ai-admirer-animation.png"; // Default
 		
 		var texture = GD.Load<Texture2D>(spritePath);
 		
 		if (texture != null)
 		{
-			_sprite.Texture = texture;
-			// Scale sprite to match tile height (4x for better visibility)
-			_sprite.Scale = new Vector2(4.0f, 4.0f);
-			GD.Print($"Loaded player sprite for {role}: {spritePath}");
+			var frames = new SpriteFrames();
+			
+			// Texture dimensions: 240 width x 300 height per frame
+			// Total assumed width: 2400 (10 frames)
+			int frameWidth = 240;
+			int frameHeight = 300;
+			
+			// Helper to create AtlasTexture
+			AtlasTexture GetFrame(int index)
+			{
+				var atlasKey = new AtlasTexture();
+				atlasKey.Atlas = texture;
+				atlasKey.Region = new Rect2(index * frameWidth, 0, frameWidth, frameHeight);
+				return atlasKey;
+			}
+
+			// 0-1: Walk Fwd (Down) - Same for all
+			frames.AddAnimation("walk_down");
+			frames.AddFrame("walk_down", GetFrame(0));
+			frames.AddFrame("walk_down", GetFrame(1));
+			frames.SetAnimationLoop("walk_down", true);
+			frames.SetAnimationSpeed("walk_down", 5.0f);
+
+			if (roleLower == "producer")
+			{
+				// PRODUCER MAPPING (Unique layout)
+				// 2: Walk Right
+				frames.AddAnimation("walk_right");
+				frames.AddFrame("walk_right", GetFrame(2));
+				frames.SetAnimationLoop("walk_right", true);
+				frames.SetAnimationSpeed("walk_right", 5.0f);
+
+				// 3: Walk Left
+				frames.AddAnimation("walk_left");
+				frames.AddFrame("walk_left", GetFrame(3));
+				frames.SetAnimationLoop("walk_left", true);
+				frames.SetAnimationSpeed("walk_left", 5.0f);
+
+				// 4-5: Walk Back (Up)
+				frames.AddAnimation("walk_up");
+				frames.AddFrame("walk_up", GetFrame(4));
+				frames.AddFrame("walk_up", GetFrame(5));
+				frames.SetAnimationLoop("walk_up", true);
+				frames.SetAnimationSpeed("walk_up", 5.0f);
+			}
+			else
+			{
+				// ADMIRER / PROPHET MAPPING (Matches NPC layout)
+				// 2-3: Walk Back (Up)
+				frames.AddAnimation("walk_up");
+				frames.AddFrame("walk_up", GetFrame(2));
+				frames.AddFrame("walk_up", GetFrame(3));
+				frames.SetAnimationLoop("walk_up", true);
+				frames.SetAnimationSpeed("walk_up", 5.0f);
+
+				// 4: Walk Right
+				frames.AddAnimation("walk_right");
+				frames.AddFrame("walk_right", GetFrame(5));
+				frames.SetAnimationLoop("walk_right", true);
+				frames.SetAnimationSpeed("walk_right", 5.0f);
+
+				// 5: Walk Left
+				frames.AddAnimation("walk_left");
+				frames.AddFrame("walk_left", GetFrame(4));
+				frames.SetAnimationLoop("walk_left", true);
+				frames.SetAnimationSpeed("walk_left", 5.0f);
+			}
+
+			// Idle frames (Same for all currently)
+			// 6-7: Idle Right
+			frames.AddAnimation("idle_right");
+			frames.AddFrame("idle_right", GetFrame(6));
+			frames.AddFrame("idle_right", GetFrame(7));
+			frames.SetAnimationLoop("idle_right", true);
+			frames.SetAnimationSpeed("idle_right", 2.0f); // Slower idle
+
+			// 8-9: Idle Left
+			frames.AddAnimation("idle_left");
+			frames.AddFrame("idle_left", GetFrame(8));
+			frames.AddFrame("idle_left", GetFrame(9));
+			frames.SetAnimationLoop("idle_left", true);
+			frames.SetAnimationSpeed("idle_left", 2.0f);
+
+			_sprite.SpriteFrames = frames;
+			
+			// Scale down: 300px * 0.4 = 120px height
+			_sprite.Scale = new Vector2(0.4f, 0.4f);
+			
+			_sprite.Play("idle_right");
+			GD.Print($"Loaded animated sprite for {role}: {spritePath}");
 		}
 		else
 		{
 			GD.PrintErr($"Failed to load sprite: {spritePath}");
-			// Fallback to generated texture
-			var fallbackTexture = new GradientTexture2D();
-			fallbackTexture.Width = 32;
-			fallbackTexture.Height = 32;
-			_sprite.Texture = fallbackTexture;
-			_sprite.Scale = new Vector2(4.0f, 4.0f);
+			// Fallback?
 		}
 	}
 
@@ -267,12 +405,9 @@ public partial class PlayerController : CharacterBody2D
 	public void SetColor(Color color)
 	{
 		PlayerColor = color;
-		if (_sprite?.Texture is GradientTexture2D gradientTexture)
-		{
-			var gradient = gradientTexture.Gradient;
-			gradient.SetColor(0, color);
-			gradient.SetColor(1, color.Darkened(0.4f));
-		}
+		// AnimatedSprite2D doesn't support GradientTexture2D easily like Sprite2D did for colorization
+		// We might need a shader or separate sprites if we want color overrides, but generic requirements usually just mean tint is enough?
+		// For now, we'll skip the gradient replacement.
 	}
 
 	/// <summary>
@@ -410,7 +545,7 @@ public partial class PlayerController : CharacterBody2D
 	}
 
 	/// <summary>
-	/// Show or hide the health hint label (for Admirer proximity detection).
+	/// Show or hide the health hint label (for Admirer to see when nearby)
 	/// </summary>
 	public void SetHealthHintVisible(bool visible, int healthRemaining = 200, int maxHealth = 200)
 	{
