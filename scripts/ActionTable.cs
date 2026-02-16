@@ -10,7 +10,7 @@ public partial class ActionTable : Control
     private ColorRect _backgroundDim;
 
     // Colors
-    private readonly Color _prophetColor = new Color("A020F0"); // Purple
+    private readonly Color _prophetColor = new Color("0066FF"); // Blue
     private readonly Color _admirerColor = new Color("FF69B4"); // Hot Pink
     private readonly Color _producerColor = new Color("00FF00"); // Lime Green
 
@@ -64,7 +64,8 @@ public partial class ActionTable : Control
         subtitleLabel.AddThemeFontSizeOverride("font_size", 29); 
         subtitleLabel.AddThemeColorOverride("font_color", Colors.White);
         subtitleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        subtitleLabel.Size = new Vector2(panelWidth - 100, 60); // Narrower to confine to box
+        subtitleLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        subtitleLabel.Size = new Vector2(panelWidth - 100, 80); // Narrower to confine to box, taller for wrap
         subtitleLabel.Position = new Vector2(50, 140); 
         _backgroundPanel.AddChild(subtitleLabel);
 
@@ -76,7 +77,7 @@ public partial class ActionTable : Control
         _winConditionsLabel.AddThemeColorOverride("font_color", Colors.Yellow);
         _winConditionsLabel.HorizontalAlignment = HorizontalAlignment.Center;
         _winConditionsLabel.Size = new Vector2(panelWidth - 100, 40);
-        _winConditionsLabel.Position = new Vector2(50, 185); 
+        _winConditionsLabel.Position = new Vector2(50, 230); 
         _backgroundPanel.AddChild(_winConditionsLabel);
 
         // Grid Container
@@ -89,7 +90,7 @@ public partial class ActionTable : Control
 
         // Wrap grid in a CenterContainer - Pushed DOWN to accommodate new header/win layout
         var gridWrapper = new CenterContainer();
-        float gridTop = 260; 
+        float gridTop = 220; 
         float gridBottom = 120;
         gridWrapper.Position = new Vector2(0, gridTop);
         gridWrapper.Size = new Vector2(panelWidth, panelHeight - gridTop - gridBottom);
@@ -147,7 +148,7 @@ public partial class ActionTable : Control
         label.HorizontalAlignment = HorizontalAlignment.Center;
         label.VerticalAlignment = VerticalAlignment.Center;
         label.AddThemeFontOverride("font", _customFont);
-        label.AddThemeFontSizeOverride("font_size", 14); 
+        label.AddThemeFontSizeOverride("font_size", 18); 
         label.AddThemeColorOverride("font_color", color);
         
         var wrapper = new PanelContainer();
@@ -171,7 +172,7 @@ public partial class ActionTable : Control
         label.HorizontalAlignment = HorizontalAlignment.Center;
         label.VerticalAlignment = VerticalAlignment.Center;
         label.AddThemeFontOverride("font", _customFont);
-        label.AddThemeFontSizeOverride("font_size", 12); 
+        label.AddThemeFontSizeOverride("font_size", 16); 
         label.AddThemeColorOverride("font_color", Colors.White);
         
         var panel = new PanelContainer();
@@ -204,7 +205,7 @@ public partial class ActionTable : Control
         var label = new Label();
         label.Text = text;
         label.AddThemeFontOverride("font", _customFont);
-        label.AddThemeFontSizeOverride("font_size", 12); 
+        label.AddThemeFontSizeOverride("font_size", 14); 
         label.AddThemeColorOverride("font_color", Colors.White);
         label.VerticalAlignment = VerticalAlignment.Center;
         label.HorizontalAlignment = HorizontalAlignment.Center;
