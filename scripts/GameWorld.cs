@@ -13,6 +13,11 @@ using FatalAttraction.Engine;
 /// </summary>
 public partial class GameWorld : Node2D
 {
+	// ==================== NOTIFICATION BOX TOGGLE (line 16) ====================
+	// Set to true to show the notification box, false to hide it entirely.
+	private bool _notificationBoxEnabled = false;
+	// ============================================================================
+
 	// Triangle Scene Reference
 	private TriangleScene _triangleScene;
 
@@ -44,7 +49,7 @@ public partial class GameWorld : Node2D
 	private double _admirerEliminatedTimer = 0;
 	private bool _admirerEliminatedShown = false;
 	private CanvasLayer _uiLayer;
-	private GoalsMenu _goalsMenu;
+	// private GoalsMenu _goalsMenu; // (Removed)
 	private TextureButton _goalsButton;
 	private TextureButton _aiLeaderboardButton;
 	private TextureRect _aiLeaderboardPanel;
@@ -574,6 +579,7 @@ public partial class GameWorld : Node2D
 			Mathf.Max(20, viewportSize.X - _notificationPanel.CustomMinimumSize.X - 30),
 			Mathf.Max(20, viewportSize.Y - _notificationPanel.CustomMinimumSize.Y - 30));
 		_notificationPanel.Position = _notificationPanelExpandedPosition;
+		_notificationPanel.Visible = _notificationBoxEnabled;
 		_uiLayer.AddChild(_notificationPanel);
 
 		// Container for notification content with collapse button
@@ -1008,12 +1014,14 @@ public partial class GameWorld : Node2D
 		_uiLayer.AddChild(fPanel);
 	}
 
+	// Goals Menu System (Replaced by Action Table)
+	private ActionTable _actionTable;
+
 	private void SetupGoalsMenu()
 	{
-		// Goals Menu Panel
-		_goalsMenu = new GoalsMenu();
-		_goalsMenu.MenuClosed += OnGoalsMenuClosed;
-		_uiLayer.AddChild(_goalsMenu);
+		// Action Table (Goals Menu replacement)
+		_actionTable = new ActionTable();
+		_uiLayer.AddChild(_actionTable);
 
 		// Goals Button (upper right corner) - Info Icon
 		var viewportSize = GetViewportRect().Size;
@@ -1186,65 +1194,12 @@ public partial class GameWorld : Node2D
 
 	private void OnGoalsButtonPressed()
 	{
-		if (_goalsMenu != null && !string.IsNullOrEmpty(_myRole))
+		if (_actionTable != null)
 		{
-			// Toggle: if visible, hide it; if hidden, show it
-			if (_goalsMenu.Visible)
-			{
-				_goalsMenu.Hide();
-			}
-			 else
-			{
-				// Update with latest info
-				string loveInterest = "";
-				string targets = "";
-				
-				// Get love interest and targets from GameEngine state
-				if (_gameEngine != null)
-				{
-					var loveInterestList = new List<string>();
-					var targetsList = new List<string>();
-					
-					foreach (var npc in _gameEngine.GameState.NPCs.Values)
-					{
-						if (npc.IsLoveInterest)
-							loveInterestList.Add(npc.Name);
-						if (npc.IsTarget)
-							targetsList.Add(npc.Name);
-					}
-					
-					loveInterest = string.Join(", ", loveInterestList);
-					targets = string.Join(", ", targetsList);
-				}
-				else if (_localGameState != null)
-				{
-					// Client-side: try to get from cached state
-					var loveInterestList = new List<string>();
-					var targetsList = new List<string>();
-					
-					var npcs = _localGameState?["npcs"] as JObject;
-					if (npcs != null)
-					{
-						foreach (var prop in npcs.Properties())
-						{
-							bool isLoveInterest = prop.Value["role"]?.Value<string>() == "love_interest";
-							bool isTarget = prop.Value["isTarget"]?.Value<bool>() ?? false;
-							
-							if (isLoveInterest)
-								loveInterestList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
-							if (isTarget)
-								targetsList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
-						}
-					}
-					
-					loveInterest = string.Join(", ", loveInterestList);
-					targets = string.Join(", ", targetsList);
-				}
-				
-				_goalsMenu.SetRole(_myRole, loveInterest, targets);
-				_goalsMenu.ShowMenu();
-			}
+			// Toggle visibility
+			_actionTable.Visible = !_actionTable.Visible;
 		}
+
 	}
 
 	private void OnGoalsMenuClosed()
@@ -3415,64 +3370,11 @@ public partial class GameWorld : Node2D
 		{
 			_goalsShownAtStart = true;
 			// Delay slightly to ensure UI is ready
-			CallDeferred(MethodName.ShowGoalsMenuAtStart);
+			// CallDeferred(MethodName.ShowGoalsMenuAtStart); // (Removed)
 		}
-	}
+		// } // (Removed usage of premature closing brace)
 
-	private void ShowGoalsMenuAtStart()
-	{
-		if (_goalsMenu != null && !string.IsNullOrEmpty(_myRole))
-		{
-			// Get love interest and targets info
-			string loveInterest = "";
-			string targets = "";
-			
-			// Server: read directly from GameEngine
-			if (_gameEngine != null)
-			{
-				var loveInterestList = new List<string>();
-				var targetsList = new List<string>();
-				
-				foreach (var npc in _gameEngine.GameState.NPCs.Values)
-				{
-					if (npc.IsLoveInterest)
-						loveInterestList.Add(npc.Name);
-					if (npc.IsTarget)
-						targetsList.Add(npc.Name);
-				}
-				
-				loveInterest = string.Join(", ", loveInterestList);
-				targets = string.Join(", ", targetsList);
-			}
-			// Client: read from local cached state
-			else if (_localGameState != null)
-			{
-				var npcs = _localGameState["npcs"] as JObject;
-				if (npcs != null)
-				{
-					var loveInterestList = new List<string>();
-					var targetsList = new List<string>();
-					
-					foreach (var prop in npcs.Properties())
-					{
-						// Check role field for love_interest
-						bool isLoveInterest = prop.Value["role"]?.Value<string>() == "love_interest";
-						bool isTarget = prop.Value["isTarget"]?.Value<bool>() ?? false;
-						
-						if (isLoveInterest)
-							loveInterestList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
-						if (isTarget)
-							targetsList.Add(Capitalize(prop.Value["name"]?.Value<string>() ?? prop.Name));
-					}
-					
-					loveInterest = string.Join(", ", loveInterestList);
-					targets = string.Join(", ", targetsList);
-				}
-			}
-			
-			_goalsMenu.SetRole(_myRole, loveInterest, targets);
-			_goalsMenu.ShowMenu();
-		}
+
 
 		// Refresh Interaction Panel logic with "Self-Healing" for Interviews
 		// If server says we are in an interview, we ensure the panel is open.
@@ -4806,6 +4708,7 @@ public partial class GameWorld : Node2D
 
 	public void AddSlidingNotification(string message, double duration = 3.0)
 	{
+		if (!_notificationBoxEnabled) return;
 		GD.Print($"[Notification] {message}");
 		
 		// Position logic: Slide down from top-middle
