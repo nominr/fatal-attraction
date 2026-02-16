@@ -4708,7 +4708,6 @@ public partial class GameWorld : Node2D
 
 	public void AddSlidingNotification(string message, double duration = 3.0)
 	{
-		if (!_notificationBoxEnabled) return;
 		GD.Print($"[Notification] {message}");
 		
 		// Position logic: Slide down from top-middle
