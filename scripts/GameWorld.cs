@@ -719,12 +719,12 @@ public partial class GameWorld : Node2D
 		// Scale up by 2x as requested
 		_triangleScene.Scale = new Vector2(2.0f, 2.0f);
 		
-		// Position Left Middle:
-		// Viewport Height / 2 - (Triangle Scene Height / 2 approx)
-		// Triangle Center is roughly (7749, 82) * 2 = (154, 164)
-		// So visual height is around 160-200.
-		// Let's place it at (20, ScreenHeight/2 - 100)
-		_triangleScene.Position = new Vector2(20, GetViewportRect().Size.Y / 2 - 100);
+		// Position Bottom Right:
+		// Content is roughly 150x150, scaled by 2 = 300x300.
+		// Place with some margin from the edges.
+		var vpSize = GetViewportRect().Size;
+		_triangleScene.Position = new Vector2(vpSize.X - 350, vpSize.Y - 280);
+		_triangleScene.ZIndex = 100; // Ensure it's on top
 		_uiLayer.AddChild(_triangleScene);
 		
 		// Goals Menu System
@@ -1589,7 +1589,14 @@ public partial class GameWorld : Node2D
 			}
 		}
 		
-		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
+
+		Texture2D npcPortrait = null;
+		if (_npcEntities.ContainsKey(npcId))
+		{
+			npcPortrait = _npcEntities[npcId].GetPortraitTexture();
+		}
+
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState, npcPortrait);
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -3408,7 +3415,17 @@ public partial class GameWorld : Node2D
 			npcState = new Vector3(x, y, z);
 		}
 
-		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
+		Texture2D npcPortrait = null;
+		
+		// Try to find the actual NPCEntity to get the portrait
+		// We have _npcEntities dictionary but it might be server-only?
+		// GameWorld tracks spawned entities in _npcEntities.
+		if (_npcEntities.ContainsKey(npcId))
+		{
+			npcPortrait = _npcEntities[npcId].GetPortraitTexture();
+		}
+
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState, npcPortrait);
 	}
 
 	private void SpawnNPCsFromState()
@@ -3881,39 +3898,23 @@ public partial class GameWorld : Node2D
 						
 						GD.Print($"[+1 Debug] Current rating: {currentRating}, Previous rating: {_previousProducerRating}");
 						
-						// Check if rating increased by exactly +1 and an interview just finished
-						if (currentRating == _previousProducerRating + 1)
+						// Check if rating increased (Relaxed check to include +2 or other sources)
+						if (currentRating > _previousProducerRating)
 						{
-							GD.Print("[+1 Debug] Rating increased by +1! Checking for interview notification...");
+							double diff = currentRating - _previousProducerRating;
+							GD.Print($"[+1 Debug] Rating increased by +{diff}! Showing visual feedback...");
 							
-							// Check if any of the new notifications mention "Interview finished"
-							bool interviewFinished = false;
-							// Check only the NEW notifications that were just added (from oldNotificationCount to current)
-							for (int i = oldNotificationCount; i < notifList.Count; i++)
+							// Show +1 visual regardless of source (Interview, MiniGame, etc)
+							if (_plusOneTimer <= 0)
 							{
-								GD.Print($"[+1 Debug] Checking notification {i}: {notifList[i]}");
-								if (notifList[i].Contains("Interview finished"))
-								{
-									interviewFinished = true;
-									GD.Print("[+1 Debug] Found 'Interview finished' notification!");
-									break;
-								}
-							}
-							
-							GD.Print($"[+1 Debug] Interview finished: {interviewFinished}, Timer: {_plusOneTimer}, Overlay null: {_plusOneOverlay == null}");
-							
-							if (interviewFinished && _plusOneTimer <= 0)
-							{
-								// Show +1 visual
 								if (_plusOneOverlay != null)
 								{
 									_plusOneOverlay.Visible = true;
 									_plusOneTimer = 1.0; // Display for 1 second
-									GD.Print("[GameWorld] ✅ Showing +1 rating visual feedback!");
-								}
-								else
-								{
-									GD.PrintErr("[+1 Debug] ERROR: _plusOneOverlay is null!");
+									
+									// If distinct +2 asset existed, we would select it here. 
+									// For now, reuse +1 or just show the feedback.
+									GD.Print("[GameWorld] ✅ Showing rating increase visual feedback!");
 								}
 							}
 						}

@@ -37,6 +37,7 @@ public partial class InteractionPanel : PanelContainer
 
 	public override void _Ready()
 	{
+		GD.Print("CRITICAL DEBUG: InteractionPanel _Ready called (This script is ACTIVE)");
 		SetupUI();
 		MouseFilter = MouseFilterEnum.Stop; // Block clicks from passing through
 		Hide(); // Hidden by default

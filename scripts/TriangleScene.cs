@@ -108,7 +108,11 @@ public partial class TriangleScene : Control
 	{
 		if (_npcNameLabel != null)
 		{
-			_npcNameLabel.Text = npcName;
+			// HIDE NPC NAME LABEL
+			if (_npcNameLabel != null)
+			{
+				_npcNameLabel.Visible = false;
+			}
 		}
 		
 		if (pointPos.HasValue)
