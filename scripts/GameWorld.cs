@@ -647,7 +647,29 @@ public partial class GameWorld : Node2D
 		bombButton.CustomMinimumSize = new Vector2(180, 60);
 		
 		// Add Knife Icon
-		var bombTexture = ResourceLoader.Load<Texture2D>("res://assets/knife.png");
+		Texture2D bombTexture = null;
+		try 
+		{
+			bombTexture = ResourceLoader.Load<Texture2D>("res://assets/knife.png");
+		}
+		catch (Exception e)
+		{
+			GD.PrintErr($"[GameWorld] Failed to load knife.png: {e.Message}");
+		}
+
+		if (bombTexture == null)
+		{
+			// Fallback if missing
+			var gradient = new Gradient();
+			gradient.SetColor(0, Colors.Red);
+			gradient.SetColor(1, Colors.Black);
+			var gen = new GradientTexture2D();
+			gen.Gradient = gradient;
+			gen.Width = 32;
+			gen.Height = 32;
+			bombTexture = gen;
+		}
+		
 		bombButton.Icon = bombTexture;
 		bombButton.ExpandIcon = true;
 		bombButton.IconAlignment = HorizontalAlignment.Left;
@@ -4707,7 +4729,7 @@ public partial class GameWorld : Node2D
 		}
 	}
 
-	private void AddSlidingNotification(string message, double duration = 3.0)
+	public void AddSlidingNotification(string message, double duration = 3.0)
 	{
 		GD.Print($"[Notification] {message}");
 		
@@ -4730,4 +4752,6 @@ public partial class GameWorld : Node2D
 			_activeNotificationItems.Remove(finishedItem);
 		};
 	}
+
+
 }
