@@ -1046,7 +1046,7 @@ public partial class GameWorld : Node2D
 			_leaderboardInfluenceLabel = new Label();
 			_leaderboardInfluenceLabel.Text = "";
 			_leaderboardInfluenceLabel.AddThemeFontOverride("font", _customFont);
-			_leaderboardInfluenceLabel.AddThemeFontSizeOverride("font_size", 26);
+			_leaderboardInfluenceLabel.AddThemeFontSizeOverride("font_size", 23);
 			_leaderboardInfluenceLabel.AddThemeColorOverride("font_color", Colors.White);
 			_leaderboardInfluenceLabel.AddThemeColorOverride("font_shadow_color", Colors.Black);
 			_leaderboardInfluenceLabel.AddThemeConstantOverride("shadow_offset_x", 2);
@@ -1213,8 +1213,10 @@ public partial class GameWorld : Node2D
 			_leaderboardBgDim.Visible = true;
 			_leaderboardBgDim.Modulate = new Color(1, 1, 1, 0);
 			tween.TweenProperty(_leaderboardBgDim, "modulate:a", 1.0f, 0.3f);
+			_leaderboardTriangle?.ShowAllPoints();
 			UpdateLeaderboardText();
 		}
+
 		else
 		{
 			tween.TweenProperty(_leaderboardBgDim, "modulate:a", 0.0f, 0.3f);
@@ -3203,6 +3205,31 @@ public partial class GameWorld : Node2D
 		UpdateTrianglePosition(); // Realtime update for triangle scene
 		UpdateNPCVisuals();
 		UpdateGhostMode();
+
+		// Update Leaderboard Data
+		if (_leaderboardTriangle != null)
+		{
+			var npcStates = _localGameState?["npc_states"] as JObject;
+			if (npcStates != null)
+			{
+				var states = new Dictionary<string, Vector2>();
+				foreach (var prop in npcStates.Properties())
+				{
+					float tx = prop.Value["tri_x"]?.Value<float>() ?? 0;
+					float ty = prop.Value["tri_y"]?.Value<float>() ?? 0;
+					states[prop.Name] = new Vector2(tx, ty);
+				}
+				_leaderboardTriangle.UpdateActiveStates(states);
+
+				// If leaderboard is open, refresh visuals
+				if (_isLeaderboardOpen)
+				{
+					_leaderboardTriangle.ShowAllPoints();
+					UpdateLeaderboardText();
+				}
+			}
+		}
+
 
 		// Show goals menu at game start (first time game state is received)
 		if (!_goalsShownAtStart && !string.IsNullOrEmpty(_myRole))

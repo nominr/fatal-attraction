@@ -5,59 +5,12 @@ using System.Collections.Generic;
 public partial class TriangleScene : Control
 {
 	/// <summary>
-	/// Dummy NPC state vectors for testing/display.
-	/// Values are local triangle coordinates (before center offset).
-	/// Admirer zone = top, Prophet zone = bottom-left, Producer zone = bottom-right.
+	/// Dynamic storage for live NPC states.
 	/// </summary>
-	public static readonly Dictionary<string, Vector2> DummyNpcStateVectors = new()
-	{
-		/*
-		// Admirer zone (top corner, vertex at 0,-28)
-		{ "katy",    new Vector2(  0, -22) },  // very much under Admirer influence
-		{ "amir",    new Vector2(  2, -10) },  // middling under Admirer influence
+	public Dictionary<string, Vector2> ActiveNpcStates { get; private set; } = new();
 
-		// Prophet zone (bottom-left corner, vertex at -30,24)
-		{ "john",    new Vector2(-22,  18) },  // much under Prophet influence
-		{ "sofia",   new Vector2(-18,  14) },  // a little under Prophet influence
+	private List<Sprite2D> _allPointsDots = new();
 
-		// Producer zone (bottom-right corner, vertex at 30,24)
-		{ "rebecca", new Vector2( 22,  18) },  // much under Producer influence
-		{ "bella",   new Vector2( 18,  14) },  // a little under Producer influence
-
-		// Neutral (inside the inner medial triangle)
-		{ "marcus",  new Vector2( -3,  10) },
-		{ "diana",   new Vector2(  3,   5) },
-		{ "chris",   new Vector2(  5,  12) },
-		{ "eli",     new Vector2( -4,  15) },
-		*/
-	};
-
-	/// <summary>
-	/// Imbalanced NPC state vectors: Bella moved from Producer to Admirer zone.
-	/// Result: Admirer=3, Prophet=2, Producer=1, Neutral=4.
-	/// </summary>
-	public static readonly Dictionary<string, Vector2> ImbalancedNpcStateVectors = new()
-	{
-		/*
-		// Admirer zone (top corner, vertex at 0,-28)
-		{ "katy",    new Vector2(  0, -22) },  // very much under Admirer influence
-		{ "amir",    new Vector2(  2, -10) },  // middling under Admirer influence
-		{ "bella",   new Vector2( -2, -12) },  // middling under Admirer influence (moved from Producer)
-
-		// Prophet zone (bottom-left corner, vertex at -30,24)
-		{ "john",    new Vector2(-22,  18) },  // much under Prophet influence
-		{ "sofia",   new Vector2(-18,  14) },  // a little under Prophet influence
-
-		// Producer zone (bottom-right corner, vertex at 30,24)
-		{ "rebecca", new Vector2( 22,  18) },  // much under Producer influence
-
-		// Neutral (inside the inner medial triangle)
-		{ "marcus",  new Vector2( -3,  10) },
-		{ "diana",   new Vector2(  3,   5) },
-		{ "chris",   new Vector2(  5,  12) },
-		{ "eli",     new Vector2( -4,  15) },
-		*/
-	};
 
 	private Sprite2D _pointSprite;
 	private Tween _movementTween;
@@ -118,9 +71,17 @@ public partial class TriangleScene : Control
 	}
 
 	/// <summary>
-	/// Classifies every NPC in ImbalancedNpcStateVectors into its influence zone.
+	/// Updates the live NPC states and refreshes zone membership.
+	/// </summary>
+	public void UpdateActiveStates(Dictionary<string, Vector2> states)
+	{
+		ActiveNpcStates = states;
+		ComputeZoneMembership();
+	}
+
+	/// <summary>
+	/// Classifies every NPC in ActiveNpcStates into its influence zone.
 	/// Populates ProphetZoneNpcs, AdmirerZoneNpcs, ProducerZoneNpcs, NeutralZoneNpcs.
-	/// Call again to refresh after state vectors change.
 	/// </summary>
 	public void ComputeZoneMembership()
 	{
@@ -129,7 +90,7 @@ public partial class TriangleScene : Control
 		ProducerZoneNpcs.Clear();
 		NeutralZoneNpcs.Clear();
 
-		foreach (var kvp in ImbalancedNpcStateVectors)
+		foreach (var kvp in ActiveNpcStates)
 		{
 			string zone = GetInfluenceZone(kvp.Value);
 			switch (zone)
@@ -141,6 +102,7 @@ public partial class TriangleScene : Control
 			}
 		}
 	}
+
 	
 	public void Show(string npcName, Vector2? pointPos = null)
 	{
@@ -209,7 +171,7 @@ public partial class TriangleScene : Control
 	}
 	
 	/// <summary>
-	/// Displays all NPC state vectors from ImbalancedNpcStateVectors as individual points.
+	/// Displays all NPC state vectors from ActiveNpcStates as individual points.
 	/// Hides the single-point sprite and NPC name label.
 	/// </summary>
 	public void ShowAllPoints()
@@ -218,9 +180,16 @@ public partial class TriangleScene : Control
 		if (_pointSprite != null) _pointSprite.Visible = false;
 		if (_npcNameLabel != null) _npcNameLabel.Visible = false;
 
+		// Clear existing dots
+		foreach (var dot in _allPointsDots)
+		{
+			dot.QueueFree();
+		}
+		_allPointsDots.Clear();
+
 		var heartTexture = GD.Load<Texture2D>("res://assets/black-heart-ui.png");
 
-		foreach (var kvp in ImbalancedNpcStateVectors)
+		foreach (var kvp in ActiveNpcStates)
 		{
 			var dot = new Sprite2D();
 			dot.Texture = heartTexture;
@@ -228,10 +197,12 @@ public partial class TriangleScene : Control
 			dot.Position = _centerOffset + kvp.Value;
 			dot.ZIndex = 1;
 			AddChild(dot);
+			_allPointsDots.Add(dot);
 		}
 
 		Visible = true;
 	}
+
 
 	private Vector2 GetRandomPointInTriangle()
 	{
