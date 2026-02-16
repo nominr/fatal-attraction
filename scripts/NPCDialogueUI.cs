@@ -222,10 +222,19 @@ public partial class NPCDialogueUI : Control
 
 		_dialogueTextLabel.Text = npcDescription;
 
-		// Rebuild Buttons check
-		// Since state changes frequently, include it in hash or just rebuild every time?
-		// Rebuilding is safer for state display updates.
-		_lastActionsHash = ""; // Force update to show new state
+
+		// --- HASH CHECK TO PREVENT FLICKER ---
+		// We only rebuild buttons if the actions or description text changes.
+		// We do NOT rebuild just because the vector state changed.
+		string currentHash = npcId + "|" + npcDescription + "|" + GenerateActionsHash(actions);
+
+		if (currentHash == _lastActionsHash)
+		{
+			Visible = true;
+			return; // EXIT EARLY - NO REBUILD
+		}
+		
+		_lastActionsHash = currentHash;
 
 
 		// Clear containers
