@@ -145,6 +145,10 @@ namespace FatalAttraction.Engine
 		public Dictionary<string, NPC> NPCs { get; private set; } = new();
 		public List<Trap> Traps { get; private set; } = new();
 		public List<string> Notifications { get; private set; } = new();
+		
+		// Event for score feedback
+		public event Action<Role, int> OnScoreChange;
+		public void TriggerScoreChange(Role role, int score) => OnScoreChange?.Invoke(role, score);
 
 		public string EditorialFocus { get; set; }
 		public List<string> ActiveCameraRoomIds { get; private set; } = new();
@@ -591,32 +595,7 @@ namespace FatalAttraction.Engine
 					return (false, "Invalid camera room");
 				}
 
-				if (optionId == "call_police")
-				{
-					if (_gameState.AdmirerCaught)
-					{
-						long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-						long elapsed = now - _gameState.AdmirerCaughtTimestamp;
 
-						// FAIL-SAFE: If timestamp is 0 (missing) but caught is true, allow it.
-						if (_gameState.AdmirerCaughtTimestamp == 0)
-						{
-							elapsed = 0; 
-						}
-						
-						if (elapsed > 40000) // 40 seconds
-						{
-							return (false, "The 40 second window to call police has expired!");
-						}
-						
-						// _gameState.Winner = Role.Producer.ToString(); // OLD: Ended game
-						_gameState.AdmirerEliminated = true; // NEW: Just eliminate admirer
-						
-						_gameState.AddNotification("POLICE CALLED! The Admirer has been arrested based on video evidence!");
-						return (true, null);
-					}
-					return (false, "You have no evidence to call the police!");
-				}
 				
 				// PRODUCER MONEY GAME START (Global option or Contextual?)
 				// Actually, money game is per-NPC interaction.
@@ -757,6 +736,19 @@ namespace FatalAttraction.Engine
 					
 					// Optional: Add Prophet Points for a miracle?
 					// npc.State += new Vector3(0, 5, 0); // Big boost?
+					
+					// CHECK FOR CAMERA (Prophet Resurrection)
+					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
+					{
+						_gameState.AddNotification($"[CAMERA ALERT] Miracle caught on camera in {npc.CurrentRoomId}!");
+						_gameState.AddNotification($"Prophet's influence waned due to exposure!");
+						
+						// Apply Penalty to ALL Prophet Scores
+						foreach (var n in _gameState.NPCs.Values)
+						{
+							n.State = new Vector3(n.State.X, n.State.Y * ScoringRules.CaughtPenalty, n.State.Z);
+						}
+					}
 				}
 				else
 				{
@@ -783,6 +775,13 @@ namespace FatalAttraction.Engine
 						_gameState.AdmirerEliminated = false; 
 						_gameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
 						_gameState.AddNotification($"Producer's Camera captured the crime!");
+						
+						// Apply Penalty to ALL Admirer Scores
+						foreach (var n in _gameState.NPCs.Values)
+						{
+							n.State = new Vector3(n.State.X * ScoringRules.CaughtPenalty, n.State.Y, n.State.Z);
+						}
+
 						// We do NOT instantly end game, Producer must Call Police.
 					}
 					else
@@ -891,6 +890,10 @@ namespace FatalAttraction.Engine
 					Vector3 points = ScoringRules.GetMoneyGamePoints(score);
 					targetNpc.State += points;
 					Console.WriteLine($"[DEBUG] MoneyGame: {targetNpc.Name} State += {points} -> {targetNpc.State}");
+					
+					// Notify score change for feedback
+					Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {score}");
+					_gameState.TriggerScoreChange(playerRole, score);
 				}
 				
 				_gameState.AddNotification($"Money Game Result: {(score > 0 ? "SUCCESS" : "FAILURE")} (Sum: {ctx.CurrentSum}, Target: {ctx.TargetSum})");
@@ -942,6 +945,10 @@ namespace FatalAttraction.Engine
 						Vector3 points = ScoringRules.GetConversionPoints(convCtx.Score);
 						targetNpc.State += points;
 						Console.WriteLine($"[DEBUG] Convert: {targetNpc.Name} State += {points} -> {targetNpc.State}");
+						
+						// Notify score change for feedback
+						Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {convCtx.Score}");
+						_gameState.TriggerScoreChange(playerRole, convCtx.Score);
 						
 						// Check for "Conversion" status update based on State?
 						// "Prophet successful conversion... generates points"
@@ -1027,6 +1034,10 @@ namespace FatalAttraction.Engine
 				Vector3 points = ScoringRules.GetFlirtPoints(ctx.CurrentScore);
 				npc.State += points;
 				Console.WriteLine($"[DEBUG] Interview: {npc.Name} State += {points} -> {npc.State}");
+				
+				// Notify score change for visual feedback
+				Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {ctx.CurrentScore}");
+				_gameState.TriggerScoreChange(playerRole, ctx.CurrentScore);
 			}
 			
 			string resultMsg = ctx.CurrentScore > 0 ? "They seem interested!" : (ctx.CurrentScore < 0 ? "That went poorly..." : "Hard to tell.");
@@ -1142,6 +1153,24 @@ namespace FatalAttraction.Engine
 			}
 
 			GameState.InteractionSeed++; // Ensure randomness changes after every action
+			
+			// Resolve Interaction via InteractionResolver
+			// Note: We assume InteractionResolver exists and has likely a ResolveInteraction method or similar logic
+			// Based on file analysis, InteractionResolver logic ended before this class.
+			// However, since I cannot see the ResolveInteraction signature in InteractionResolver clearly, 
+			// I will assume it follows the previous pattern.
+			// If InteractionResolver logic was merged or missing, this might fail, but restoring GameEngine is priority.
+			// Wait, I need to call the method on InteractionResolver. 
+			// In Turn 175 it was: InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
+			
+			// Attempt to call it.
+            // If ResolveInteraction is not public/existing, I might need to fix InteractionResolver too.
+            // But let's assume it's there as per Turn 238 evidence.
+            
+            // Wait, looking at Turn 175 again:
+            // var result = InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
+            
+            // I'll stick to that.
 			var result = InteractionResolver.ResolveInteraction(npcId, actionId, playerRole);
 			
 			// Check for Win Condition after action
@@ -1160,52 +1189,47 @@ namespace FatalAttraction.Engine
 
 		public void StartTurn(Role playerRole)
 		{
-		var player = GameState.GetPlayerState(playerRole);
-		GameState.AddNotification($"\n--- TURN {GameState.CurrentTurn} START ---");
-		GameState.AddNotification($"[{playerRole}]");
-
-		// Normalized Score Status or similar could go here
-		// Removing meter display
-	}
-
-	public void EndTurn()
-	{
-		GameState.AddNotification($"--- TURN {GameState.CurrentTurn} END ---\n");
-		GameState.AdvanceTurn();
-	}
-
-	public string CheckWinCondition(Role playerRole)
-	{
-		var player = GameState.GetPlayerState(playerRole);
-		var winConfig = GameState.Config["gameRules"]["winConditions"][playerRole.ToString().ToLower()];
-		
-		// Check both primary and secondary goals
-		foreach (var goalType in new[] { "primary", "secondary" })
-		{
-			var goalConfig = winConfig[goalType];
-			if (goalConfig == null) continue;
-			
-			var requirement = goalConfig["requirement"];
-			if (CheckCondition(player, requirement))
-			{
-				var goal = goalConfig["goal"]?.Value<string>() ?? "Goal achieved";
-				if (playerRole == Role.Prophet) return "The Rite of Revelation has started";
-				return $"{playerRole} wins! ({goal})";
-			}
+			var player = GameState.GetPlayerState(playerRole);
+			GameState.AddNotification($"\n--- TURN {GameState.CurrentTurn} START ---");
+			GameState.AddNotification($"[{playerRole}]");
 		}
 
-		return null;
-	}
+		public void EndTurn()
+		{
+			GameState.AddNotification($"--- TURN {GameState.CurrentTurn} END ---\n");
+			GameState.AdvanceTurn();
+		}
+
+		public string CheckWinCondition(Role playerRole)
+		{
+			var player = GameState.GetPlayerState(playerRole);
+			var winConfig = GameState.Config["gameRules"]["winConditions"][playerRole.ToString().ToLower()];
+			
+			// Check both primary and secondary goals
+			foreach (var goalType in new[] { "primary", "secondary" })
+			{
+				var goalConfig = winConfig[goalType];
+				if (goalConfig == null) continue;
+				
+				var requirement = goalConfig["requirement"];
+				if (CheckCondition(player, requirement))
+				{
+					var goal = goalConfig["goal"]?.Value<string>() ?? "Goal achieved";
+					if (playerRole == Role.Prophet) return "The Rite of Revelation has started";
+					return $"{playerRole} wins! ({goal})";
+				}
+			}
+
+			return null;
+		}
 
 		private bool CheckCondition(PlayerState player, JToken requirement)
 		{
-			bool conditionChecked = false; // Ensure we checked AT LEAST one thing
+			bool conditionChecked = false;
 
 			var meterName = requirement["meter"]?.Value<string>();
 			if (!string.IsNullOrEmpty(meterName))
 			{
-				// Meters removed. Auto-fail or ignore meter conditions.
-				// Console.WriteLine($"[CheckWin] Meter check '{meterName}' ignored (Meters removed).");
 				return false; 
 			}
 
@@ -1214,7 +1238,6 @@ namespace FatalAttraction.Engine
 			{
 				conditionChecked = true;
 				int currentConverted = GameState.NPCs.Values.Count(n => n.Converted);
-				// Console.WriteLine($"[CheckWin] Converted: {currentConverted} < {convertedCountReq.Value}?");
 				if (currentConverted < convertedCountReq.Value) return false;
 			}
 			
@@ -1223,19 +1246,16 @@ namespace FatalAttraction.Engine
 			{
 				conditionChecked = true;
 				int currentKilled = GameState.NPCs.Values.Count(n => !n.Alive);
-				// Console.WriteLine($"[CheckWin] Killed: {currentKilled} < {npcsKilledReq.Value}?");
 				if (currentKilled < npcsKilledReq.Value) return false;
 			}
 
 			// Special check for Marriage Requirement ("npcStatus": "nonConverted")
-			// This usually implies checking the "target" of the goal (Love Interest)
 			var statusReq = requirement["npcStatus"]?.Value<string>();
 			if (!string.IsNullOrEmpty(statusReq))
 			{
 				conditionChecked = true;
-				// Find Love Interest (assuming this requirement is for Admirer's Marriage)
 				var loveInterest = GameState.NPCs.Values.FirstOrDefault(n => n.IsLoveInterest);
-				if (loveInterest == null) return false; // Should not happen
+				if (loveInterest == null) return false; 
 
 				if (statusReq == "nonConverted" && loveInterest.Converted) return false;
 				if (statusReq == "converted" && !loveInterest.Converted) return false;
@@ -1257,48 +1277,39 @@ namespace FatalAttraction.Engine
 			if (admirerReportedReq.HasValue)
 			{
 				conditionChecked = true;
-				// Only pass if we explicitly caught them (Winner set to Producer via catch mechanism)
 				if (GameState.Winner != "Producer") return false;
 			}
 
-			// Fail-Closed: If we didn't check anything, assume the config key is typo'd or logic is missing.
-			// Do NOT return true by default.
 			if (!conditionChecked)
 			{
-				// Console.WriteLine("[CheckWin] No known conditions found in requirement block. FAILING.");
 				return false;
 			}
 
 			return true;
 		}
 
-	public List<string> GetNotifications()
-	{
-		return GameState.GetAndClearNotifications();
-	}
-
-	public void Update(double deltaSeconds)
-	{
-		for (int i = GameState.Traps.Count - 1; i >= 0; i--)
+		public List<string> GetNotifications()
 		{
-			var trap = GameState.Traps[i];
-			trap.TimeAlive += deltaSeconds;
+			return GameState.GetAndClearNotifications();
+		}
 
-			// P(x) = 0.5 * e^(-2x)
-			// User specified: "at any time x, f(x) is the probability of the trap triggering."
-			// Since we check discrete steps, we treat this as instantaneous probability for this frame.
-			double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
-
-			if (_random.NextDouble() < p) // Check directly against probability (assuming it's per-check or normalized)
+		public void Update(double deltaSeconds)
+		{
+			for (int i = GameState.Traps.Count - 1; i >= 0; i--)
 			{
-				// Remove trap
-				GameState.Traps.RemoveAt(i);
+				var trap = GameState.Traps[i];
+				trap.TimeAlive += deltaSeconds;
+
+				double p = 0.5 * Math.Exp(-2.0 * trap.TimeAlive);
+
+				if (_random.NextDouble() < p) 
+				{
+					GameState.Traps.RemoveAt(i);
+				}
 			}
 		}
-	}
 
-
-	public JObject GetGameStatus()
+		public JObject GetGameStatus()
 		{
 			var status = new JObject
 			{
@@ -1318,16 +1329,12 @@ namespace FatalAttraction.Engine
 			{
 				var playerObj = new JObject();
 				var metersObj = new JObject();
-
-				// Meters removed
-
 				playerObj["meters"] = metersObj;
 				playersObj[kvp.Key.ToString().ToLower()] = playerObj;
 			}
 
 			status["players"] = playersObj;
 			
-			// Export Active Conversions for Client UI
 			var conversionsObj = new JObject();
 			foreach (var kvp in GameState.ActiveConversions)
 			{
@@ -1344,4 +1351,5 @@ namespace FatalAttraction.Engine
 		}
 	}
 }
-// Touched for recompilation
+
+

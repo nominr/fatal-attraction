@@ -22,6 +22,7 @@ public partial class NPCEntity : CharacterBody2D
 
 	// Visual elements
 	private AnimatedSprite2D _sprite;
+	private Texture2D _baseTexture; // Store the texture for portrait usage
 	private Label _nameLabel;
 	private CollisionShape2D _collisionShape;
 	private Font _customFont;
@@ -606,6 +607,9 @@ public partial class NPCEntity : CharacterBody2D
 				atlasKey.Region = new Rect2(index * frameWidth, 0, frameWidth, frameHeight);
 				return atlasKey;
 			}
+			
+			// Store texture for portrait
+			_baseTexture = texture;
 
 			// 0-1: Walk Fwd (Down)
 			frames.AddAnimation("walk_down");
@@ -796,6 +800,21 @@ public partial class NPCEntity : CharacterBody2D
 			_playerInRange = false;
 			_interactHint.Visible = false;
 		}
+	}
+	
+	public Texture2D GetPortraitTexture()
+	{
+		if (_baseTexture != null)
+		{
+			// Return an atlas texture of the first frame (Walk Down 0)
+			// effectively a "mugshot"
+			var atlas = new AtlasTexture();
+			atlas.Atlas = _baseTexture;
+			// 240x300 is the frame size defined in LoadSpriteForNPC
+			atlas.Region = new Rect2(0, 0, 240, 300);
+			return atlas;
+		}
+		return null;
 	}
 
 	/// <summary>

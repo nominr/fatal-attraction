@@ -119,10 +119,6 @@ public partial class GameWorld : Node2D
 	private VBoxContainer _producerStatsContainer;
 	private Label _activeCamerasLabel;
 
-	private Button _callPoliceButton;
-
-	private Label _callPoliceTimerLabel;
-	private long _localCaughtTimeFallback = 0;
 	private int _lastProcessedNotificationCount = 0;
 	
 	// Track where panels were opened to auto-close on distance
@@ -134,8 +130,13 @@ public partial class GameWorld : Node2D
 	private double _plusOneTimer = 0;
 	private Texture2D _plusOneTexture;
 
-	// Player Health Display
-	private Label _playerHealthLabel;
+	// Player Health Display (Visual Health Bar)
+	private HBoxContainer _healthBarRow;
+	private ProgressBar _playerHealthBar;
+
+	// Bottom-Left Status Container (for role-specific stats)
+	private PanelContainer _bottomLeftStatusPanel;
+	private VBoxContainer _bottomLeftStatusContainer;
 
 	// Room 5 Health Regeneration
 	private double _room5RegenAccumulator = 0;
@@ -405,20 +406,27 @@ public partial class GameWorld : Node2D
 		// Ensure HUD doesn't block clicks in empty areas, but let buttons inside work
 		hudPanel.MouseFilter = Control.MouseFilterEnum.Pass;
 		
-		var hudBgStyle = new StyleBoxFlat();
-		hudBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
-		hudBgStyle.SetCornerRadiusAll(4);
-		hudBgStyle.SetContentMarginAll(8);
+		var hudBgStyle = new StyleBoxEmpty();
 		hudPanel.AddThemeStyleboxOverride("panel", hudBgStyle);
 		hudPanel.AddChild(hudContainer);
 		_uiLayer.AddChild(hudPanel);
 
 		_timerLabel = new Label();
-		_timerLabel.Text = "Time: 05:00";
+		_timerLabel.Text = "05:00";
 		_timerLabel.AddThemeFontOverride("font", _customFont);
-		_timerLabel.AddThemeFontSizeOverride("font_size", 26);
+		_timerLabel.AddThemeFontSizeOverride("font_size", 48);
 		_timerLabel.AddThemeColorOverride("font_color", Colors.White);
-		hudContainer.AddChild(_timerLabel);
+		// Black outline around the text
+		_timerLabel.AddThemeConstantOverride("outline_size", 6);
+		_timerLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+		_timerLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		// Center the timer at the top of the screen
+		_timerLabel.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+		_timerLabel.GrowHorizontal = Control.GrowDirection.Both;
+		_timerLabel.OffsetLeft = -150;
+		_timerLabel.OffsetRight = 150;
+		_timerLabel.OffsetTop = 15;
+		_uiLayer.AddChild(_timerLabel);
 		
 		_roleLabel = new Label();
 		_roleLabel.Text = "";
@@ -473,13 +481,28 @@ public partial class GameWorld : Node2D
 		center.AddChild(overLabel);
 		_uiLayer.AddChild(overlay);
 
+		// Bottom Left Status Container (positioned above buttons)
+		_bottomLeftStatusPanel = new PanelContainer();
+		_bottomLeftStatusPanel.Position = new Vector2(20, 500); // Above buttons at y=600
+		_uiLayer.AddChild(_bottomLeftStatusPanel);
+
+		var bottomLeftStyle = new StyleBoxFlat();
+		bottomLeftStyle.BgColor = new Color(0, 0, 0, 0.6f); // Dark translucent background
+		bottomLeftStyle.SetCornerRadiusAll(4);
+		bottomLeftStyle.SetContentMarginAll(8);
+		_bottomLeftStatusPanel.AddThemeStyleboxOverride("panel", bottomLeftStyle);
+		_bottomLeftStatusPanel.Visible = false;
+
+		_bottomLeftStatusContainer = new VBoxContainer();
+		_bottomLeftStatusPanel.AddChild(_bottomLeftStatusContainer);
+
 		_convertedLabel = new Label();
 		_convertedLabel.Text = "Converted: 0";
 		_convertedLabel.AddThemeFontOverride("font", _customFont);
 		_convertedLabel.AddThemeFontSizeOverride("font_size", 26);
 		_convertedLabel.AddThemeColorOverride("font_color", Colors.White);
 		_convertedLabel.Visible = false; // Only relevant for Prophet
-		hudContainer.AddChild(_convertedLabel);
+		_bottomLeftStatusContainer.AddChild(_convertedLabel);
 
 		// Knife Counter (Admirer only)
 		_bombCounterLabel = new Label();
@@ -487,17 +510,45 @@ public partial class GameWorld : Node2D
 		_bombCounterLabel.AddThemeFontOverride("font", _customFont);
 		_bombCounterLabel.AddThemeFontSizeOverride("font_size", 26);
 		_bombCounterLabel.AddThemeColorOverride("font_color", Colors.White);
-		_bombCounterLabel.Visible = false; // Only relevant for Admirer
-		hudContainer.AddChild(_bombCounterLabel);
+		_bombCounterLabel.Visible = false;
+		_bottomLeftStatusContainer.AddChild(_bombCounterLabel);
 
-		// Player Health Label (Prophet/Producer only)
-		_playerHealthLabel = new Label();
-		_playerHealthLabel.Text = "Health: 200/200";
-		_playerHealthLabel.AddThemeFontOverride("font", _customFont);
-		_playerHealthLabel.AddThemeFontSizeOverride("font_size", 26);
-		_playerHealthLabel.AddThemeColorOverride("font_color", new Color(1, 0, 0, 1)); // Red text
-		_playerHealthLabel.Visible = false; // Only for Prophet/Producer
-		hudContainer.AddChild(_playerHealthLabel);
+		// Player Health Bar (current player only, with heart icon)
+		_healthBarRow = new HBoxContainer();
+		_healthBarRow.AddThemeConstantOverride("separation", 10); // More separation for larger icons
+		_healthBarRow.Visible = false;
+		hudContainer.AddChild(_healthBarRow); // Move back to top-left area
+
+		// Heart icon (Increased size by another 50%: 72x72)
+		var heartTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_heart.png");
+		var heartIcon = new TextureRect();
+		heartIcon.Texture = heartTexture;
+		heartIcon.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+		heartIcon.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+		heartIcon.CustomMinimumSize = new Vector2(50, 50);
+		heartIcon.TextureFilter = TextureFilterEnum.Nearest; // Pixelated sharp look
+		_healthBarRow.AddChild(heartIcon);
+
+		// Health bar (Increased size by another 50%: 420x48)
+		_playerHealthBar = new ProgressBar();
+		_playerHealthBar.MinValue = 0;
+		_playerHealthBar.MaxValue = PLAYER_PUNCHES_TO_KILL;
+		_playerHealthBar.Value = PLAYER_PUNCHES_TO_KILL;
+		_playerHealthBar.ShowPercentage = false;
+		_playerHealthBar.CustomMinimumSize = new Vector2(294, 34);
+		_playerHealthBar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+
+		var healthFillStyle = new StyleBoxFlat();
+		healthFillStyle.BgColor = new Color(0.9f, 0.2f, 0.2f, 1); // Red fill
+		healthFillStyle.SetCornerRadiusAll(0); // Sharp pixelated corners
+		healthFillStyle.AntiAliasing = false; // Pixelated look
+		_playerHealthBar.AddThemeStyleboxOverride("fill", healthFillStyle);
+
+		// Background removed per user request
+		var emptyBg = new StyleBoxEmpty();
+		_playerHealthBar.AddThemeStyleboxOverride("background", emptyBg);
+
+		_healthBarRow.AddChild(_playerHealthBar);
 
 		// _metersContainer removed
 		
@@ -512,30 +563,8 @@ public partial class GameWorld : Node2D
 		_activeCamerasLabel.AddThemeFontOverride("font", _customFont);
 		_activeCamerasLabel.AddThemeFontSizeOverride("font_size", 26);
 		_activeCamerasLabel.Visible = false;
-		_producerStatsContainer.AddChild(_activeCamerasLabel);
+		_bottomLeftStatusContainer.AddChild(_activeCamerasLabel);
 
-		// Call Police Section (HBox for Button + Timer)
-		var policeHBox = new HBoxContainer();
-		policeHBox.AddThemeConstantOverride("separation", 10);
-		_producerStatsContainer.AddChild(policeHBox);
-
-		_callPoliceButton = new Button();
-		_callPoliceButton.Text = "CALL POLICE!";
-		_callPoliceButton.Modulate = Colors.Red;
-		_callPoliceButton.Visible = false;
-		_callPoliceButton.AddThemeFontOverride("font", _customFont);
-		_callPoliceButton.AddThemeFontSizeOverride("font_size", 25);
-		_callPoliceButton.Pressed += () => OnActionSelected("producer_global", "call_police");
-		policeHBox.AddChild(_callPoliceButton);
-
-		_callPoliceTimerLabel = new Label();
-		_callPoliceTimerLabel.Text = "";
-		_callPoliceTimerLabel.Visible = false;
-		_callPoliceTimerLabel.AddThemeFontOverride("font", _customFont);
-		_callPoliceTimerLabel.AddThemeFontSizeOverride("font_size", 24); // Larger text to match button
-		_callPoliceTimerLabel.AddThemeColorOverride("font_color", Colors.Yellow);
-		_callPoliceTimerLabel.VerticalAlignment = VerticalAlignment.Center;
-		policeHBox.AddChild(_callPoliceTimerLabel);
 
 		// Notification Panel (bottom right)
 		var viewportSize = GetViewportRect().Size; // Use actual viewport to avoid clipping on smaller windows
@@ -741,12 +770,12 @@ public partial class GameWorld : Node2D
 		// Scale up by 2x as requested
 		_triangleScene.Scale = new Vector2(2.0f, 2.0f);
 		
-		// Position Left Middle:
-		// Viewport Height / 2 - (Triangle Scene Height / 2 approx)
-		// Triangle Center is roughly (7749, 82) * 2 = (154, 164)
-		// So visual height is around 160-200.
-		// Let's place it at (20, ScreenHeight/2 - 100)
-		_triangleScene.Position = new Vector2(20, GetViewportRect().Size.Y / 2 - 100);
+		// Position Bottom Right:
+		// Content is roughly 150x150, scaled by 2 = 300x300.
+		// Place with some margin from the edges.
+		var vpSize = GetViewportRect().Size;
+		_triangleScene.Position = new Vector2(vpSize.X - 350, vpSize.Y - 280);
+		_triangleScene.ZIndex = 100; // Ensure it's on top
 		_uiLayer.AddChild(_triangleScene);
 		
 		// Goals Menu System
@@ -1193,7 +1222,7 @@ public partial class GameWorld : Node2D
 					var loveInterestList = new List<string>();
 					var targetsList = new List<string>();
 					
-					var npcs = _localGameState["npcs"] as JObject;
+					var npcs = _localGameState?["npcs"] as JObject;
 					if (npcs != null)
 					{
 						foreach (var prop in npcs.Properties())
@@ -1377,6 +1406,9 @@ public partial class GameWorld : Node2D
 	{
 		var configPath = ProjectSettings.GlobalizePath("res://data/game_configuration.json");
 		_gameEngine = new GameEngine(configPath);
+		
+		// Subscribe to score changes
+		_gameEngine.GameState.OnScoreChange += HandleScoreChange;
 		
 		_gameActive = true;
 		_timeRemaining = 300.0;
@@ -1611,7 +1643,14 @@ public partial class GameWorld : Node2D
 			}
 		}
 		
-		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
+
+		Texture2D npcPortrait = null;
+		if (_npcEntities.ContainsKey(npcId))
+		{
+			npcPortrait = _npcEntities[npcId].GetPortraitTexture();
+		}
+
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState, npcPortrait);
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -2735,6 +2774,100 @@ public partial class GameWorld : Node2D
 		}
 	}
 
+	// ---- SCORE FEEDBACK ----
+
+	private void HandleScoreChange(Role role, int score)
+	{
+		GD.Print($"[GameWorld] HandleScoreChange called for {role} with score {score}");
+		// Called on Server (or wherever GameEngine is running)
+		// We need to find the player ID associated with this role
+		long targetPlayerId = -1;
+		
+		foreach (var kvp in _networkManager.Players)
+		{
+			GD.Print($"[GameWorldDebug] Checking player {kvp.Key} with role {kvp.Value.Role} against {role}");
+			if (string.Equals(kvp.Value.Role, role.ToString(), StringComparison.OrdinalIgnoreCase))
+			{
+				targetPlayerId = kvp.Key;
+				break;
+			}
+		}
+		
+		if (targetPlayerId != -1)
+		{
+			// Send RPC to the specific client
+			GD.Print($"[GameWorld] Sending ClientShowScoreFeedback RPC to {targetPlayerId}");
+			RpcId(targetPlayerId, MethodName.ClientShowScoreFeedback, score);
+		}
+		else
+		{
+			GD.Print($"[GameWorld] ERROR: Could not find player for role {role}");
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void ClientShowScoreFeedback(int score)
+	{
+		// Called on Client
+		GD.Print($"[GameWorld] Received Score Feedback RPC: {score} on peer {Multiplayer.GetUniqueId()}");
+		
+		string assetName = null;
+		
+		if (score >= 2) assetName = "ai_plustwo.png";
+		else if (score == 1) assetName = "ai_plusone-nobg.png";
+		else if (score == 0) assetName = "ai_pluszero.png"; // Assuming this exists or needed
+		else if (score == -1) assetName = "ai_minusone.png";
+		else if (score <= -2) assetName = "ai_minustwo.png";
+		
+		if (assetName != null)
+		{
+			ShowScoreFeedback(assetName);
+		}
+		else
+		{
+			GD.Print($"[GameWorld] No asset defined for score {score}");
+		}
+	}
+	
+	private void ShowScoreFeedback(string assetName)
+	{
+		if (_plusOneOverlay == null)
+		{
+			GD.PrintErr("[GameWorld] _plusOneOverlay is null!");
+			return;
+		}
+		
+		string path = $"res://assets/{assetName}";
+		GD.Print($"[GameWorld] Loading score asset: {path}");
+		var texture = ResourceLoader.Load<Texture2D>(path);
+		
+		if (texture != null)
+		{
+			var texRect = _plusOneOverlay.GetNodeOrNull<TextureRect>("PlusOneImage");
+			if (texRect != null)
+			{
+				texRect.Texture = texture;
+				GD.Print($"[GameWorld] Set texture on PlusOneImage. Making visible.");
+			}
+			else
+			{
+				GD.PrintErr("[GameWorld] PlusOneImage TextureRect not found in overlay!");
+			}
+
+			_plusOneOverlay.Visible = true;
+			_plusOneTimer = 2.0f; // Show for 2 seconds
+			
+			// Optional: Add a tween or animation for pop effect
+			var tween = CreateTween();
+			_plusOneOverlay.Scale = Vector2.Zero;
+			tween.TweenProperty(_plusOneOverlay, "scale", Vector2.One, 0.3f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+		}
+		else
+		{
+			GD.PrintErr($"[GameWorld] Failed to load score asset: {path}");
+		}
+	}
+
 	public override void _Process(double delta)
 	{
 		// Handle +1 Rating Visual Feedback Timer
@@ -3417,6 +3550,19 @@ public partial class GameWorld : Node2D
 			}
 		}
 
+		// MONEY GAME UI OVERRIDE
+		var moneyGames = _localGameState?["active_money_games"] as JObject;
+		if (moneyGames != null && !string.IsNullOrEmpty(_myRole) && moneyGames.ContainsKey(_myRole))
+		{
+			var ctx = moneyGames[_myRole];
+			string mNpcId = ctx["npcId"]?.Value<string>();
+			if (mNpcId == npcId)
+			{
+				int target = ctx["target"]?.Value<int>() ?? 0;
+				desc = $"{npcName} requests [b]{target} coins[/b].";
+			}
+		}
+
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
 		
 		Vector3 npcState = Vector3.Zero;
@@ -3430,7 +3576,17 @@ public partial class GameWorld : Node2D
 			npcState = new Vector3(x, y, z);
 		}
 
-		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState);
+		Texture2D npcPortrait = null;
+		
+		// Try to find the actual NPCEntity to get the portrait
+		// We have _npcEntities dictionary but it might be server-only?
+		// GameWorld tracks spawned entities in _npcEntities.
+		if (_npcEntities.ContainsKey(npcId))
+		{
+			npcPortrait = _npcEntities[npcId].GetPortraitTexture();
+		}
+
+		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState, npcPortrait);
 	}
 
 	private void SpawnNPCsFromState()
@@ -3490,7 +3646,7 @@ public partial class GameWorld : Node2D
 		// Timer
 		double time = _localGameState["time_remaining"]?.Value<double>() ?? 0;
 		TimeSpan ts = TimeSpan.FromSeconds(time);
-		_timerLabel.Text = $"Time: {ts.Minutes:D2}:{ts.Seconds:D2}";
+		_timerLabel.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}";
 
 		// Check for new CAMERA ALERTS to reset local timer if needed
 		var notifications = _localGameState["notifications"]?.ToObject<List<string>>() ?? new List<string>();
@@ -3509,7 +3665,7 @@ public partial class GameWorld : Node2D
 				if (notifications[i].Contains("[CAMERA ALERT]"))
 				{
 					// New detection! Reset local fallback timer to NOW
-					_localCaughtTimeFallback = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+					// _localCaughtTimeFallback = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
 				}
 			}
@@ -3546,51 +3702,40 @@ public partial class GameWorld : Node2D
 			_bombCounterLabel.Visible = isAdmirer;
 		}
 
-		// Player Health Label (All Roles)
-		if (_playerHealthLabel != null)
+		// Player Health Bar (current player only)
+		if (_healthBarRow != null)
 		{
-			if (!string.IsNullOrEmpty(_myRole))
+			var playerStatesForBars = _localGameState?["player_states"] as JObject;
+			if (playerStatesForBars != null && !string.IsNullOrEmpty(_myRole))
 			{
-				// Get player health from game state
-				var playerStates = _localGameState?["player_states"] as JObject;
-				if (playerStates != null)
+				string myRoleKey = _myRole?.ToLower() switch
 				{
-					string myRoleKey = _myRole?.ToLower() switch
-					{
-						"prophet" => "Prophet",
-						"producer" => "Producer",
-						"admirer" => "Admirer",
-						_ => null
-					};
-					if (myRoleKey != null)
-					{
-						var myPlayerState = playerStates[myRoleKey];
-						if (myPlayerState != null)
-						{
-							int punchesTaken = myPlayerState["punches_taken"]?.Value<int>() ?? 0;
-							int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
-							_playerHealthLabel.Text = $"Health: {healthRemaining}/{PLAYER_PUNCHES_TO_KILL}";
-							_playerHealthLabel.Visible = true;
-						}
-						else
-						{
-							_playerHealthLabel.Visible = false;
-						}
-					}
-					else
-					{
-						_playerHealthLabel.Visible = false;
-					}
-				}
-				else
+					"prophet" => "Prophet",
+					"producer" => "Producer",
+					"admirer" => "Admirer",
+					_ => null
+				};
+				if (myRoleKey != null)
 				{
-					_playerHealthLabel.Visible = false;
+					var myState = playerStatesForBars[myRoleKey];
+					if (myState != null)
+					{
+						int pt = myState["punches_taken"]?.Value<int>() ?? 0;
+						_playerHealthBar.Value = PLAYER_PUNCHES_TO_KILL - pt;
+						_healthBarRow.Visible = true;
+					}
+					else { _healthBarRow.Visible = false; }
 				}
+				else { _healthBarRow.Visible = false; }
 			}
-			else
-			{
-				_playerHealthLabel.Visible = false;
-			}
+			else { _healthBarRow.Visible = false; }
+		}
+
+		// Update bottom-left status panel visibility
+		if (_bottomLeftStatusPanel != null)
+		{
+			// Show panel if any of the role labels inside are visible
+			_bottomLeftStatusPanel.Visible = _convertedLabel.Visible || _bombCounterLabel.Visible || _activeCamerasLabel.Visible;
 		}
 
 		// Prophet conversion progress
@@ -3621,60 +3766,6 @@ public partial class GameWorld : Node2D
 					: "Active Security Cameras:\nNone";
 			}
 			
-			// Update Call Police Button in HUD
-			bool admirerCaught = _localGameState?["admirer_caught"]?.Value<bool>() ?? false;
-			bool isEliminated = _localGameState?["admirer_eliminated"]?.Value<bool>() ?? false;
-			
-			// Get caught time - try snake_case first (standard), then PascalCase fallback
-			long caughtTime = _localGameState?["admirer_caught_timestamp"]?.Value<long>() 
-							?? _localGameState?["AdmirerCaughtTimestamp"]?.Value<long>() ?? 0;
-
-			if (_callPoliceButton != null)
-			{
-				bool isWithinWindow = false;
-				
-				if (admirerCaught && !isEliminated)
-				{
-
-					// Check 40 second window
-					long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-					
-					// LOGIC FIX: Always use the most recent timestamp.
-					// If a new notification arrived, _localCaughtTimeFallback is NOW.
-					// If server sends old time T1, and we have T2 (now), use T2.
-					// If server sends 0, and we have T2, use T2.
-					if (_localCaughtTimeFallback > caughtTime)
-					{
-						caughtTime = _localCaughtTimeFallback;
-					}
-					// Only clear fallback if server time is actually newer (meaning server caught up)
-					else if (caughtTime > 0)
-					{
-						_localCaughtTimeFallback = 0; 
-					}
-
-					long elapsed = now - caughtTime;
-					long remaining = 40000 - elapsed;
-					
-					if (remaining > 0)
-					{
-						isWithinWindow = true;
-						_callPoliceTimerLabel.Text = $"{Math.Ceiling(remaining / 1000.0)}s";
-						_callPoliceTimerLabel.Visible = true;
-					}
-					else
-					{
-						_callPoliceTimerLabel.Visible = false;
-					}
-				}
-				else
-				{
-					_callPoliceTimerLabel.Visible = false;
-				}
-				
-				// Only show if caught AND not yet eliminated AND within 40s window
-				_callPoliceButton.Visible = isWithinWindow;
-			}
 			
 			// Update Camera Select Panel Buttons (if open)
 			var csPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
@@ -3903,39 +3994,23 @@ public partial class GameWorld : Node2D
 						
 						GD.Print($"[+1 Debug] Current rating: {currentRating}, Previous rating: {_previousProducerRating}");
 						
-						// Check if rating increased by exactly +1 and an interview just finished
-						if (currentRating == _previousProducerRating + 1)
+						// Check if rating increased (Relaxed check to include +2 or other sources)
+						if (currentRating > _previousProducerRating)
 						{
-							GD.Print("[+1 Debug] Rating increased by +1! Checking for interview notification...");
+							double diff = currentRating - _previousProducerRating;
+							GD.Print($"[+1 Debug] Rating increased by +{diff}! Showing visual feedback...");
 							
-							// Check if any of the new notifications mention "Interview finished"
-							bool interviewFinished = false;
-							// Check only the NEW notifications that were just added (from oldNotificationCount to current)
-							for (int i = oldNotificationCount; i < notifList.Count; i++)
+							// Show +1 visual regardless of source (Interview, MiniGame, etc)
+							if (_plusOneTimer <= 0)
 							{
-								GD.Print($"[+1 Debug] Checking notification {i}: {notifList[i]}");
-								if (notifList[i].Contains("Interview finished"))
-								{
-									interviewFinished = true;
-									GD.Print("[+1 Debug] Found 'Interview finished' notification!");
-									break;
-								}
-							}
-							
-							GD.Print($"[+1 Debug] Interview finished: {interviewFinished}, Timer: {_plusOneTimer}, Overlay null: {_plusOneOverlay == null}");
-							
-							if (interviewFinished && _plusOneTimer <= 0)
-							{
-								// Show +1 visual
 								if (_plusOneOverlay != null)
 								{
 									_plusOneOverlay.Visible = true;
 									_plusOneTimer = 1.0; // Display for 1 second
-									GD.Print("[GameWorld] ✅ Showing +1 rating visual feedback!");
-								}
-								else
-								{
-									GD.PrintErr("[+1 Debug] ERROR: _plusOneOverlay is null!");
+									
+									// If distinct +2 asset existed, we would select it here. 
+									// For now, reuse +1 or just show the feedback.
+									GD.Print("[GameWorld] ✅ Showing rating increase visual feedback!");
 								}
 							}
 						}

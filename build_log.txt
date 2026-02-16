@@ -1,0 +1,15 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Users\nomin\Desktop\fatal-attraction\scripts\GameWorld.cs(2918,6): error CS0103: The name '_room5RegenAccumulator' does not exist in the current context [C:\Users\nomin\Desktop\fatal-attraction\FatalAttraction.csproj]
+C:\Users\nomin\Desktop\fatal-attraction\scripts\GameWorld.cs(2919,10): error CS0103: The name '_room5RegenAccumulator' does not exist in the current context [C:\Users\nomin\Desktop\fatal-attraction\FatalAttraction.csproj]
+C:\Users\nomin\Desktop\fatal-attraction\scripts\GameWorld.cs(2921,7): error CS0103: The name '_room5RegenAccumulator' does not exist in the current context [C:\Users\nomin\Desktop\fatal-attraction\FatalAttraction.csproj]
+
+Build FAILED.
+
+C:\Users\nomin\Desktop\fatal-attraction\scripts\GameWorld.cs(2918,6): error CS0103: The name '_room5RegenAccumulator' does not exist in the current context [C:\Users\nomin\Desktop\fatal-attraction\FatalAttraction.csproj]
+C:\Users\nomin\Desktop\fatal-attraction\scripts\GameWorld.cs(2919,10): error CS0103: The name '_room5RegenAccumulator' does not exist in the current context [C:\Users\nomin\Desktop\fatal-attraction\FatalAttraction.csproj]
+C:\Users\nomin\Desktop\fatal-attraction\scripts\GameWorld.cs(2921,7): error CS0103: The name '_room5RegenAccumulator' does not exist in the current context [C:\Users\nomin\Desktop\fatal-attraction\FatalAttraction.csproj]
+    0 Warning(s)
+    3 Error(s)
+
+Time Elapsed 00:00:07.00

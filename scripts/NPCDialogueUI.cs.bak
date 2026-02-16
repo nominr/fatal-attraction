@@ -1,0 +1,286 @@
+using Godot;
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using System.Linq;
+
+public partial class NPCDialogueUI : Control
+{
+	[Signal]
+	public delegate void ActionSelectedEventHandler(string npcId, string actionId);
+
+	[Signal]
+	public delegate void PanelClosedEventHandler();
+
+	// UI Elements
+	private TextureRect _mainBackground;
+	private VBoxContainer _centralContainer;
+	
+	private TextureRect _dialogueBackground;
+	private Label _npcNameLabel;
+	private RichTextLabel _dialogueTextLabel;
+	
+	private GridContainer _optionsGrid;
+	private Label _stateLabel; // Global screen label available to debug
+	private Control _triangleScene; // Influence triangle component (right side)
+	
+	// Resources
+	private Font _customFont;
+	private Texture2D _panelTexture;
+	private Texture2D _dialogueTexture;
+	private Texture2D _buttonTexture;
+
+	// State
+	private string _currentNpcId;
+
+	public override void _Ready()
+	{
+		// 1. Setup Basic Properties
+		Visible = false;
+		MouseFilter = MouseFilterEnum.Pass; // Allow clicks to pass if not hitting buttons? Actually, panel should block? 
+											// User interaction panel usually blocks game input below it.
+		// Let's set main background to Stop, but root to Pass.
+
+		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		_panelTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_interaction_panel.png");
+		_dialogueTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_npcinteraction_dialogue.png");
+		_buttonTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_npcinteraction_option.png");
+
+		// 2. Clear existing children to build fresh UI
+		foreach (Node child in GetChildren()) child.QueueFree();
+
+		// 3. Configure Root Layout (Bottom Wide, Full Width)
+		// Panel takes entire width at bottom, height determined by texture aspect ratio
+		SetAnchorsPreset(LayoutPreset.BottomWide);
+		GrowVertical = GrowDirection.Begin; // Grow UP from bottom
+		ZIndex = 10;
+		
+		// Set height based on texture aspect ratio to maintain proportions
+		// ai_interaction_panel.png appears to be ~1400x400 (roughly 3.5:1 ratio)
+		// MASSIVE increase to 650px - panel MUST be at absolute bottom
+		AnchorTop = 1.0f;
+		AnchorBottom = 1.0f;
+		OffsetTop = -1000; // Height of 650px for the panel
+		OffsetBottom = 0;
+		OffsetLeft = 0;
+		OffsetRight = 0; 
+		
+		// --- MAIN BACKGROUND ---
+		// The background texture should fill the entire panel area
+		_mainBackground = new TextureRect();
+		_mainBackground.Texture = _panelTexture;
+		_mainBackground.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+		_mainBackground.StretchMode = TextureRect.StretchModeEnum.Scale;
+		_mainBackground.SetAnchorsPreset(LayoutPreset.FullRect);
+		_mainBackground.SelfModulate = Colors.White;
+		_mainBackground.Visible = true;
+		_mainBackground.MouseFilter = MouseFilterEnum.Ignore; // Let clicks pass through to buttons below
+		AddChild(_mainBackground);
+		
+		// --- CENTRAL CONTAINER (VBox) ---
+		// CRITICAL: This must be a sibling of _mainBackground, NOT a child
+		// TextureRect cannot properly parent container nodes
+		_centralContainer = new VBoxContainer();
+		_centralContainer.SetAnchorsPreset(LayoutPreset.FullRect);
+		_centralContainer.Alignment = BoxContainer.AlignmentMode.Center;
+		_centralContainer.AddThemeConstantOverride("separation", 15); // Tighter separation
+		_centralContainer.GrowHorizontal = GrowDirection.Both;
+		_centralContainer.GrowVertical = GrowDirection.Both;
+		// Add padding to keep content away from panel edges
+		// MASSIVE margins - Triangle on RIGHT, NPC face on LEFT
+		var margin = new MarginContainer();
+		margin.SetAnchorsPreset(LayoutPreset.FullRect);
+		margin.AddThemeConstantOverride("margin_left", 250); // Space for NPC face on left
+		margin.AddThemeConstantOverride("margin_right", 250); // Space for triangle on right
+		margin.AddThemeConstantOverride("margin_top", 60);
+		margin.AddThemeConstantOverride("margin_bottom", 60);
+		AddChild(margin);
+		margin.AddChild(_centralContainer);
+
+
+		// --- DIALOGUE SECTION ---
+		// Use TextureRect directly for background with content overlaid
+		var dialogueContainer = new Control();
+		dialogueContainer.CustomMinimumSize = new Vector2(0, 80); // Taller dialogue box
+		dialogueContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill; // Fill available width
+		_centralContainer.AddChild(dialogueContainer);
+		
+		// Dialogue background texture
+		_dialogueBackground = new TextureRect();
+		_dialogueBackground.Texture = _dialogueTexture;
+		_dialogueBackground.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+		_dialogueBackground.StretchMode = TextureRect.StretchModeEnum.Scale;
+		_dialogueBackground.SetAnchorsPreset(LayoutPreset.FullRect);
+		_dialogueBackground.SelfModulate = Colors.White;
+		_dialogueBackground.MouseFilter = MouseFilterEnum.Ignore;
+		dialogueContainer.AddChild(_dialogueBackground);
+
+		// Content on top of background
+		var dialogueContent = new VBoxContainer();
+		dialogueContent.SetAnchorsPreset(LayoutPreset.FullRect);
+		dialogueContent.Alignment = BoxContainer.AlignmentMode.Center;
+		dialogueContent.AddThemeConstantOverride("separation", 3);
+		var dialogueMargin = new MarginContainer();
+		dialogueMargin.SetAnchorsPreset(LayoutPreset.FullRect);
+		dialogueMargin.AddThemeConstantOverride("margin_left", 40);
+		dialogueMargin.AddThemeConstantOverride("margin_right", 40);
+		dialogueMargin.AddThemeConstantOverride("margin_top", 10);
+		dialogueMargin.AddThemeConstantOverride("margin_bottom", 10);
+		dialogueContainer.AddChild(dialogueMargin);
+		dialogueMargin.AddChild(dialogueContent);
+
+		// NPC Name
+		_npcNameLabel = new Label();
+		_npcNameLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		_npcNameLabel.AddThemeFontOverride("font", _customFont);
+		_npcNameLabel.AddThemeFontSizeOverride("font_size", 20);
+		_npcNameLabel.AddThemeColorOverride("font_color", Colors.White);
+		_npcNameLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+		_npcNameLabel.AddThemeConstantOverride("outline_size", 2);
+		dialogueContent.AddChild(_npcNameLabel);
+
+		// Dialogue Text
+		_dialogueTextLabel = new RichTextLabel();
+		_dialogueTextLabel.FitContent = true;
+		_dialogueTextLabel.ScrollActive = false;
+		_dialogueTextLabel.AddThemeFontOverride("normal_font", _customFont);
+		_dialogueTextLabel.AddThemeFontSizeOverride("normal_font_size", 16);
+		_dialogueTextLabel.AddThemeColorOverride("default_color", Colors.White);
+		_dialogueTextLabel.CustomMinimumSize = new Vector2(0, 0); // Removed fixed width
+		_dialogueTextLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill; // Fill available width
+		dialogueContent.AddChild(_dialogueTextLabel);
+
+
+		// --- OPTIONS SECTION ---
+		// Buttons in 2x2 grid layout
+		_optionsGrid = new GridContainer();
+		_optionsGrid.Columns = 2;
+		_optionsGrid.AddThemeConstantOverride("h_separation", 20); // Horizontal spacing
+		_optionsGrid.AddThemeConstantOverride("v_separation", 15); // Vertical spacing
+		_optionsGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill; // Fill width
+		_centralContainer.AddChild(_optionsGrid);
+
+
+		// --- STATE LABEL (Debug) ---
+		_stateLabel = new Label();
+		_stateLabel.TopLevel = true; // Independent of this control's transform
+		_stateLabel.SetAnchorsPreset(LayoutPreset.TopLeft);
+		_stateLabel.Position = new Vector2(20, 20);
+		_stateLabel.AddThemeColorOverride("font_color", Colors.White);
+		_stateLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+		_stateLabel.AddThemeConstantOverride("outline_size", 4);
+		_stateLabel.Visible = false;
+		AddChild(_stateLabel);
+		
+		// --- INFLUENCE TRIANGLE SCENE (Right Side) ---
+		var triangleScenePacked = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
+		_triangleScene = triangleScenePacked.Instantiate<Control>();
+		_triangleScene.SetAnchorsPreset(LayoutPreset.CenterRight);
+		_triangleScene.AnchorLeft = 1.0f;
+		_triangleScene.AnchorRight = 1.0f;
+		_triangleScene.AnchorTop = 0.5f;
+		_triangleScene.AnchorBottom = 0.5f;
+		_triangleScene.OffsetLeft = -180; // Position from right edge
+		_triangleScene.OffsetRight = -20;
+		_triangleScene.OffsetTop = -75; // Center vertically
+		_triangleScene.OffsetBottom = 75;
+		_triangleScene.CustomMinimumSize = new Vector2(160, 150); // Size for triangle component
+		_triangleScene.MouseFilter = MouseFilterEnum.Ignore;
+		AddChild(_triangleScene);
+	}
+
+	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions, Vector3 state)
+	{
+		_currentNpcId = npcId;
+		Visible = true;
+		
+		// Update Text
+		_npcNameLabel.Text = npcName.ToUpper();
+		_dialogueTextLabel.Text = npcDescription;
+		
+		// Debug State
+		if (_stateLabel != null)
+		{
+			_stateLabel.Text = $"NPC STATE: [A: {state.X:F1}, P: {state.Y:F1}, Pr: {state.Z:F1}]";
+			_stateLabel.Visible = true;
+		}
+
+		// Rebuild Buttons
+		foreach (Node child in _optionsGrid.GetChildren()) child.QueueFree();
+
+		if (actions != null)
+		{
+			var filteredActions = actions.Where(action => 
+			{
+				string actionId = action["id"]?.Value<string>() ?? "unknown";
+				return !actionId.EndsWith("_rock") && !actionId.EndsWith("_paper") && !actionId.EndsWith("_scissors");
+			}).ToList();
+			
+			// Adjust grid layout based on button count
+			// 2 buttons = 1x2 (side by side), 3-4 buttons = 2x2 grid
+			_optionsGrid.Columns = filteredActions.Count <= 2 ? 2 : 2;
+			
+			foreach (var action in filteredActions)
+			{
+				string actionId = action["id"]?.Value<string>() ?? "unknown";
+				string actionText = action["text"]?.Value<string>() ?? "Option";
+
+				var btn = CreateStyledButton(actionText, () => OnActionPressed(actionId));
+				_optionsGrid.AddChild(btn);
+			}
+		}
+	}
+
+	private Button CreateStyledButton(string text, Action onPressed)
+	{
+		var btn = new Button();
+		btn.Text = text;
+		btn.AddThemeFontOverride("font", _customFont);
+		btn.AddThemeFontSizeOverride("font_size", 18);
+		btn.AddThemeColorOverride("font_color", Colors.Black);
+		btn.AddThemeColorOverride("font_hover_color", Colors.DarkGray);
+		btn.AddThemeColorOverride("font_pressed_color", Colors.Black);
+		
+		// Apply Texture Style
+		var normStyle = new StyleBoxTexture { Texture = _buttonTexture };
+		// Adjust content margins to ensure text doesn't hit edges of button art
+		normStyle.ContentMarginLeft = 20;
+		normStyle.ContentMarginRight = 20;
+		normStyle.ContentMarginTop = 10;
+		normStyle.ContentMarginBottom = 15; // Button art often has depth at bottom
+
+		var hoverStyle = new StyleBoxTexture { Texture = _buttonTexture, ModulateColor = new Color(0.9f, 0.9f, 0.9f) };
+		hoverStyle.ContentMarginLeft = 20; hoverStyle.ContentMarginRight = 20;
+		hoverStyle.ContentMarginTop = 10; hoverStyle.ContentMarginBottom = 15;
+
+		var pressStyle = new StyleBoxTexture { Texture = _buttonTexture, ModulateColor = new Color(0.7f, 0.7f, 0.7f) };
+		pressStyle.ContentMarginLeft = 20; pressStyle.ContentMarginRight = 20;
+		pressStyle.ContentMarginTop = 12; pressStyle.ContentMarginBottom = 13; // Slight shift down effect?
+
+		btn.AddThemeStyleboxOverride("normal", normStyle);
+		btn.AddThemeStyleboxOverride("hover", hoverStyle);
+		btn.AddThemeStyleboxOverride("pressed", pressStyle);
+		btn.AddThemeStyleboxOverride("focus", new StyleBoxEmpty()); // Remove focus ring
+		
+		// Button size - MUST be wide enough to not squish
+		btn.CustomMinimumSize = new Vector2(300, 55); // Wide buttons to prevent squishing
+		btn.SizeFlagsHorizontal = SizeFlags.ExpandFill; // Expand to fill grid cell
+		btn.SizeFlagsVertical = SizeFlags.ShrinkCenter; // Don't expand vertically
+
+		btn.Pressed += onPressed;
+		return btn;
+	}
+
+	private void OnActionPressed(string actionId)
+	{
+		EmitSignal(SignalName.ActionSelected, _currentNpcId, actionId);
+	}
+
+	public void Close()
+	{
+		Visible = false;
+		_currentNpcId = null;
+		if (_stateLabel != null) _stateLabel.Visible = false;
+		EmitSignal(SignalName.PanelClosed);
+	}
+}
