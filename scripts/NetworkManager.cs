@@ -57,6 +57,10 @@ public partial class NetworkManager : Node
 		if (error != Error.Ok)
 		{
 			GD.PrintErr($"Failed to create server: {error}");
+			if (error == Error.CantCreate)
+			{
+				GD.PrintErr($"[NetworkManager] Port {port} might be in use. Close other game instances!");
+			}
 			return;
 		}
 

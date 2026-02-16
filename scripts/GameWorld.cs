@@ -134,8 +134,13 @@ public partial class GameWorld : Node2D
 	private double _plusOneTimer = 0;
 	private Texture2D _plusOneTexture;
 
-	// Player Health Display
-	private Label _playerHealthLabel;
+	// Player Health Display (Visual Health Bar)
+	private HBoxContainer _healthBarRow;
+	private ProgressBar _playerHealthBar;
+
+	// Bottom-Left Status Container (for role-specific stats)
+	private PanelContainer _bottomLeftStatusPanel;
+	private VBoxContainer _bottomLeftStatusContainer;
 
 	// Room 5 Health Regeneration
 	private double _room5RegenAccumulator = 0;
@@ -405,20 +410,27 @@ public partial class GameWorld : Node2D
 		// Ensure HUD doesn't block clicks in empty areas, but let buttons inside work
 		hudPanel.MouseFilter = Control.MouseFilterEnum.Pass;
 		
-		var hudBgStyle = new StyleBoxFlat();
-		hudBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
-		hudBgStyle.SetCornerRadiusAll(4);
-		hudBgStyle.SetContentMarginAll(8);
+		var hudBgStyle = new StyleBoxEmpty();
 		hudPanel.AddThemeStyleboxOverride("panel", hudBgStyle);
 		hudPanel.AddChild(hudContainer);
 		_uiLayer.AddChild(hudPanel);
 
 		_timerLabel = new Label();
-		_timerLabel.Text = "Time: 05:00";
+		_timerLabel.Text = "05:00";
 		_timerLabel.AddThemeFontOverride("font", _customFont);
-		_timerLabel.AddThemeFontSizeOverride("font_size", 26);
+		_timerLabel.AddThemeFontSizeOverride("font_size", 48);
 		_timerLabel.AddThemeColorOverride("font_color", Colors.White);
-		hudContainer.AddChild(_timerLabel);
+		// Black outline around the text
+		_timerLabel.AddThemeConstantOverride("outline_size", 6);
+		_timerLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+		_timerLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		// Center the timer at the top of the screen
+		_timerLabel.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+		_timerLabel.GrowHorizontal = Control.GrowDirection.Both;
+		_timerLabel.OffsetLeft = -150;
+		_timerLabel.OffsetRight = 150;
+		_timerLabel.OffsetTop = 15;
+		_uiLayer.AddChild(_timerLabel);
 		
 		_roleLabel = new Label();
 		_roleLabel.Text = "";
@@ -473,13 +485,28 @@ public partial class GameWorld : Node2D
 		center.AddChild(overLabel);
 		_uiLayer.AddChild(overlay);
 
+		// Bottom Left Status Container (positioned above buttons)
+		_bottomLeftStatusPanel = new PanelContainer();
+		_bottomLeftStatusPanel.Position = new Vector2(20, 500); // Above buttons at y=600
+		_uiLayer.AddChild(_bottomLeftStatusPanel);
+
+		var bottomLeftStyle = new StyleBoxFlat();
+		bottomLeftStyle.BgColor = new Color(0, 0, 0, 0.6f); // Dark translucent background
+		bottomLeftStyle.SetCornerRadiusAll(4);
+		bottomLeftStyle.SetContentMarginAll(8);
+		_bottomLeftStatusPanel.AddThemeStyleboxOverride("panel", bottomLeftStyle);
+		_bottomLeftStatusPanel.Visible = false;
+
+		_bottomLeftStatusContainer = new VBoxContainer();
+		_bottomLeftStatusPanel.AddChild(_bottomLeftStatusContainer);
+
 		_convertedLabel = new Label();
 		_convertedLabel.Text = "Converted: 0";
 		_convertedLabel.AddThemeFontOverride("font", _customFont);
 		_convertedLabel.AddThemeFontSizeOverride("font_size", 26);
 		_convertedLabel.AddThemeColorOverride("font_color", Colors.White);
 		_convertedLabel.Visible = false; // Only relevant for Prophet
-		hudContainer.AddChild(_convertedLabel);
+		_bottomLeftStatusContainer.AddChild(_convertedLabel);
 
 		// Knife Counter (Admirer only)
 		_bombCounterLabel = new Label();
@@ -487,17 +514,45 @@ public partial class GameWorld : Node2D
 		_bombCounterLabel.AddThemeFontOverride("font", _customFont);
 		_bombCounterLabel.AddThemeFontSizeOverride("font_size", 26);
 		_bombCounterLabel.AddThemeColorOverride("font_color", Colors.White);
-		_bombCounterLabel.Visible = false; // Only relevant for Admirer
-		hudContainer.AddChild(_bombCounterLabel);
+		_bombCounterLabel.Visible = false;
+		_bottomLeftStatusContainer.AddChild(_bombCounterLabel);
 
-		// Player Health Label (Prophet/Producer only)
-		_playerHealthLabel = new Label();
-		_playerHealthLabel.Text = "Health: 200/200";
-		_playerHealthLabel.AddThemeFontOverride("font", _customFont);
-		_playerHealthLabel.AddThemeFontSizeOverride("font_size", 26);
-		_playerHealthLabel.AddThemeColorOverride("font_color", new Color(1, 0, 0, 1)); // Red text
-		_playerHealthLabel.Visible = false; // Only for Prophet/Producer
-		hudContainer.AddChild(_playerHealthLabel);
+		// Player Health Bar (current player only, with heart icon)
+		_healthBarRow = new HBoxContainer();
+		_healthBarRow.AddThemeConstantOverride("separation", 10); // More separation for larger icons
+		_healthBarRow.Visible = false;
+		hudContainer.AddChild(_healthBarRow); // Move back to top-left area
+
+		// Heart icon (Increased size by another 50%: 72x72)
+		var heartTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_heart.png");
+		var heartIcon = new TextureRect();
+		heartIcon.Texture = heartTexture;
+		heartIcon.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+		heartIcon.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+		heartIcon.CustomMinimumSize = new Vector2(50, 50);
+		heartIcon.TextureFilter = TextureFilterEnum.Nearest; // Pixelated sharp look
+		_healthBarRow.AddChild(heartIcon);
+
+		// Health bar (Increased size by another 50%: 420x48)
+		_playerHealthBar = new ProgressBar();
+		_playerHealthBar.MinValue = 0;
+		_playerHealthBar.MaxValue = PLAYER_PUNCHES_TO_KILL;
+		_playerHealthBar.Value = PLAYER_PUNCHES_TO_KILL;
+		_playerHealthBar.ShowPercentage = false;
+		_playerHealthBar.CustomMinimumSize = new Vector2(294, 34);
+		_playerHealthBar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+
+		var healthFillStyle = new StyleBoxFlat();
+		healthFillStyle.BgColor = new Color(0.9f, 0.2f, 0.2f, 1); // Red fill
+		healthFillStyle.SetCornerRadiusAll(0); // Sharp pixelated corners
+		healthFillStyle.AntiAliasing = false; // Pixelated look
+		_playerHealthBar.AddThemeStyleboxOverride("fill", healthFillStyle);
+
+		// Background removed per user request
+		var emptyBg = new StyleBoxEmpty();
+		_playerHealthBar.AddThemeStyleboxOverride("background", emptyBg);
+
+		_healthBarRow.AddChild(_playerHealthBar);
 
 		// _metersContainer removed
 		
@@ -512,7 +567,7 @@ public partial class GameWorld : Node2D
 		_activeCamerasLabel.AddThemeFontOverride("font", _customFont);
 		_activeCamerasLabel.AddThemeFontSizeOverride("font_size", 26);
 		_activeCamerasLabel.Visible = false;
-		_producerStatsContainer.AddChild(_activeCamerasLabel);
+		_bottomLeftStatusContainer.AddChild(_activeCamerasLabel);
 
 		// Call Police Section (HBox for Button + Timer)
 		var policeHBox = new HBoxContainer();
@@ -647,7 +702,29 @@ public partial class GameWorld : Node2D
 		bombButton.CustomMinimumSize = new Vector2(180, 60);
 		
 		// Add Knife Icon
-		var bombTexture = ResourceLoader.Load<Texture2D>("res://assets/knife.png");
+		Texture2D bombTexture = null;
+		try 
+		{
+			bombTexture = ResourceLoader.Load<Texture2D>("res://assets/knife.png");
+		}
+		catch (Exception e)
+		{
+			GD.PrintErr($"[GameWorld] Failed to load knife.png: {e.Message}");
+		}
+
+		if (bombTexture == null)
+		{
+			// Fallback if missing
+			var gradient = new Gradient();
+			gradient.SetColor(0, Colors.Red);
+			gradient.SetColor(1, Colors.Black);
+			var gen = new GradientTexture2D();
+			gen.Gradient = gradient;
+			gen.Width = 32;
+			gen.Height = 32;
+			bombTexture = gen;
+		}
+		
 		bombButton.Icon = bombTexture;
 		bombButton.ExpandIcon = true;
 		bombButton.IconAlignment = HorizontalAlignment.Left;
@@ -3485,7 +3562,7 @@ public partial class GameWorld : Node2D
 		// Timer
 		double time = _localGameState["time_remaining"]?.Value<double>() ?? 0;
 		TimeSpan ts = TimeSpan.FromSeconds(time);
-		_timerLabel.Text = $"Time: {ts.Minutes:D2}:{ts.Seconds:D2}";
+		_timerLabel.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}";
 
 		// Check for new CAMERA ALERTS to reset local timer if needed
 		var notifications = _localGameState["notifications"]?.ToObject<List<string>>() ?? new List<string>();
@@ -3541,51 +3618,40 @@ public partial class GameWorld : Node2D
 			_bombCounterLabel.Visible = isAdmirer;
 		}
 
-		// Player Health Label (All Roles)
-		if (_playerHealthLabel != null)
+		// Player Health Bar (current player only)
+		if (_healthBarRow != null)
 		{
-			if (!string.IsNullOrEmpty(_myRole))
+			var playerStatesForBars = _localGameState?["player_states"] as JObject;
+			if (playerStatesForBars != null && !string.IsNullOrEmpty(_myRole))
 			{
-				// Get player health from game state
-				var playerStates = _localGameState?["player_states"] as JObject;
-				if (playerStates != null)
+				string myRoleKey = _myRole?.ToLower() switch
 				{
-					string myRoleKey = _myRole?.ToLower() switch
-					{
-						"prophet" => "Prophet",
-						"producer" => "Producer",
-						"admirer" => "Admirer",
-						_ => null
-					};
-					if (myRoleKey != null)
-					{
-						var myPlayerState = playerStates[myRoleKey];
-						if (myPlayerState != null)
-						{
-							int punchesTaken = myPlayerState["punches_taken"]?.Value<int>() ?? 0;
-							int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
-							_playerHealthLabel.Text = $"Health: {healthRemaining}/{PLAYER_PUNCHES_TO_KILL}";
-							_playerHealthLabel.Visible = true;
-						}
-						else
-						{
-							_playerHealthLabel.Visible = false;
-						}
-					}
-					else
-					{
-						_playerHealthLabel.Visible = false;
-					}
-				}
-				else
+					"prophet" => "Prophet",
+					"producer" => "Producer",
+					"admirer" => "Admirer",
+					_ => null
+				};
+				if (myRoleKey != null)
 				{
-					_playerHealthLabel.Visible = false;
+					var myState = playerStatesForBars[myRoleKey];
+					if (myState != null)
+					{
+						int pt = myState["punches_taken"]?.Value<int>() ?? 0;
+						_playerHealthBar.Value = PLAYER_PUNCHES_TO_KILL - pt;
+						_healthBarRow.Visible = true;
+					}
+					else { _healthBarRow.Visible = false; }
 				}
+				else { _healthBarRow.Visible = false; }
 			}
-			else
-			{
-				_playerHealthLabel.Visible = false;
-			}
+			else { _healthBarRow.Visible = false; }
+		}
+
+		// Update bottom-left status panel visibility
+		if (_bottomLeftStatusPanel != null)
+		{
+			// Show panel if any of the role labels inside are visible
+			_bottomLeftStatusPanel.Visible = _convertedLabel.Visible || _bombCounterLabel.Visible || _activeCamerasLabel.Visible;
 		}
 
 		// Prophet conversion progress
@@ -4708,7 +4774,7 @@ public partial class GameWorld : Node2D
 		}
 	}
 
-	private void AddSlidingNotification(string message, double duration = 3.0)
+	public void AddSlidingNotification(string message, double duration = 3.0)
 	{
 		GD.Print($"[Notification] {message}");
 		
@@ -4731,4 +4797,6 @@ public partial class GameWorld : Node2D
 			_activeNotificationItems.Remove(finishedItem);
 		};
 	}
+
+
 }

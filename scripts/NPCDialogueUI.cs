@@ -277,6 +277,31 @@ public partial class NPCDialogueUI : Control
 			_stateLabel.Text = $"NPC STATE: [A: {state.X:F1}, P: {state.Y:F1}, Pr: {state.Z:F1}]";
 			_stateLabel.Visible = true;
 		}
+		
+
+
+		_dialogueTextLabel.Text = npcDescription;
+
+
+		// --- HASH CHECK TO PREVENT FLICKER ---
+		// We only rebuild buttons if the actions or description text changes.
+		// We do NOT rebuild just because the vector state changed.
+		string currentHash = npcId + "|" + npcDescription + "|" + GenerateActionsHash(actions);
+
+		if (currentHash == _lastActionsHash)
+		{
+			Visible = true;
+			return; // EXIT EARLY - NO REBUILD
+		}
+		
+		_lastActionsHash = currentHash;
+
+
+		// Clear containers
+		foreach (Node child in _standardButtonsContainer.GetChildren()) child.QueueFree();
+		foreach (Node child in _interviewOptionsContainer.GetChildren()) child.QueueFree();
+
+		Button leaveBtn = null;
 
 		// Rebuild Buttons
 		foreach (Node child in _optionsGrid.GetChildren()) child.QueueFree();
