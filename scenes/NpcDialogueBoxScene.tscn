@@ -1,9 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://dgfshvl536ne8"]
 
 [ext_resource type="Script" uid="uid://w16vdqd3f1o8" path="res://scripts/NPCDialogueUI.cs" id="2_script"]
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_detby"]
-load_path = "res://.godot/imported/npc-message-box.png-84b108a3bf7d121ef62fbc859a277fab.ctex"
+[ext_resource type="Texture2D" path="res://assets/ai_interaction_panel.png" id="3_bg"]
 
 [node name="NPCDialogueBox" type="Control"]
 layout_mode = 3
@@ -20,7 +18,7 @@ script = ExtResource("2_script")
 layout_mode = 0
 offset_right = 48.0
 offset_bottom = 16.0
-texture = SubResource("CompressedTexture2D_detby")
+texture = ExtResource("3_bg")
 stretch_mode = 2
 
 [node name="Container" type="Control" parent="."]

@@ -31,9 +31,14 @@ public partial class NPCDialogueUI : Control
 
 	public override void _Ready()
 	{
+		ProcessMode = ProcessModeEnum.Always; // keep updating even if paused (optional)
+
 		// 1. Hide immediately to prevent blocking inputs if setup fails
 		Visible = false;
 		this.MouseFilter = MouseFilterEnum.Pass; // Allow non-handled clicks to pass
+		
+		CallDeferred(nameof(EnsureHudParent));
+		CallDeferred(nameof(ApplyCustomLayout));
 
 		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
 		
@@ -59,74 +64,94 @@ public partial class NPCDialogueUI : Control
 		
 		// Constrain width to 50% of box, starting at Center (0.5)
 		_interviewOptionsContainer.AnchorLeft = 0.4f; 
-		_interviewOptionsContainer.AnchorRight = 1.1f; // Ends at right edge 
+		_interviewOptionsContainer.AnchorRight = 1.0f; // Ends at right edge 
 		
 		_interviewOptionsContainer.GrowVertical = GrowDirection.Begin;
 		_interviewOptionsContainer.Alignment = BoxContainer.AlignmentMode.End; // Stack items at bottom
 
-		// --- FIND NODES ROBUSTLY (Recursive) ---
-		Control FindNodeRecursive(Node parent, string name)
-		{
-			if (parent == null) return null;
-			var child = parent.GetNodeOrNull<Control>(name);
-			if (child != null) return child;
-			foreach (Node kid in parent.GetChildren())
-			{
-				var res = FindNodeRecursive(kid, name);
-				if (res != null) return res;
-			}
-			return null;
-		}
-
-		_dialogueBoxContainer = FindNodeRecursive(this, "DialogueBox");
-		_nameBoxContainer = FindNodeRecursive(this, "NPCNameBox");
+		// Find TextureRect (Direct child of root)
+		// Check both "TextureRect" and "Background" just in case, but scene says "TextureRect"
+		TextureRect texture = GetNodeOrNull<TextureRect>("TextureRect");
 		
-		// Find TextureRect (might be named TextureRect or just be a TextureRect)
-		TextureRect texture = null;
+		// Fallback: Check inside Container (if scene structure changed)
 		var container = GetNodeOrNull<Control>("Container");
-		if (container != null) 
+		if (texture == null && container != null)
 		{
-			container.MouseFilter = MouseFilterEnum.Pass; 
 			texture = container.GetNodeOrNull<TextureRect>("TextureRect");
 		}
 		
-		if (texture == null)
+		// Restore Finding of Dialogue and Name Boxes
+		if (container != null)
 		{
-			// Search recursively for ANY TextureRect if specific name not found?
-			// Or just search by name "TextureRect"
-			var possibleTexture = FindNodeRecursive(this, "TextureRect");
-			if (possibleTexture is TextureRect tr) texture = tr;
+			_dialogueBoxContainer = container.GetNodeOrNull<Control>("DialogueBox");
+			_nameBoxContainer = container.GetNodeOrNull<Control>("NPCNameBox");
 		}
-
-		if (_dialogueBoxContainer == null || _nameBoxContainer == null)
+		else
 		{
-			GD.PrintErr("NPCDialogueUI: Critical Nodes (DialogueBox, NPCNameBox) missing! UI will not display correctly.");
-			// We DO NOT return here, to allow logic containers to exist and prevent NRE.
-			// But visuals will break.
+			// Try recursive fallback if main container not found?
+			// Or just try direct children if scene is flat
+			_dialogueBoxContainer = GetNodeOrNull<Control>("DialogueBox");
+			_nameBoxContainer = GetNodeOrNull<Control>("NPCNameBox");
 		}
+		
+		// Ensure non-null to prevent crashes (though functionality will be impaired)
+		if (_dialogueBoxContainer == null) GD.PrintErr("[NPCDialogueUI] DialogueBox NOT FOUND");
+		if (_nameBoxContainer == null) GD.PrintErr("[NPCDialogueUI] NPCNameBox NOT FOUND");
 
 		// --- ROOT SETUP ---
 		var viewportSize = GetViewportRect().Size;
-		float width = viewportSize.X * 0.33f;
-		float height = viewportSize.Y * 0.25f;
-
-		this.SetAnchorsPreset(LayoutPreset.CenterBottom);
-		this.Size = new Vector2(width, height);
-		this.Position = new Vector2((viewportSize.X - width) / 2, viewportSize.Y - height - 40);
+		float width = viewportSize.X;
+		
+		// Ensure UI appears on top
+		this.ZIndex = 100;
 
 		// --- TEXTURE SETUP ---
 		if (texture != null)
 		{
-			texture.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-			texture.StretchMode = TextureRect.StretchModeEnum.Scale;
-			// Ensure it fills its parent (likely Container or Root) to act as background
-			texture.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-			if (texture.GetParent() is Control p && p != this) 
+			string path = "res://assets/ai_interaction_panel.png";
+			Texture2D newInfoPanelTexture = null;
+
+			// Try loading as Resource (Standard)
+			if (ResourceLoader.Exists(path))
 			{
-				// If texture is inside a container, make sure that container fills our Root
-				p.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+				newInfoPanelTexture = ResourceLoader.Load<Texture2D>(path);
+			}
+
+			// Fallback: Load as Image (if not imported yet)
+			if (newInfoPanelTexture == null)
+			{
+				GD.Print($"[NPCDialogueUI] ResourceLoader failed for {path}. Trying direct Image load...");
+				var img = new Image();
+				var err = img.Load(path);
+				if (err == Error.Ok)
+				{
+					newInfoPanelTexture = ImageTexture.CreateFromImage(img);
+					GD.Print("[NPCDialogueUI] Direct Image load SUCCESS.");
+				}
+				else
+				{
+					GD.PrintErr($"[NPCDialogueUI] Direct Image load FAILED: {err}");
+				}
+			}
+
+			if (newInfoPanelTexture != null)
+			{
+				texture.Texture = newInfoPanelTexture;
+				texture.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+				texture.StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered; 
+				if (texture.GetParent() is Control p && p != this) 
+				{
+					p.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+				}
+				
+				GD.Print("[NPCDialogueUI] Texture loaded and assigned.");
 			}
 		}
+		else
+		{
+			GD.PrintErr("[NPCDialogueUI] TextureRect Node NOT FOUND even after robust search! Cannot set background.");
+		}
+		
 		
 		// --- CONTAINER LAYOUT FIX ---
 		// The 'Container' holding the boxes might be tiny (pixel art size). 
@@ -137,6 +162,10 @@ public partial class NPCDialogueUI : Control
 			// Also ensure it doesn't block mouse
 			container.MouseFilter = MouseFilterEnum.Pass;
 		}
+
+		// --- CONTENT INJECTION ---
+		// (Rest of _Ready continues below this point automatically since we only replaced up to the Container Fix logic)
+
 
 		// --- CONTENT INJECTION ---
 		if (_dialogueBoxContainer != null)
@@ -183,7 +212,7 @@ public partial class NPCDialogueUI : Control
 			_npcNameLabel.VerticalAlignment = VerticalAlignment.Center;
 			_npcNameLabel.AddThemeFontOverride("font", _customFont);
 			_npcNameLabel.AddThemeFontSizeOverride("font_size", 24);
-			_npcNameLabel.AddThemeColorOverride("font_color", Colors.Black);
+			_npcNameLabel.AddThemeColorOverride("font_color", Colors.White); // Set to White for contrast on dark tag
 			_npcNameLabel.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 			_nameBoxContainer.AddChild(_npcNameLabel);
 		}
@@ -214,6 +243,7 @@ public partial class NPCDialogueUI : Control
 	{
 		_currentNpcId = npcId;
 		_npcNameLabel.Text = npcName;
+
 		
 		// Update State Label
 		if (_stateLabel != null)
@@ -365,4 +395,119 @@ public partial class NPCDialogueUI : Control
 		if (actions == null) return "null";
 		return string.Join("|", actions.Select(a => a["id"]?.ToString() + a["text"]?.ToString()));
 	}
+
+	private void ApplyCustomLayout()
+	{
+		var vp = GetViewport().GetVisibleRect().Size;
+
+		// Force full width using Anchors (Bottom Wide)
+		// This sets Left=0, Right=1, Top=1, Bottom=1 (anchors)
+		SetAnchorsPreset(LayoutPreset.BottomWide);
+		
+		// Reset margins to ensure we touch edges
+		OffsetLeft = 0;
+		OffsetRight = 0; 
+		OffsetBottom = 0;
+
+		// Compute desired height from the panel texture aspect ratio
+		float aspect = 3.0f;
+		var texRect =
+			GetNodeOrNull<TextureRect>("TextureRect") ??
+			GetNodeOrNull<TextureRect>("Container/TextureRect");
+
+		if (texRect?.Texture != null)
+		{
+			var ts = texRect.Texture.GetSize();
+			if (ts.X > 0 && ts.Y > 0) aspect = ts.X / ts.Y;
+		}
+
+		// Width is full viewport width (since we stretch L/R)
+		float targetWidth = vp.X;
+		float targetHeight = targetWidth / aspect;
+
+		// Clamp height to reasonable limits
+		// Make it at least 25% of screen, max 50%? 
+		// User said "Large... proportions not squished". 
+		// If aspect is wide (e.g. 5:1), height will be small. 
+		// If aspect is standard (e.g. 16:9), height will be large.
+		
+		// Let's trust the aspect ratio primarily, but ensure a min/max
+		float minHeight = 200; 
+		float maxHeight = vp.Y * 0.6f;
+		
+		targetHeight = Mathf.Clamp(targetHeight, minHeight, maxHeight);
+
+		// Set Height via OffsetTop (negative value from Bottom anchor)
+		OffsetTop = -targetHeight;
+
+
+		// Ensure children fill the resized parent
+		if (texRect != null)
+		{
+			texRect.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			texRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize; 
+			texRect.StretchMode = TextureRect.StretchModeEnum.Scale; 
+		}
+
+		var container = GetNodeOrNull<Control>("Container");
+		if (container != null)
+		{
+			container.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		}
+		
+		GD.Print($"[NPCDialogueUI] Layout Applied: Size=({targetWidth}, {targetHeight}), Pos={Position}");
+	}
+
+
+
+	private void EnsureHudParent()
+	{
+		// Find or create HUD CanvasLayer
+		var root = GetTree().Root;
+		var hud = root.GetNodeOrNull<CanvasLayer>("HUD");
+		if (hud == null)
+		{
+			hud = new CanvasLayer();
+			hud.Name = "HUD";
+			root.AddChild(hud);
+		}
+
+		hud.Layer = 999;
+
+		// Find or create a full-screen Control under the CanvasLayer
+		var hudRoot = hud.GetNodeOrNull<Control>("HudRoot");
+		if (hudRoot == null)
+		{
+			hudRoot = new Control();
+			hudRoot.Name = "HudRoot";
+			hudRoot.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			hudRoot.MouseFilter = MouseFilterEnum.Pass;
+			hud.AddChild(hudRoot);
+		}
+
+		// If we're not already parented there, move us
+		if (GetParent() != hudRoot)
+		{
+			var oldParent = GetParent();
+			oldParent?.RemoveChild(this);
+			hudRoot.AddChild(this);
+		}
+
+		SetAnchorsPreset(LayoutPreset.TopLeft);
+
+		ZAsRelative = false;
+		ZIndex = 4096;
+		MouseFilter = MouseFilterEnum.Pass;
+
+		// Make sure layout updates on resize AFTER we're under full-screen parent
+		GetViewport().SizeChanged -= ApplyCustomLayout;
+		GetViewport().SizeChanged += ApplyCustomLayout;
+
+		ApplyCustomLayout(); // run immediately (not deferred)
+
+
+	}
+
+
+	public override void _Process(double delta) { }
 }

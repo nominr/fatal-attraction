@@ -1177,10 +1177,18 @@ public partial class GameWorld : Node2D
 			return;
 		}
 		
-		GD.Print($"GameWorld received OnNPCClicked for {npcId}. Current Role: '{_myRole}'");
+		// GD.Print($"GameWorld received OnNPCClicked for {npcId}. Current Role: '{_myRole}'");
+
 		if (string.IsNullOrEmpty(_myRole)) 
 		{
-			GD.Print("Role is empty, ignoring click.");
+			GD.PrintErr($"[GameWorld] ERROR: Role is empty when clicking NPC {npcId}. Interaction ignored. Ensure 'InitializeClient' was called.");
+			return;
+		}
+
+		// Ensure local game state exists
+		if (_localGameState == null)
+		{
+			GD.PrintErr($"[GameWorld] ERROR: _localGameState is null when clicking NPC {npcId}. Interaction ignored.");
 			return;
 		}
 
