@@ -301,4 +301,133 @@ public partial class TriangleScene : Control
 	{
 		return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y);
 	}
+	public Color GetGradientColor(Vector2 point)
+	{
+		// Barycentric weights for interpolation
+		// We need weights w1, w2, w3 for v1, v2, v3
+		// P = w1*v1 + w2*v2 + w3*v3
+		// w1 + w2 + w3 = 1
+		
+		float den = (_v2.Y - _v3.Y) * (_v1.X - _v3.X) + (_v3.X - _v2.X) * (_v1.Y - _v3.Y);
+		float w1 = ((_v2.Y - _v3.Y) * (point.X - _v3.X) + (_v3.X - _v2.X) * (point.Y - _v3.Y)) / den;
+		float w2 = ((_v3.Y - _v1.Y) * (point.X - _v3.X) + (_v1.X - _v3.X) * (point.Y - _v3.Y)) / den;
+		float w3 = 1 - w1 - w2;
+		
+		// Clamp weights to [0,1] to keep color within triangle logic, or allow subtle over-saturation?
+		// Clamping ensures we don't get wild colors outside the triangle.
+		w1 = Mathf.Clamp(w1, 0f, 1f);
+		w2 = Mathf.Clamp(w2, 0f, 1f);
+		w3 = Mathf.Clamp(w3, 0f, 1f);
+		
+		// Re-normalize sum to 1 after clamping to prevent dark colors
+		float sum = w1 + w2 + w3;
+		if (sum > 0)
+		{
+			w1 /= sum;
+			w2 /= sum;
+			w3 /= sum;
+		}
+
+		// Colors
+		// v1 = Bottom-Left (Prophet) -> Blue
+		// v2 = Bottom-Right (Producer) -> Green
+		// v3 = Top (Admirer) -> Red
+		// Center -> White (naturally comes from mixing R+G+B)
+		
+		Color cProphet = Colors.Blue;
+		Color cProducer = Colors.Green;
+		Color cAdmirer = Colors.Red;
+		
+		// Mix
+		float r = w1 * cProphet.R + w2 * cProducer.R + w3 * cAdmirer.R;
+		float g = w1 * cProphet.G + w2 * cProducer.G + w3 * cAdmirer.G;
+		float b = w1 * cProphet.B + w2 * cProducer.B + w3 * cAdmirer.B;
+		
+		// To ensure the center is White, we might need to adjust the mix. 
+		// Pure R+G+B = White.
+		// w1=w2=w3=0.33 -> 0.33R + 0.33G + 0.33B = Dark Grey? No.
+		// Blue=(0,0,1), Green=(0,1,0), Red=(1,0,0).
+		// Sum = (0.33, 0.33, 0.33) -> Dark Grey.
+		// The user wants the center to be White.
+		
+		// Improved Logic:
+		// Interpolate towards White based on distance from corners?
+		// Or assume the "Center" color is White and interpolate from Corner to Center?
+		
+		// Alternative:
+		// Map position to:
+		// Radius from center?
+		
+		// Let's use a 4-point interpolation or a "Colorize" approach.
+		// Center of triangle is (0,0) approx?
+		// Centroid = (v1+v2+v3)/3 = (-30+30+0, 24+24-28)/3 = (0, 20/3) = (0, 6.66).
+		// Wait, local origin (0,0) is likely the centroid if defined around it?
+		// _v1=(-30, 24), _v2=(30, 24), _v3=(0, -28).
+		// Centroid Y = (24+24-28)/3 = 20/3 = 6.66.
+		// Centroid X = 0.
+		// So (0, 6.66) is the geometric center.
+		
+		// Calculate distance from each corner to determine "influence" of that color.
+		// And distance from center to determine "whiteness".
+		
+		// Let's stick to the user's specific request: "triangle is a gradient... center being white".
+		// This means as we move from a corner to the center, we go from Color -> White.
+		
+		// Approach:
+		// 1. Calculate barycentric weights (w1, w2, w3).
+		// 2. Identify primary influence (max weight).
+		// 3. Interpolate between PrimaryColor and White based on how "centered" we are?
+		// Actually, standard mixing of R(1,0,0), G(0,1,0), B(0,0,1) gives (0.33,0.33,0.33) at center.
+		// We want (1,1,1) at center.
+		// So we need to ADD a base white component?
+		
+		// Additive blending? 
+		// Color = w1*C1 + w2*C2 + w3*C3 + BaseWhite * (1 - DistanceFromCenter)?
+		
+		// Let's try boosting the values so sum is close to 1.
+		// Or simpler:
+		// Map the barycentric weights to Hue? 
+		// And Saturation drops to 0 at center?
+		
+		// Let's use Saturation.
+		// Corners are S=1. Center is S=0 (White).
+		// Saturation = Distance from Center / MaxDistance?
+		// Centroid is approx (0, 5).
+		// Max dist is approx 35.
+		
+		Vector2 centroid = (_v1 + _v2 + _v3) / 3.0f;
+		float dist = point.DistanceTo(centroid);
+		float maxDist = 30.0f; // Approx distance to vertices
+		float saturation = Mathf.Clamp(dist / maxDist, 0f, 1f);
+		
+		// Determine Hue based on angle?
+		// Top(Red) is -90 deg. 
+		// Right(Green) is +30 deg ?
+		// Left(Blue) is +150 deg ?
+		
+		// Let's stick to blending but BOOST the white.
+		// RGB Additive?
+		// w1*Blue + w2*Green + w3*Red
+		// At center (0.33, 0.33, 0.33).
+		// If we scale by 3? -> (1, 1, 1).
+		// At corner (1, 0, 0) * 3 -> (3, 0, 0) -> Red (clamped).
+		// Intermediate (0.5, 0.5, 0) * 3 -> (1.5, 1.5, 0) -> Yellow (Red+Green).
+		
+		// This works! Scaling the weighted sum by ~3.0 makes the center white and corners pure.
+		r *= 2.5f; // reduced slightly from 3 to allow some color at center
+		g *= 2.5f;
+		b *= 2.5f;
+		
+		// Optional: Add a base white floor?
+		// float baseWhite = 0.2f;
+		// r += baseWhite; g += baseWhite; b += baseWhite;
+		
+		return new Color(Mathf.Clamp(r, 0, 1), Mathf.Clamp(g, 0, 1), Mathf.Clamp(b, 0, 1), 1.0f);
+	}
+	
+	public Color GetZoneColor(Vector2 point)
+	{
+		// Deprecated direct zone, use gradient
+		return GetGradientColor(point);
+	}
 }

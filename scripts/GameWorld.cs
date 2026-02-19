@@ -15,7 +15,7 @@ public partial class GameWorld : Node2D
 {
 	// ==================== NOTIFICATION BOX TOGGLE (line 16) ====================
 	// Set to true to show the notification box, false to hide it entirely.
-	private bool _notificationBoxEnabled = false;
+	private bool _notificationBoxEnabled = true;
 	// ============================================================================
 
 	// Triangle Scene Reference
@@ -2024,7 +2024,7 @@ public partial class GameWorld : Node2D
 			{
 				_gameEngine.GameState.AdmirerCaught = true;
 				_gameEngine.GameState.AdmirerEliminated = false;
-				_gameEngine.GameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
+				_gameEngine.GameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
 				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
 			}
 			
@@ -2080,7 +2080,7 @@ public partial class GameWorld : Node2D
 			{
 				_gameEngine.GameState.AdmirerCaught = true;
 				_gameEngine.GameState.AdmirerEliminated = false;
-				_gameEngine.GameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
+				_gameEngine.GameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
 				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
 			}
 
@@ -3358,6 +3358,7 @@ public partial class GameWorld : Node2D
 				ProcessInfluenceNotifications(states);
 
 				// If leaderboard is open, refresh visuals
+
 				if (_isLeaderboardOpen)
 				{
 					_leaderboardTriangle.ShowAllPoints();
@@ -4087,6 +4088,15 @@ public partial class GameWorld : Node2D
 				}
 
 				kvp.Value.UpdateState(alive, converted, married, isTarget);
+				
+				// DYNAMIC NAME TAG COLOR (GRADIENT)
+				if (_triangleScene != null)
+				{
+					float tx = state["tri_x"]?.Value<float>() ?? 0;
+					float ty = state["tri_y"]?.Value<float>() ?? 0;
+					Color gradientColor = _triangleScene.GetGradientColor(new Vector2(tx, ty));
+					kvp.Value.UpdateNameTagColor(gradientColor);
+				}
 			}
 		}
 	}

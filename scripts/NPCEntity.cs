@@ -972,4 +972,27 @@ public partial class NPCEntity : CharacterBody2D
 			GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
 		}
 	}
+	public void UpdateNameTagColor(Color bgColor)
+	{
+		if (_nameLabel == null) return;
+		
+		// Update Background
+		var style = _nameLabel.GetThemeStylebox("normal") as StyleBoxFlat;
+		if (style != null)
+		{
+			style.BgColor = bgColor;
+		}
+		else
+		{
+			// If style is missing or not flat, create new
+			var bgStyle = new StyleBoxFlat();
+			bgStyle.BgColor = bgColor;
+			bgStyle.SetCornerRadiusAll(4);
+			bgStyle.SetContentMarginAll(4);
+			_nameLabel.AddThemeStyleboxOverride("normal", bgStyle);
+		}
+		
+		// Always use White text
+		_nameLabel.AddThemeColorOverride("font_color", Colors.White);
+	}
 }

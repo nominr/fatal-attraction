@@ -740,7 +740,7 @@ namespace FatalAttraction.Engine
 					// CHECK FOR CAMERA (Prophet Resurrection)
 					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
 					{
-						_gameState.AddNotification($"[CAMERA ALERT] Miracle caught on camera in {npc.CurrentRoomId}!");
+						_gameState.AddNotification($"Prophet resurrected {npc.Name} and was caught on camera!");
 						_gameState.AddNotification($"Prophet's influence waned due to exposure!");
 						
 						// Apply Penalty to ALL Prophet Scores
@@ -771,9 +771,10 @@ namespace FatalAttraction.Engine
 					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
 					{
 
+						_gameState.AdmirerCaught = true;
 						_gameState.AdmirerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 						_gameState.AdmirerEliminated = false; 
-						_gameState.AddNotification($"[CAMERA ALERT] Suspicious activity detected in {npc.CurrentRoomId}!");
+						_gameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
 						_gameState.AddNotification($"Producer's Camera captured the crime!");
 						
 						// Apply Penalty to ALL Admirer Scores
