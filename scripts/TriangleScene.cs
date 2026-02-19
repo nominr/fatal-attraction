@@ -9,6 +9,9 @@ public partial class TriangleScene : Control
 	/// </summary>
 	public Dictionary<string, Vector2> ActiveNpcStates { get; private set; } = new();
 
+	// Overlay for drawing lines on top of sprites
+	private Control _linesOverlay;
+
 	private List<Sprite2D> _allPointsDots = new();
 
 
@@ -59,6 +62,13 @@ public partial class TriangleScene : Control
 		
 		// Disable mouse input to prevent blocking UI
 		MouseFilter = MouseFilterEnum.Ignore;
+		
+		// Create overlay for lines to ensure they draw ON TOP of the sprite
+		_linesOverlay = new Control();
+		_linesOverlay.MouseFilter = MouseFilterEnum.Ignore;
+		_linesOverlay.SetAnchorsPreset(LayoutPreset.FullRect);
+		_linesOverlay.Draw += OnDrawOverlay;
+		AddChild(_linesOverlay);
 		
 		_npcNameLabel = GetNodeOrNull<Label>("NpcNameLabel");
 
@@ -225,6 +235,24 @@ public partial class TriangleScene : Control
 		return (_v1 * r1) + (_v2 * r2) + (_v3 * r3);
 	}
 
+	// ── Overlay Drawing ────────────────────────────────────────────
+	private void OnDrawOverlay()
+	{
+		// All positions are in screen space (offset by _centerOffset) relative to parent
+		// Since overlay is full rect/anchored, its local 0,0 matches parent 0,0 
+		// (or rather, we want to draw relative to the same _centerOffset)
+
+		Vector2 im12 = _centerOffset + _m12; // inner bottom
+		Vector2 im13 = _centerOffset + _m13; // inner left
+		Vector2 im23 = _centerOffset + _m23; // inner right
+
+		// Draw inner triangle boundary lines
+		float lineWidth = 1.0f; // Thin line as requested
+		_linesOverlay.DrawLine(im12, im13, Colors.Black, lineWidth);
+		_linesOverlay.DrawLine(im13, im23, Colors.Black, lineWidth);
+		_linesOverlay.DrawLine(im23, im12, Colors.Black, lineWidth);
+	}
+
 	// ── Zone of Influence Drawing ──────────────────────────────────
 
 	public override void _Draw()
@@ -249,10 +277,8 @@ public partial class TriangleScene : Control
 		DrawPolygon(new Vector2[] { ov3, im13, im23 }, new Color[] { _admirerZoneColor, _admirerZoneColor, _admirerZoneColor });
 
 		// Draw inner triangle boundary lines
-		float lineWidth = 1.5f;
-		DrawLine(im12, im13, _boundaryColor, lineWidth);
-		DrawLine(im13, im23, _boundaryColor, lineWidth);
-		DrawLine(im23, im12, _boundaryColor, lineWidth);
+		// Moved to _linesOverlay to draw on top of sprite
+		_linesOverlay?.QueueRedraw();
 	}
 
 	// ── Zone Query ─────────────────────────────────────────────────

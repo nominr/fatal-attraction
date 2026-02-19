@@ -496,12 +496,12 @@ public partial class NPCEntity : CharacterBody2D
 		_nameLabel = new Label();
 		_nameLabel.Text = NpcName;
 		_nameLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_nameLabel.AddThemeColorOverride("font_color", Colors.White);
+		_nameLabel.AddThemeColorOverride("font_color", Colors.Black);
 		_nameLabel.AddThemeFontOverride("font", _customFont);
 		_nameLabel.AddThemeFontSizeOverride("font_size", 28);
 		// Add transparent grey background
 		var bgStyle = new StyleBoxFlat();
-		bgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
+		bgStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.7f); // Transparent white/light
 		bgStyle.SetCornerRadiusAll(4);
 		bgStyle.SetContentMarginAll(4);
 		_nameLabel.AddThemeStyleboxOverride("normal", bgStyle);
@@ -992,7 +992,7 @@ public partial class NPCEntity : CharacterBody2D
 			_nameLabel.AddThemeStyleboxOverride("normal", bgStyle);
 		}
 		
-		// Always use White text
-		_nameLabel.AddThemeColorOverride("font_color", Colors.White);
+		// Always use Black text
+		_nameLabel.AddThemeColorOverride("font_color", Colors.Black);
 	}
 }
