@@ -139,6 +139,10 @@ public partial class GameWorld : Node2D
 	private HBoxContainer _healthBarRow;
 	private ProgressBar _playerHealthBar;
 
+	// Global Influence Counter
+	private PanelContainer _globalInfluencePanel;
+	private RichTextLabel _globalInfluenceLabel;
+
 	// Bottom-Left Status Container (for role-specific stats)
 	private PanelContainer _bottomLeftStatusPanel;
 	private VBoxContainer _bottomLeftStatusContainer;
@@ -558,7 +562,37 @@ public partial class GameWorld : Node2D
 		_healthBarRow.AddChild(_playerHealthBar);
 
 		// _metersContainer removed
+
+		// Global Influence Counter (Under Health Bar)
+		_globalInfluencePanel = new PanelContainer();
+		// Ensure panel shrinks to fit content exactly with no extra width
+		_globalInfluencePanel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin; 
+		_globalInfluencePanel.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
 		
+		var globalCounterStyle = new StyleBoxFlat();
+		globalCounterStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.9f); // White background
+		globalCounterStyle.SetCornerRadiusAll(4);
+		// Minimal padding to fit tightly
+		globalCounterStyle.SetContentMarginAll(4);
+		_globalInfluencePanel.AddThemeStyleboxOverride("panel", globalCounterStyle);
+		
+		hudContainer.AddChild(_globalInfluencePanel);
+
+		_globalInfluenceLabel = new RichTextLabel();
+		_globalInfluenceLabel.BbcodeEnabled = true;
+		_globalInfluenceLabel.FitContent = true;
+		_globalInfluenceLabel.ScrollActive = false;
+		_globalInfluenceLabel.AutowrapMode = TextServer.AutowrapMode.Off; // Prevent wrapping adding width
+		// Remove custom min size to allow shrinking
+		_globalInfluenceLabel.CustomMinimumSize = Vector2.Zero;
+		_globalInfluenceLabel.AddThemeFontOverride("normal_font", _customFont);
+		_globalInfluenceLabel.AddThemeFontSizeOverride("normal_font_size", 24); 
+		
+		// Default color
+		_globalInfluenceLabel.AddThemeColorOverride("default_color", Colors.Black);
+		
+		_globalInfluencePanel.AddChild(_globalInfluenceLabel);
+
 		// Producer Stats Container (Active Cameras / Police)
 
 		// Producer Stats Container (Active Cameras / Police)
@@ -1821,9 +1855,9 @@ public partial class GameWorld : Node2D
 			vbox.AddThemeConstantOverride("separation", 10);
 			panel.AddChild(vbox);
 			
-			// Title label
+			// Header label (Modified from "Choose your target." to "Throw Knife")
 			var titleLabel = new Label();
-			titleLabel.Text = "Choose your target.";
+			titleLabel.Text = "Throw Knife";
 			titleLabel.AddThemeFontOverride("font", _customFont);
 			titleLabel.AddThemeFontSizeOverride("font_size", 24);
 			titleLabel.AddThemeColorOverride("font_color", Colors.White);
@@ -3355,6 +3389,19 @@ public partial class GameWorld : Node2D
 				}
 				_leaderboardTriangle.UpdateActiveStates(states);
 				
+				// Update Global Influence Counter
+				if (_globalInfluenceLabel != null)
+				{
+					int admirerCount = _leaderboardTriangle.AdmirerZoneCount;
+					int prophetCount = _leaderboardTriangle.ProphetZoneCount;
+					int producerCount = _leaderboardTriangle.ProducerZoneCount;
+					
+					// Counter: Black, Names: Colored
+					// "Counter:" in Black
+					string text = $"[color=black]Counter:[/color] [color=#cc0000]{admirerCount}[/color], [color=#0044cc]{prophetCount}[/color], [color=#00bb00]{producerCount}[/color]";
+					_globalInfluenceLabel.Text = text;
+				}
+
 				ProcessInfluenceNotifications(states);
 
 				// If leaderboard is open, refresh visuals
