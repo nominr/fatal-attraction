@@ -22,6 +22,7 @@ animations = [{
 size = Vector2(6, 27)
 
 [node name="admirer" type="CharacterBody2D"]
+scale = Vector2(1.7, 1.7)
 script = ExtResource("1_jagjx")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]

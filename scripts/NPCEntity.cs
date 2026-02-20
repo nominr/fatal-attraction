@@ -74,10 +74,10 @@ public partial class NPCEntity : CharacterBody2D
 	private WanderState _wanderState = WanderState.Pausing;
 	private Vector2 _targetPosition;
 	private double _pauseTimer = 0.0;
-	private const float MOVE_SPEED = 150.0f; // Pixels per second (increased from 50)
-	private const float MIN_PAUSE = 0.5f; // Minimum pause time in seconds (decreased from 2.0)
-	private const float MAX_PAUSE = 2.0f; // Maximum pause time in seconds (decreased from 5.0)
-	private const float TARGET_REACHED_THRESHOLD = 10.0f; // How close to target to consider "arrived"
+	private const float MOVE_SPEED = 255.0f; // 1.7x original 150 (approx)
+	private const float MIN_PAUSE = 0.5f; // Minimum pause time in seconds
+	private const float MAX_PAUSE = 2.0f; // Maximum pause time in seconds
+	private const float TARGET_REACHED_THRESHOLD = 17.0f; // 1.7x original 10.0f
 	private static readonly Random _random = new Random();
 
 	// Stuck detection
@@ -451,7 +451,7 @@ public partial class NPCEntity : CharacterBody2D
 			if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
 			{
 				Room room = _rooms[_currentRoomIndex];
-				float padding = 60.0f; 
+				float padding = 100.0f; 
 
 				float rMinX = room.minX + padding;
 				float rMaxX = room.maxX - padding;
@@ -548,14 +548,14 @@ public partial class NPCEntity : CharacterBody2D
 		CallDeferred(MethodName.CenterPunchHint);
 
 		// Status indicators (hidden by default)
-		// Converted (Halo) - Above head (approx -90)
-		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -65));
+		// Converted (Halo) - Above head (approx -110)
+		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -110));
 		
-		// Married (Heart) - Above head (approx -90)
-		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -65));
+		// Married (Heart) - Above head (approx -110)
+		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -110));
 
 		// Target indicator (for Admirer targets) - DISABLED to avoid visual confusion with camera UI
-		// _targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -65));
+		// _targetIndicator = CreateStatusIndicator("res://assets/editorial-focus.png", new Vector2(0, -110));
 		_targetIndicator = new Sprite2D(); // Create dummy sprite to avoid null reference
 		_targetIndicator.Visible = false;
 		AddChild(_targetIndicator);
@@ -650,8 +650,8 @@ public partial class NPCEntity : CharacterBody2D
 			frames.SetAnimationLoop(animName, true);
 			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f); // 36 frames need higher speed
 
-			// Calculate and store scale for this specific animation to ensure 143 world unit height
-			float targetWorldHeight = 143.0f;
+			// Calculate and store scale for this specific animation to ensure 243 world unit height
+			float targetWorldHeight = 243.0f;
 			frameHeight = height / gridRows;
 			_animationScales[animName] = targetWorldHeight / frameHeight;
 
@@ -684,8 +684,8 @@ public partial class NPCEntity : CharacterBody2D
 		if (texture != null)
 		{
 			indicator.Texture = texture;
-			// Scale sprites to match character pixel grid (4x)
-			indicator.Scale = new Vector2(4.0f, 4.0f); 
+			// Scale sprites to match character pixel grid (6.8x for 1.7 scale)
+			indicator.Scale = new Vector2(6.8f, 6.8f); 
 		}
 		indicator.TextureFilter = TextureFilterEnum.Nearest;
 		indicator.Position = offset;
@@ -709,7 +709,7 @@ public partial class NPCEntity : CharacterBody2D
 		gradient.SetColor(1, Colors.Black.Lerp(Colors.Transparent, 0.8f));
 		texture.Gradient = gradient;
 		indicator.Texture = texture;
-		indicator.Scale = new Vector2(4.0f, 4.0f); // Cover the whole sprite
+		indicator.Scale = new Vector2(6.8f, 6.8f); // Cover the whole sprite
 		indicator.Visible = false;
 		AddChild(indicator);
 		return indicator;
@@ -717,11 +717,11 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void SetupCollision()
 	{
-		// Create collision shape matching player controller (80x128 rectangle)
+		// Create collision shape matching player controller (37x200 rectangle)
 		_collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		// Reduced width to 40 to fit in 48px corridors
-		shape.Size = new Vector2(40, 118);
+		// Reduced width to 37 to fit in corridors while increased height to 200
+		shape.Size = new Vector2(37, 200);
 		_collisionShape.Shape = shape;
 		AddChild(_collisionShape);
 		
@@ -738,7 +738,7 @@ public partial class NPCEntity : CharacterBody2D
 		
 		var collisionShape = new CollisionShape2D();
 		var shape = new CircleShape2D();
-		shape.Radius = 120; // Increased range
+		shape.Radius = 200; // 1.7x original
 		collisionShape.Shape = shape;
 		_interactionArea.AddChild(collisionShape);
 		
@@ -932,8 +932,8 @@ public partial class NPCEntity : CharacterBody2D
 		if (_nameLabel != null)
 		{
 			var labelWidth = _nameLabel.Size.X;
-			// Position much higher (-140) to be above the status icons which are at -90
-			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -120);
+			// Position higher (-200) to be above the status icons which are at -110
+			_nameLabel.Position = new Vector2(-labelWidth / 2 - 3, -200);
 		}
 	}
 
@@ -946,7 +946,7 @@ public partial class NPCEntity : CharacterBody2D
 		if (_punchHint != null)
 		{
 			var labelWidth = _punchHint.Size.X;
-			_punchHint.Position = new Vector2(-labelWidth / 2, -195);
+			_punchHint.Position = new Vector2(-labelWidth / 2, -330);
 		}
 	}
 
@@ -959,7 +959,7 @@ public partial class NPCEntity : CharacterBody2D
 		if (_interactHint != null)
 		{
 			var labelWidth = _interactHint.Size.X;
-			_interactHint.Position = new Vector2(-labelWidth / 2, 70);
+			_interactHint.Position = new Vector2(-labelWidth / 2, 120);
 		}
 	}
 
