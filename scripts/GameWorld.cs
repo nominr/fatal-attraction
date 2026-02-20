@@ -219,75 +219,53 @@ public partial class GameWorld : Node2D
 		SetupUI();
 		// TileMap is now defined in GameWorld.tscn scene file
 		
-		// Debug: Check if TileMapLayer loaded from scene and scale it
-		var tileMapLayer = GetNodeOrNull("TileMapLayer");
-		if (tileMapLayer != null && tileMapLayer is Node2D tileMapNode)
+		// Isometric map: find the instanced IsometricWorldMap scene and apply transform
+		var isoMap = GetNodeOrNull("IsometricWorldMap");
+		if (isoMap != null && isoMap is Node2D isoMapNode)
 		{
-			GD.Print($"TileMapLayer found! Original Pos: {tileMapNode.Position}");
+			GD.Print($"[Isometric] IsometricWorldMap found!");
 			
-			// Store original position for relative calculations
-			Vector2 originalTileMapPos = tileMapNode.Position;
-			Vector2 targetPos = new Vector2(500, 200);
+			Vector2 targetPos = new Vector2(600, 250);
 			Vector2 targetScale = new Vector2(4.0f, 4.0f);
 			
-			// Scale and Move TileMap
-			tileMapNode.Scale = targetScale;
-			tileMapNode.Position = targetPos;
-			tileMapNode.ZIndex = -10;
+			isoMapNode.Scale = targetScale;
+			isoMapNode.Position = targetPos;
+			isoMapNode.ZIndex = -10;
+			GD.Print($"[Isometric] IsometricWorldMap scaled to {isoMapNode.Scale} and positioned at {isoMapNode.Position}");
 			
-			// CRITICAL FIX: Set Z-index on all child TileMapLayers to prevent camera tiles from appearing over NPCs
-			foreach (var child in tileMapNode.GetChildren())
+			// Set z-index on each TileMapLayer child so they render below players/NPCs (z=0)
+			int layerZIndex = -10;
+			foreach (var child in isoMapNode.GetChildren())
 			{
 				if (child is Node2D childLayer)
 				{
-					childLayer.ZIndex = -10;
-					GD.Print($"Set ZIndex=-10 on child layer: {childLayer.Name}");
+					childLayer.ZIndex = layerZIndex;
+					layerZIndex++;
+					GD.Print($"[Isometric] Set ZIndex={childLayer.ZIndex} on {childLayer.Name}");
 				}
-			} 
-			
-			GD.Print($"TileMapLayer scaled to {tileMapNode.Scale} and positioned at {tileMapNode.Position}");
-			
-			// Match Layer1 to the same transform (since it was reparented to root)
-			var layer1 = GetNodeOrNull("Layer1");
-			if (layer1 != null && layer1 is Node2D layer1Node)
-			{
-				layer1Node.Scale = targetScale;
-				layer1Node.Position = targetPos;
-				layer1Node.ZIndex = -5; // Above floor (-10) but BELOW players (0)
-				GD.Print($"Layer1 scaled to {targetScale} and positioned at {targetPos}");
 			}
 			
-			// ALIGN ROOM AREAS TO MATCH SCALED WORLD
-			// The Areas in the scene are 1x scale and relative to the original TileMap layout.
-			// We must transform them to match the new world coordinates.
+			// --- ALIGN ROOM AREAS TO MATCH SCALED WORLD ---
 			string[] roomNames = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
 			foreach (var rName in roomNames)
 			{
 				var area = GetNodeOrNull<Area2D>(rName);
 				if (area != null)
 				{
-					// Calculate relative position.
-				// NOTE: We assume Area2Ds were placed relative to world origin (0,0) which was the intended
-				// top-left of the map, even if the TileMapLayer itself ended up at (11, -46) in the scene.
-				// Subtracting originalTileMapPos (11, -46) introduces a shift that gets scaled x4, causing misalignment.
-				// So we use area.Position directly as the relative offset from "Map Top-Left".
-				Vector2 relPos = area.Position; 
-				
-				// Apply Scale
-				// New Relative Pos = Old Rel Pos * Scale
-				Vector2 newRelPos = relPos * targetScale;
-				
-				// Apply Global Offset (TargetPos)
-				area.Position = targetPos + newRelPos;
-				area.Scale = targetScale;
-				
-				GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position} (was {area.Position}), Scale {area.Scale}");
+					Vector2 relPos = area.Position;
+					Vector2 newRelPos = relPos * targetScale;
+					area.Position = targetPos + newRelPos;
+					area.Scale = targetScale;
+					GD.Print($"[GameWorld] Aligned {rName} to World: Pos {area.Position}, Scale {area.Scale}");
 				}
 			}
+			
+			// Add invisible boundary walls around the isometric map perimeter
+			CallDeferred(MethodName.SetupMapBoundaries);
 		}
 		else
 		{
-			GD.PrintErr("TileMapLayer NOT found in scene!");
+			GD.PrintErr("[Isometric] IsometricWorldMap NOT found in scene!");
 		}
 
 		if (Multiplayer.IsServer())
@@ -298,6 +276,83 @@ public partial class GameWorld : Node2D
 		{
 			InitializeClient();
 		}
+	}
+
+	/// <summary>
+	/// Builds 4 invisible StaticBody2D walls tracing the isometric map's diamond perimeter.
+	/// Called deferred so the TileMapLayer is fully ready before MapToLocal() is invoked.
+	/// </summary>
+	private void SetupMapBoundaries()
+	{
+		var isoMapNode = GetNodeOrNull<Node2D>("IsometricWorldMap");
+		if (isoMapNode == null) { GD.PrintErr("[Boundaries] IsometricWorldMap not found"); return; }
+
+		var tileLayer = isoMapNode.GetNodeOrNull<TileMapLayer>("TileMapLayer");
+		if (tileLayer == null) { GD.PrintErr("[Boundaries] TileMapLayer not found inside IsometricWorldMap"); return; }
+
+		Rect2I usedRect = tileLayer.GetUsedRect();
+		if (usedRect.Size == Vector2I.Zero) { GD.PrintErr("[Boundaries] TileMapLayer has no tiles"); return; }
+
+		// Add 1-tile padding so walls sit just outside the visible perimeter
+		const int PAD = 1;
+		Vector2I minT = usedRect.Position - new Vector2I(PAD, PAD);
+		Vector2I maxT = usedRect.End     + new Vector2I(PAD, PAD); // End is exclusive, so this equals last tile + PAD + 1
+
+		// In isometric projection the 4 extreme screen-space tips correspond to:
+		//   tipLeft   = tile (minCol, maxRow)  — leftmost screen point
+		//   tipRight  = tile (maxCol, minRow)  — rightmost screen point
+		//   tipTop    = tile (minCol, minRow)  — topmost screen point
+		//   tipBottom = tile (maxCol, maxRow)  — bottommost screen point
+		Vector2 tipLeft   = isoMapNode.ToGlobal(tileLayer.MapToLocal(new Vector2I(minT.X, maxT.Y)));
+		Vector2 tipRight  = isoMapNode.ToGlobal(tileLayer.MapToLocal(new Vector2I(maxT.X, minT.Y)));
+		Vector2 tipTop    = isoMapNode.ToGlobal(tileLayer.MapToLocal(new Vector2I(minT.X, minT.Y)));
+		Vector2 tipBottom = isoMapNode.ToGlobal(tileLayer.MapToLocal(new Vector2I(maxT.X, maxT.Y)));
+
+		GD.Print($"[Boundaries] Diamond tips — Top:{tipTop} Right:{tipRight} Bottom:{tipBottom} Left:{tipLeft}");
+
+		// Wall thickness — large enough to prevent tunnelling at full speed
+		const float THICKNESS = 600f;
+
+		// 4 edges of the diamond (wound clockwise in screen space so outward is "right" perp)
+		AddEdgeWall("WallTopLeft",     tipLeft,   tipTop,    THICKNESS);
+		AddEdgeWall("WallTopRight",    tipTop,    tipRight,  THICKNESS);
+		AddEdgeWall("WallBottomRight", tipRight,  tipBottom, THICKNESS);
+		AddEdgeWall("WallBottomLeft",  tipBottom, tipLeft,   THICKNESS);
+
+		GD.Print("[Boundaries] Map boundary walls created.");
+	}
+
+	/// <summary>
+	/// Creates a single invisible wall segment from <paramref name="from"/> to <paramref name="to"/>.
+	/// The wall is a rectangle of the given <paramref name="thickness"/> placed on the OUTSIDE
+	/// of a clockwise-wound polygon (outward normal = right-hand perpendicular of edge direction).
+	/// </summary>
+	private void AddEdgeWall(string wallName, Vector2 from, Vector2 to, float thickness)
+	{
+		Vector2 edge   = to - from;
+		float   length = edge.Length();
+		if (length < 1f) return;
+
+		// For a CW polygon the outward normal is the RIGHT-side perpendicular of the edge.
+		Vector2 edgeNorm     = edge.Normalized();
+		Vector2 outwardNorm  = new Vector2(edgeNorm.Y, -edgeNorm.X);
+
+		var body = new StaticBody2D();
+		body.Name          = wallName;
+		body.CollisionLayer = 1;  // Players (Mask=1) collide with this
+		body.CollisionMask  = 0;  // Wall doesn't need to detect anything
+
+		var shape = new CollisionShape2D();
+		var rect  = new RectangleShape2D();
+		// Extend length a bit on both sides so walls overlap at diamond corners
+		rect.Size = new Vector2(length + thickness, thickness);
+		shape.Shape    = rect;
+		shape.Rotation = edge.Angle();
+		// Centre of shape = midpoint of edge + half-thickness in outward direction
+		shape.Position = (from + to) * 0.5f + outwardNorm * (thickness * 0.5f);
+
+		body.AddChild(shape);
+		AddChild(body);
 	}
 
 	private void ConnectRoomSignals()
