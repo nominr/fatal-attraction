@@ -258,9 +258,17 @@ public partial class PlayerController : CharacterBody2D
 		string roleName = roleLower;
 		
 		// Map role name to asset prefix
-		if (roleLower != "admirer" && roleLower != "prophet" && roleLower != "producer")
+		if (roleLower == "admirer")
 		{
-			roleName = "admirer"; // Default
+			roleName = "admirer2";
+		}
+		else if (roleLower == "producer")
+		{
+			roleName = "producer2";
+		}
+		else if (roleLower != "prophet")
+		{
+			roleName = "admirer2"; // Default
 		}
 
 		var frames = new SpriteFrames();
@@ -309,8 +317,7 @@ public partial class PlayerController : CharacterBody2D
 			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f);
 
 			// Standardized height units
-			float targetWorldHeight = 143.0f; 
-			if (roleLower == "producer") targetWorldHeight = 165.0f; // Producer is visually smaller
+			float targetWorldHeight = 143.0f; // Standard size for all isometric characters
 			
 			// Use the full frame height for scale calculation to keep consistency
 			_animationScales[animName] = targetWorldHeight / frameHeight;
@@ -327,16 +334,14 @@ public partial class PlayerController : CharacterBody2D
 		// Up = Back
 		// Right = Front
 		// Left = Front (flipped in UpdateAnimation)
-		bool isProphet = roleLower == "prophet";
+		AddAnimationFrames("walk_down", frontWalk);
+		AddAnimationFrames("walk_up", backWalk);
+		AddAnimationFrames("walk_right", frontWalk);
+		AddAnimationFrames("walk_left", frontWalk);
 		
-		AddAnimationFrames("walk_down", frontWalk, isProphet);
-		AddAnimationFrames("walk_up", backWalk, isProphet);
-		AddAnimationFrames("walk_right", frontWalk, isProphet);
-		AddAnimationFrames("walk_left", frontWalk, isProphet);
-		
-		AddAnimationFrames("idle_right", frontIdle, isProphet);
-		AddAnimationFrames("idle_left", frontIdle, isProphet);
-		AddAnimationFrames("idle_up", backIdle, isProphet); 
+		AddAnimationFrames("idle_right", frontIdle);
+		AddAnimationFrames("idle_left", frontIdle);
+		AddAnimationFrames("idle_up", backIdle); 
 
 		_sprite.SpriteFrames = frames;
 		
