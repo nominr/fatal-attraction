@@ -23,6 +23,7 @@ public partial class NPCEntity : CharacterBody2D
 	// Visual elements
 	private AnimatedSprite2D _sprite;
 	private Texture2D _baseTexture; // Store the texture for portrait usage
+	private float _frameWidth = 240.0f;
 	private Label _nameLabel;
 	private CollisionShape2D _collisionShape;
 	private Font _customFont;
@@ -104,6 +105,7 @@ public partial class NPCEntity : CharacterBody2D
 	private bool _isFrozen = false;
 
 	// Animation state
+	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingHorizontal = "right"; // "left" or "right"
 
 	public override void _Ready()
@@ -190,6 +192,7 @@ public partial class NPCEntity : CharacterBody2D
 		}
 
 		Vector2 velocity = Velocity;
+		string animToPlay = _sprite.Animation;
 		
 		// Use a small threshold to detect movement
 		if (velocity.Length() > 5.0f)
@@ -199,12 +202,14 @@ public partial class NPCEntity : CharacterBody2D
 				// Horizontal movement
 				if (velocity.X > 0)
 				{
-					_sprite.Play("walk_right");
+					animToPlay = "walk_right";
+					_sprite.FlipH = true; // Swap
 					_lastFacingHorizontal = "right";
 				}
 				else
 				{
-					_sprite.Play("walk_left");
+					animToPlay = "walk_left";
+					_sprite.FlipH = false; // Swap
 					_lastFacingHorizontal = "left";
 				}
 			}
@@ -213,11 +218,13 @@ public partial class NPCEntity : CharacterBody2D
 				// Vertical movement
 				if (velocity.Y > 0)
 				{
-					_sprite.Play("walk_down");
+					animToPlay = "walk_down";
+					_sprite.FlipH = false;
 				}
 				else
 				{
-					_sprite.Play("walk_up");
+					animToPlay = "walk_up";
+					_sprite.FlipH = false;
 				}
 			}
 		}
@@ -226,12 +233,25 @@ public partial class NPCEntity : CharacterBody2D
 			// Idle
 			if (_lastFacingHorizontal == "right")
 			{
-				_sprite.Play("idle_right");
+				animToPlay = "idle_right";
+				_sprite.FlipH = true; // Swap
 			}
 			else
 			{
-				_sprite.Play("idle_left");
+				animToPlay = "idle_left";
+				_sprite.FlipH = false; // Swap
 			}
+		}
+
+		if (_sprite.Animation != animToPlay)
+		{
+			_sprite.Play(animToPlay);
+		}
+
+		// Apply per-animation scale to standardize size
+		if (_animationScales.TryGetValue(animToPlay, out float targetScale))
+		{
+			_sprite.Scale = new Vector2(targetScale, targetScale);
 		}
 	}
 
@@ -568,102 +588,93 @@ public partial class NPCEntity : CharacterBody2D
 		if (_sprite == null) return;
 
 		string id = NpcId.ToLower();
-		string spritePath = "";
+		string npcAsset = "npc1"; // Default
 
-		// Gender Mapping:
-		// Women: Katy, Rebecca, Sofia, Bella, Diana
-		// Men: John, Marcus, Amir, Chris, Eli
-
-		if (id == "katy" || id == "bella") spritePath = "res://assets/ai-woman-1-npc-animation.png";
-		else if (id == "rebecca" || id == "diana") spritePath = "res://assets/ai-woman-2-npc-animation.png";
-		else if (id == "sofia") spritePath = "res://assets/ai-woman-3-npc-animation.png";
-		else if (id == "john" || id == "chris") spritePath = "res://assets/ai-man-1-npc-animation.png";
-		else if (id == "marcus" || id == "eli") spritePath = "res://assets/ai-man-2-npc-animation.png";
-		else if (id == "amir") spritePath = "res://assets/ai-man-3-npc-animation.png";
-		else 
-		{
-			// Fallback logic
-			// Randomly assign one of the defaults if ID is unknown but preserve across runs ideally (using hash?)
-			// specific defaults for unknowns:
-			spritePath = "res://assets/ai-man-1-npc-animation.png";
-		}
-		
-		var texture = GD.Load<Texture2D>(spritePath);
-		
-		if (texture != null)
-		{
-			var frames = new SpriteFrames();
-			
-			// Texture dimensions: 240 width x 300 height per frame
-			// Total assumed width: 2400 (10 frames)
-			int frameWidth = 240;
-			int frameHeight = 300;
-			
-			// Helper to create AtlasTexture
-			AtlasTexture GetFrame(int index)
-			{
-				var atlasKey = new AtlasTexture();
-				atlasKey.Atlas = texture;
-				atlasKey.Region = new Rect2(index * frameWidth, 0, frameWidth, frameHeight);
-				return atlasKey;
-			}
-			
-			// Store texture for portrait
-			_baseTexture = texture;
-
-			// 0-1: Walk Fwd (Down)
-			frames.AddAnimation("walk_down");
-			frames.AddFrame("walk_down", GetFrame(0));
-			frames.AddFrame("walk_down", GetFrame(1));
-			frames.SetAnimationLoop("walk_down", true);
-			frames.SetAnimationSpeed("walk_down", 5.0f);
-
-			// 2-3: Walk Back (Up)
-			frames.AddAnimation("walk_up");
-			frames.AddFrame("walk_up", GetFrame(2));
-			frames.AddFrame("walk_up", GetFrame(3));
-			frames.SetAnimationLoop("walk_up", true);
-			frames.SetAnimationSpeed("walk_up", 5.0f);
-
-			// 4: Walk Right
-			frames.AddAnimation("walk_right");
-			frames.AddFrame("walk_right", GetFrame(4));
-			frames.SetAnimationLoop("walk_right", true);
-			frames.SetAnimationSpeed("walk_right", 5.0f);
-
-			// 5: Walk Left
-			frames.AddAnimation("walk_left");
-			frames.AddFrame("walk_left", GetFrame(5));
-			frames.SetAnimationLoop("walk_left", true);
-			frames.SetAnimationSpeed("walk_left", 5.0f);
-
-			// 6-7: Idle Left
-			frames.AddAnimation("idle_left");
-			frames.AddFrame("idle_left", GetFrame(6));
-			frames.AddFrame("idle_left", GetFrame(7));
-			frames.SetAnimationLoop("idle_left", true);
-			frames.SetAnimationSpeed("idle_left", 2.0f);
-
-			// 8-9: Idle Right
-			frames.AddAnimation("idle_right");
-			frames.AddFrame("idle_right", GetFrame(8));
-			frames.AddFrame("idle_right", GetFrame(9));
-			frames.SetAnimationLoop("idle_right", true);
-			frames.SetAnimationSpeed("idle_right", 2.0f); // Slower idle
-
-			_sprite.SpriteFrames = frames;
-			
-			// Scale down: 300px * 0.4 = 120px height
-			_sprite.Scale = new Vector2(0.4f, 0.4f);
-			
-			_sprite.Play("idle_right");
-			GD.Print($"Loaded animated sprite for NPC {NpcId}: {spritePath}");
-		}
+		// Map NPC Names to npc1-10 assets
+		if (id == "katy") npcAsset = "npc1";
+		else if (id == "bella") npcAsset = "npc2";
+		else if (id == "rebecca") npcAsset = "npc3";
+		else if (id == "diana") npcAsset = "npc4";
+		else if (id == "sofia") npcAsset = "npc5";
+		else if (id == "john") npcAsset = "npc6";
+		else if (id == "chris") npcAsset = "npc7";
+		else if (id == "marcus") npcAsset = "npc8";
+		else if (id == "eli") npcAsset = "npc9";
+		else if (id == "amir") npcAsset = "npc10";
 		else
 		{
-			GD.PrintErr($"Failed to load NPC sprite: {spritePath}");
-			// Fallback to generated texture?
+			// Use hash to deterministically assign one of the 10 NPCs for others
+			int hash = Math.Abs(NpcId.GetHashCode());
+			npcAsset = $"npc{(hash % 10) + 1}";
 		}
+
+		var frames = new SpriteFrames();
+		string basePath = "res://assets/new-character-assets/";
+		
+		// Helper to load frames from a split texture (6x6 grid, limit to 35)
+		void AddAnimationFrames(string animName, string path)
+		{
+			var tex = GD.Load<Texture2D>(path);
+			if (tex == null) return;
+
+			if (!frames.HasAnimation(animName))
+				frames.AddAnimation(animName);
+			
+			float width = tex.GetWidth();
+			float height = tex.GetHeight();
+			
+			// New isometric assets are 6x6 grids (36 frames total)
+			int gridCols = 6;
+			int gridRows = 6;
+			float frameWidth = width / gridCols;
+			float frameHeight = height / gridRows;
+
+			if (animName == "idle_right") _frameWidth = frameWidth;
+
+			int totalAdded = 0;
+			for (int y = 0; y < gridRows; y++)
+			{
+				for (int x = 0; x < gridCols; x++)
+				{
+					if (totalAdded >= 35) break;
+
+					var atlasKey = new AtlasTexture();
+					atlasKey.Atlas = tex;
+					atlasKey.Region = new Rect2(x * frameWidth, y * frameHeight, frameWidth, frameHeight);
+					frames.AddFrame(animName, atlasKey);
+					totalAdded++;
+				}
+				if (totalAdded >= 35) break;
+			}
+			
+			frames.SetAnimationLoop(animName, true);
+			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f); // 36 frames need higher speed
+
+			// Calculate and store scale for this specific animation to ensure 143 world unit height
+			float targetWorldHeight = 143.0f;
+			frameHeight = height / gridRows;
+			_animationScales[animName] = targetWorldHeight / frameHeight;
+
+			// For portrait/base reference, use the front-idle texture
+			if (animName == "idle_right") _baseTexture = tex;
+		}
+
+		AddAnimationFrames("walk_down", $"{basePath}{npcAsset}-front-walk.png");
+		AddAnimationFrames("walk_up", $"{basePath}{npcAsset}-back-walk.png");
+		AddAnimationFrames("walk_right", $"{basePath}{npcAsset}-front-walk.png");
+		AddAnimationFrames("walk_left", $"{basePath}{npcAsset}-front-walk.png");
+		
+		AddAnimationFrames("idle_right", $"{basePath}{npcAsset}-front-idle.png");
+		AddAnimationFrames("idle_left", $"{basePath}{npcAsset}-front-idle.png");
+		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png");
+
+		_sprite.SpriteFrames = frames;
+		
+		_sprite.Play("idle_right");
+		// Apply initial scale
+		if (_animationScales.TryGetValue("idle_right", out float s)) _sprite.Scale = new Vector2(s, s);
+
+		GD.Print($"Loaded split isometric animated sprites for NPC {NpcId} as {npcAsset}");
 	}
 
 	private Sprite2D CreateStatusIndicator(string texturePath, Vector2 offset)
@@ -806,12 +817,11 @@ public partial class NPCEntity : CharacterBody2D
 	{
 		if (_baseTexture != null)
 		{
-			// Return an atlas texture of the first frame (Walk Down 0)
+			// Return an atlas texture of the first frame (Idle Right 0)
 			// effectively a "mugshot"
 			var atlas = new AtlasTexture();
 			atlas.Atlas = _baseTexture;
-			// 240x300 is the frame size defined in LoadSpriteForNPC
-			atlas.Region = new Rect2(0, 0, 240, 300);
+			atlas.Region = new Rect2(0, 0, _frameWidth, _baseTexture.GetHeight());
 			return atlas;
 		}
 		return null;

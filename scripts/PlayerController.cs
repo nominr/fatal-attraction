@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// Player controller for spatial movement in the game world.
@@ -49,6 +50,7 @@ public partial class PlayerController : CharacterBody2D
 	private bool _isGhostMode = false;
 
 	// Animation state
+	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingHorizontal = "right"; // "left" or "right"
 
 	public override void _Ready()
@@ -184,6 +186,7 @@ public partial class PlayerController : CharacterBody2D
 		}
 
 		Vector2 velocity = Velocity;
+		string animToPlay = _sprite.Animation;
 		
 		if (velocity.Length() > 0.1f)
 		{
@@ -192,12 +195,14 @@ public partial class PlayerController : CharacterBody2D
 				// Horizontal movement
 				if (velocity.X > 0)
 				{
-					_sprite.Play("walk_right");
+					animToPlay = "walk_right";
+					_sprite.FlipH = true; // Swap: assets naturally face left
 					_lastFacingHorizontal = "right";
 				}
 				else
 				{
-					_sprite.Play("walk_left");
+					animToPlay = "walk_left";
+					_sprite.FlipH = false; // Swap: assets naturally face left
 					_lastFacingHorizontal = "left";
 				}
 			}
@@ -206,11 +211,13 @@ public partial class PlayerController : CharacterBody2D
 				// Vertical movement
 				if (velocity.Y > 0)
 				{
-					_sprite.Play("walk_down");
+					animToPlay = "walk_down";
+					_sprite.FlipH = false;
 				}
 				else
 				{
-					_sprite.Play("walk_up");
+					animToPlay = "walk_up";
+					_sprite.FlipH = false;
 				}
 			}
 		}
@@ -219,12 +226,25 @@ public partial class PlayerController : CharacterBody2D
 			// Idle
 			if (_lastFacingHorizontal == "right")
 			{
-				_sprite.Play("idle_right");
+				animToPlay = "idle_right";
+				_sprite.FlipH = true; // Swap
 			}
 			else
 			{
-				_sprite.Play("idle_left");
+				animToPlay = "idle_left";
+				_sprite.FlipH = false; // Swap
 			}
+		}
+
+		if (_sprite.Animation != animToPlay)
+		{
+			_sprite.Play(animToPlay);
+		}
+
+		// Apply per-animation scale to standardize size
+		if (_animationScales.TryGetValue(animToPlay, out float targetScale))
+		{
+			_sprite.Scale = new Vector2(targetScale, targetScale);
 		}
 	}
 
@@ -234,113 +254,97 @@ public partial class PlayerController : CharacterBody2D
 		if (_sprite == null) return;
 		
 		string roleLower = role.ToLower();
-		string spritePath = "";
+		string basePath = "res://assets/new-character-assets/";
+		string roleName = roleLower;
 		
-		if (roleLower == "admirer") spritePath = "res://assets/ai-admirer-animation.png";
-		else if (roleLower == "prophet") spritePath = "res://assets/ai-prophet-animation.png";
-		else if (roleLower == "producer") spritePath = "res://assets/ai-producer-animation.png";
-		else spritePath = "res://assets/ai-admirer-animation.png"; // Default
-		
-		var texture = GD.Load<Texture2D>(spritePath);
-		
-		if (texture != null)
+		// Map role name to asset prefix
+		if (roleLower != "admirer" && roleLower != "prophet" && roleLower != "producer")
 		{
-			var frames = new SpriteFrames();
-			
-			// Texture dimensions: 240 width x 300 height per frame
-			// Total assumed width: 2400 (10 frames)
-			int frameWidth = 240;
-			int frameHeight = 300;
-			
-			// Helper to create AtlasTexture
-			AtlasTexture GetFrame(int index)
-			{
-				var atlasKey = new AtlasTexture();
-				atlasKey.Atlas = texture;
-				atlasKey.Region = new Rect2(index * frameWidth, 0, frameWidth, frameHeight);
-				return atlasKey;
-			}
-
-			// 0-1: Walk Fwd (Down) - Same for all
-			frames.AddAnimation("walk_down");
-			frames.AddFrame("walk_down", GetFrame(0));
-			frames.AddFrame("walk_down", GetFrame(1));
-			frames.SetAnimationLoop("walk_down", true);
-			frames.SetAnimationSpeed("walk_down", 5.0f);
-
-			if (roleLower == "producer")
-			{
-				// PRODUCER MAPPING (Unique layout)
-				// 2: Walk Right
-				frames.AddAnimation("walk_right");
-				frames.AddFrame("walk_right", GetFrame(2));
-				frames.SetAnimationLoop("walk_right", true);
-				frames.SetAnimationSpeed("walk_right", 5.0f);
-
-				// 3: Walk Left
-				frames.AddAnimation("walk_left");
-				frames.AddFrame("walk_left", GetFrame(3));
-				frames.SetAnimationLoop("walk_left", true);
-				frames.SetAnimationSpeed("walk_left", 5.0f);
-
-				// 4-5: Walk Back (Up)
-				frames.AddAnimation("walk_up");
-				frames.AddFrame("walk_up", GetFrame(4));
-				frames.AddFrame("walk_up", GetFrame(5));
-				frames.SetAnimationLoop("walk_up", true);
-				frames.SetAnimationSpeed("walk_up", 5.0f);
-			}
-			else
-			{
-				// ADMIRER / PROPHET MAPPING (Matches NPC layout)
-				// 2-3: Walk Back (Up)
-				frames.AddAnimation("walk_up");
-				frames.AddFrame("walk_up", GetFrame(2));
-				frames.AddFrame("walk_up", GetFrame(3));
-				frames.SetAnimationLoop("walk_up", true);
-				frames.SetAnimationSpeed("walk_up", 5.0f);
-
-				// 4: Walk Right
-				frames.AddAnimation("walk_right");
-				frames.AddFrame("walk_right", GetFrame(5));
-				frames.SetAnimationLoop("walk_right", true);
-				frames.SetAnimationSpeed("walk_right", 5.0f);
-
-				// 5: Walk Left
-				frames.AddAnimation("walk_left");
-				frames.AddFrame("walk_left", GetFrame(4));
-				frames.SetAnimationLoop("walk_left", true);
-				frames.SetAnimationSpeed("walk_left", 5.0f);
-			}
-
-			// Idle frames (Same for all currently)
-			// 6-7: Idle Right
-			frames.AddAnimation("idle_right");
-			frames.AddFrame("idle_right", GetFrame(6));
-			frames.AddFrame("idle_right", GetFrame(7));
-			frames.SetAnimationLoop("idle_right", true);
-			frames.SetAnimationSpeed("idle_right", 2.0f); // Slower idle
-
-			// 8-9: Idle Left
-			frames.AddAnimation("idle_left");
-			frames.AddFrame("idle_left", GetFrame(8));
-			frames.AddFrame("idle_left", GetFrame(9));
-			frames.SetAnimationLoop("idle_left", true);
-			frames.SetAnimationSpeed("idle_left", 2.0f);
-
-			_sprite.SpriteFrames = frames;
-			
-			// Scale down: 300px * 0.4 = 120px height
-			_sprite.Scale = new Vector2(0.4f, 0.4f);
-			
-			_sprite.Play("idle_right");
-			GD.Print($"Loaded animated sprite for {role}: {spritePath}");
+			roleName = "admirer"; // Default
 		}
-		else
+
+		var frames = new SpriteFrames();
+		
+		// Helper to load frames from a split texture (6x6 grid, but we limit to 35 frames)
+		void AddAnimationFrames(string animName, string texturePath, bool cropShadow = false)
 		{
-			GD.PrintErr($"Failed to load sprite: {spritePath}");
-			// Fallback?
+			var texture = GD.Load<Texture2D>(texturePath);
+			if (texture == null)
+			{
+				GD.PrintErr($"Failed to load texture for {animName}: {texturePath}");
+				return;
+			}
+
+			if (!frames.HasAnimation(animName))
+				frames.AddAnimation(animName);
+			
+			float width = texture.GetWidth();
+			float height = texture.GetHeight();
+			
+			int gridCols = 6;
+			int gridRows = 6;
+			float frameWidth = width / gridCols;
+			float frameHeight = height / gridRows;
+
+			int totalAdded = 0;
+			for (int y = 0; y < gridRows; y++)
+			{
+				for (int x = 0; x < gridCols; x++)
+				{
+					if (totalAdded >= 35) break;
+
+					var atlasKey = new AtlasTexture();
+					atlasKey.Atlas = texture;
+					
+					// If cropping shadow, we take 90% of height from top
+					float h = cropShadow ? frameHeight * 0.9f : frameHeight;
+					atlasKey.Region = new Rect2(x * frameWidth, y * frameHeight, frameWidth, h);
+					frames.AddFrame(animName, atlasKey);
+					totalAdded++;
+				}
+				if (totalAdded >= 35) break;
+			}
+			
+			frames.SetAnimationLoop(animName, true);
+			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f);
+
+			// Standardized height units
+			float targetWorldHeight = 143.0f; 
+			if (roleLower == "producer") targetWorldHeight = 165.0f; // Producer is visually smaller
+			
+			// Use the full frame height for scale calculation to keep consistency
+			_animationScales[animName] = targetWorldHeight / frameHeight;
 		}
+
+		string frontIdle = $"{basePath}{roleName}-front-idle.png";
+		string frontWalk = $"{basePath}{roleName}-front-walk.png";
+		string backIdle = $"{basePath}{roleName}-back-idle.png";
+		string backWalk = $"{basePath}{roleName}-back-walk.png";
+
+		// Load split animations
+		// For isometric: 
+		// Down = Front
+		// Up = Back
+		// Right = Front
+		// Left = Front (flipped in UpdateAnimation)
+		bool isProphet = roleLower == "prophet";
+		
+		AddAnimationFrames("walk_down", frontWalk, isProphet);
+		AddAnimationFrames("walk_up", backWalk, isProphet);
+		AddAnimationFrames("walk_right", frontWalk, isProphet);
+		AddAnimationFrames("walk_left", frontWalk, isProphet);
+		
+		AddAnimationFrames("idle_right", frontIdle, isProphet);
+		AddAnimationFrames("idle_left", frontIdle, isProphet);
+		AddAnimationFrames("idle_up", backIdle, isProphet); 
+
+		_sprite.SpriteFrames = frames;
+		
+		_sprite.Play("idle_right");
+		// Apply initial scale
+		if (_animationScales.TryGetValue("idle_right", out float s)) _sprite.Scale = new Vector2(s, s);
+
+		GD.Print($"Loaded split isometric animated sprites for {role}");
 	}
 
 
