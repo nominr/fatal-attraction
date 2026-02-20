@@ -821,7 +821,10 @@ public partial class NPCEntity : CharacterBody2D
 			// effectively a "mugshot"
 			var atlas = new AtlasTexture();
 			atlas.Atlas = _baseTexture;
-			atlas.Region = new Rect2(0, 0, _frameWidth, _baseTexture.GetHeight());
+			// New isometric assets are 6x6 grids
+			float frameHeight = _baseTexture.GetHeight() / 6.0f;
+			
+			atlas.Region = new Rect2(0, 0, _frameWidth, frameHeight);
 			return atlas;
 		}
 		return null;
