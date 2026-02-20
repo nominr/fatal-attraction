@@ -27,9 +27,11 @@ public partial class PlayerController : CharacterBody2D
 	private AnimatedSprite2D _sprite;
 	private Label _nameLabel;
 	private Label _roleLabel;
-	private Label _healthHintLabel;
 	private Camera2D _camera;
 	private Font _customFont;
+	private static Font _sharedFont;
+	private static readonly Dictionary<string, SpriteFrames> _spriteFramesCache = new();
+	private static readonly Dictionary<string, Dictionary<string, float>> _animationScalesCache = new();
 
 	// Networking
 	private bool _isLocalPlayer = false;
@@ -56,7 +58,8 @@ public partial class PlayerController : CharacterBody2D
 	public override void _Ready()
 	{
 		// Load custom font
-		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		_sharedFont ??= ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		_customFont = _sharedFont;
 		
 		SetupVisuals();
 		
@@ -116,22 +119,6 @@ public partial class PlayerController : CharacterBody2D
 		CallDeferred(MethodName.CenterRoleLabel);
 		// Size will auto-adjust based on text content
 
-		// Health hint label (for Admirer to see when nearby)
-		_healthHintLabel = new Label();
-		_healthHintLabel.Text = "Health: 200/200\nPress P to Punch";
-		_healthHintLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		_healthHintLabel.AddThemeColorOverride("font_color", new Color(1, 0.6f, 0, 1)); // Orange text
-		_healthHintLabel.AddThemeFontOverride("font", _customFont);
-		_healthHintLabel.AddThemeFontSizeOverride("font_size", 22);
-		// Add transparent grey background
-		var healthBgStyle = new StyleBoxFlat();
-		healthBgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.8f); // Darker background
-		healthBgStyle.SetCornerRadiusAll(4);
-		healthBgStyle.SetContentMarginAll(6);
-		_healthHintLabel.AddThemeStyleboxOverride("normal", healthBgStyle);
-		_healthHintLabel.Position = new Vector2(-140, -255); // Above player
-		_healthHintLabel.Visible = false;
-		AddChild(_healthHintLabel);
 	}
 
 	public override void _Process(double delta)
@@ -271,7 +258,21 @@ public partial class PlayerController : CharacterBody2D
 			roleName = "admirer2"; // Default
 		}
 
+		if (_spriteFramesCache.TryGetValue(roleName, out var cachedFrames) &&
+			_animationScalesCache.TryGetValue(roleName, out var cachedScales))
+		{
+			_sprite.SpriteFrames = cachedFrames;
+			_animationScales = new Dictionary<string, float>(cachedScales);
+			_sprite.Play("idle_right");
+			if (_animationScales.TryGetValue("idle_right", out float cachedScale))
+			{
+				_sprite.Scale = new Vector2(cachedScale, cachedScale);
+			}
+			return;
+		}
+
 		var frames = new SpriteFrames();
+		var generatedScales = new Dictionary<string, float>();
 		
 		// Helper to load frames from a split texture (6x6 grid, but we limit to 35 frames)
 		void AddAnimationFrames(string animName, string texturePath, bool cropShadow = false)
@@ -320,7 +321,7 @@ public partial class PlayerController : CharacterBody2D
 			float targetWorldHeight = 243.0f; // Standard size for all isometric characters
 			
 			// Use the full frame height for scale calculation to keep consistency
-			_animationScales[animName] = targetWorldHeight / frameHeight;
+			generatedScales[animName] = targetWorldHeight / frameHeight;
 		}
 
 		string frontIdle = $"{basePath}{roleName}-front-idle.png";
@@ -343,6 +344,9 @@ public partial class PlayerController : CharacterBody2D
 		AddAnimationFrames("idle_left", frontIdle);
 		AddAnimationFrames("idle_up", backIdle); 
 
+		_animationScales = generatedScales;
+		_spriteFramesCache[roleName] = frames;
+		_animationScalesCache[roleName] = new Dictionary<string, float>(generatedScales);
 		_sprite.SpriteFrames = frames;
 		
 		_sprite.Play("idle_right");
@@ -553,18 +557,4 @@ public partial class PlayerController : CharacterBody2D
 		}
 	}
 
-	/// <summary>
-	/// Show or hide the health hint label (for Admirer to see when nearby)
-	/// </summary>
-	public void SetHealthHintVisible(bool visible, int healthRemaining = 200, int maxHealth = 200)
-	{
-		if (_healthHintLabel != null)
-		{
-			_healthHintLabel.Visible = visible;
-			if (visible)
-			{
-				_healthHintLabel.Text = $"Health: {healthRemaining}/{maxHealth}\nPress P to Punch";
-			}
-		}
-	}
 }

@@ -239,16 +239,12 @@ public partial class NPCDialogueUI : Control
 
 		if (actions != null)
 		{
-			var filteredActions = actions.Where(action => 
-			{
-				string actionId = action["id"]?.Value<string>() ?? "unknown";
-				return !actionId.EndsWith("_rock") && !actionId.EndsWith("_paper") && !actionId.EndsWith("_scissors");
-			}).ToList();
+			var visibleActions = actions.ToList();
 			
-			_optionsGrid.Columns = filteredActions.Count <= 2 ? 2 : 2;
+			_optionsGrid.Columns = visibleActions.Count <= 2 ? 2 : 2;
 			
 			int zIndexCounter = 100;
-			foreach (var action in filteredActions)
+			foreach (var action in visibleActions)
 			{
 				string actionId = action["id"]?.Value<string>() ?? "unknown";
 				string actionText = action["text"]?.Value<string>() ?? "Option";
@@ -259,7 +255,7 @@ public partial class NPCDialogueUI : Control
 			}
 
 			// Keep 4 slots for layout consistency if needed
-			for (int i = filteredActions.Count; i < 4; i++)
+			for (int i = visibleActions.Count; i < 4; i++)
 			{
 				var spacer = new Control();
 				spacer.CustomMinimumSize = new Vector2(315, 50); // Prevent row collapse
