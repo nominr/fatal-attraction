@@ -1,9 +1,9 @@
-[gd_scene load_steps=12 format=3 uid="uid://b8j2k3l4m5n6"]
+[gd_scene load_steps=15 format=3 uid="uid://b8j2k3l4m5n6"]
 
 [ext_resource type="Script" uid="uid://k08kmhetffod" path="res://scripts/Lobby.cs" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://gameworld2d" path="res://scenes/GameWorld.tscn" id="2_game"]
 [ext_resource type="Theme" path="res://themes/pixer_theme.tres" id="3_theme"]
-[ext_resource type="Texture2D" uid="uid://544kmabvjppk" path="res://assets/Title_BG_1.png" id="4_bg1"]
+[ext_resource type="Texture2D" uid="uid://bov1c0clra63h" path="res://assets/Title_BG_1.png" id="4_bg1"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
 bg_color = Color(1, 1, 1, 1)
@@ -20,25 +20,19 @@ bg_color = Color(1, 1, 1, 1)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6"]
 bg_color = Color(1, 1, 1, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_9"]
+bg_color = Color(0.7, 0.7, 0.7, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8"]
+bg_color = Color(0.85, 0.85, 0.85, 1)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_1"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
 bg_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7"]
 bg_color = Color(1, 1, 1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8"]
-bg_color = Color(0.85, 0.85, 0.85, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_9"]
-bg_color = Color(0.7, 0.7, 0.7, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_10"]
-bg_color = Color(0.7, 0.5, 0.9, 0.3)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_11"]
-bg_color = Color(0.7, 0.5, 0.9, 0.15)
-
-[sub_resource type="ButtonGroup" id="ButtonGroup_1"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -56,8 +50,8 @@ wait_time = 0.5
 autostart = true
 
 [node name="Background" type="Sprite2D" parent="."]
-position = Vector2(640, 360)
-scale = Vector2(2, 2)
+position = Vector2(701.5, 365.2812)
+scale = Vector2(1.112351, 1.0476073)
 texture = ExtResource("4_bg1")
 
 [node name="TitleLabel" type="Label" parent="."]
@@ -207,49 +201,49 @@ alignment = 1
 [node name="AdmirerButton" type="Button" parent="RoleButtonsContainer"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
-toggle_mode = true
-button_group = SubResource("ButtonGroup_1")
 theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
 theme_override_colors/font_pressed_color = Color(0.3, 0, 0.5, 1)
 theme_override_colors/font_hover_color = Color(0.3, 0, 0.5, 1)
-theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
 theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_6")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 theme_override_styles/focus = SubResource("StyleBoxFlat_9")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_1")
 text = "Admirer"
 
 [node name="ProphetButton" type="Button" parent="RoleButtonsContainer"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
-toggle_mode = true
-button_group = SubResource("ButtonGroup_1")
 theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
 theme_override_colors/font_pressed_color = Color(0.3, 0, 0.5, 1)
 theme_override_colors/font_hover_color = Color(0.3, 0, 0.5, 1)
-theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
 theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_6")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 theme_override_styles/focus = SubResource("StyleBoxFlat_9")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_1")
 text = "Prophet"
 
 [node name="ProducerButton" type="Button" parent="RoleButtonsContainer"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
-toggle_mode = true
-button_group = SubResource("ButtonGroup_1")
 theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
+theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
 theme_override_colors/font_pressed_color = Color(0.3, 0, 0.5, 1)
 theme_override_colors/font_hover_color = Color(0.3, 0, 0.5, 1)
-theme_override_colors/font_focus_color = Color(0.3, 0, 0.5, 1)
 theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_6")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 theme_override_styles/focus = SubResource("StyleBoxFlat_9")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_1")
 text = "Producer"
 
 [node name="StatusLabel" type="Label" parent="."]
@@ -288,10 +282,10 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_3")
 [node name="PlayerList" type="ItemList" parent="PlayerListContainer"]
 layout_mode = 2
 mouse_filter = 2
-select_mode = 3
 theme_override_colors/font_color = Color(0.3, 0, 0.5, 1)
 theme_override_font_sizes/font_size = 24
 theme_override_styles/panel = SubResource("StyleBoxFlat_7")
+select_mode = 3
 
 [node name="StartButton" type="Button" parent="."]
 layout_mode = 1
