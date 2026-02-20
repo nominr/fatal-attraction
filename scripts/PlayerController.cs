@@ -12,7 +12,7 @@ public partial class PlayerController : CharacterBody2D
 	public delegate void PositionChangedEventHandler(long playerId, Vector2 position);
 
 	[Export]
-	public float Speed { get; set; } = 250.0f;
+	public float Speed { get; set; } = 425.0f; // 1.7x original 250
 
 	[Export]
 	public Color PlayerColor { get; set; } = Colors.Green;
@@ -78,9 +78,9 @@ public partial class PlayerController : CharacterBody2D
 		var collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
 		
-		// Sprite is scaled 0.4x (300 * 0.4 = 120px height)
-		// Set collision to match height (120) and reasonable width (e.g. 60)
-		shape.Size = new Vector2(60, 120); 
+		// Sprite is scaled (300 * scale = height)
+		// Set collision to match height (204) and width to fit corridors (37)
+		shape.Size = new Vector2(37, 204); 
 		collisionShape.Shape = shape;
 		// Position centered (0,0) matches sprite center
 		
@@ -129,7 +129,7 @@ public partial class PlayerController : CharacterBody2D
 		healthBgStyle.SetCornerRadiusAll(4);
 		healthBgStyle.SetContentMarginAll(6);
 		_healthHintLabel.AddThemeStyleboxOverride("normal", healthBgStyle);
-		_healthHintLabel.Position = new Vector2(-80, -150); // Above player
+		_healthHintLabel.Position = new Vector2(-140, -255); // Above player
 		_healthHintLabel.Visible = false;
 		AddChild(_healthHintLabel);
 	}
@@ -317,7 +317,7 @@ public partial class PlayerController : CharacterBody2D
 			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f);
 
 			// Standardized height units
-			float targetWorldHeight = 143.0f; // Standard size for all isometric characters
+			float targetWorldHeight = 243.0f; // Standard size for all isometric characters
 			
 			// Use the full frame height for scale calculation to keep consistency
 			_animationScales[animName] = targetWorldHeight / frameHeight;
@@ -549,7 +549,7 @@ public partial class PlayerController : CharacterBody2D
 		if (_roleLabel != null)
 		{
 			var labelWidth = _roleLabel.Size.X;
-			_roleLabel.Position = new Vector2(-labelWidth / 2, -115);
+			_roleLabel.Position = new Vector2(-labelWidth / 2, -195);
 		}
 	}
 

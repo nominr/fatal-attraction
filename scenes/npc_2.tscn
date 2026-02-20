@@ -21,6 +21,7 @@ animations = [{
 size = Vector2(6, 27)
 
 [node name="npc1" type="Node2D"]
+scale = Vector2(1.7, 1.7)
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(1, -16)
