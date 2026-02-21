@@ -2229,7 +2229,7 @@ public partial class GameWorld : Node2D
 			if (_plusOneTimer <= 0 && _plusOneOverlay != null)
 			{
 				_plusOneOverlay.Visible = false;
-				GD.Print("[GameWorld] Hiding +1 rating visual feedback");
+				// GD.Print("[GameWorld] Hiding +1 rating visual feedback");
 			}
 		}
 		// Handle Admirer Eliminated timer for non-Admirer players
@@ -2258,48 +2258,6 @@ public partial class GameWorld : Node2D
 			}
 			
 			// Update Game Engine (Traps, etc.)
-			// Update NPC Quadrants in Game Engine (for Editorial Focus)
-			// AND Freeze NPCs if they are being interviewed
-			
-			// 1. Get set of frozen NPCs (currently in interview)
-			var frozenNpcIds = new HashSet<string>();
-			if (_gameEngine.GameState.ActiveInterviews != null)
-			{
-				foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
-				{
-					if (!string.IsNullOrEmpty(kvp.Value.NpcId))
-						frozenNpcIds.Add(kvp.Value.NpcId);
-				}
-			}
-			
-			// Also freeze the NPC we are currently interacting with locally
-			if (!string.IsNullOrEmpty(_currentInteractingNpcId))
-			{
-				frozenNpcIds.Add(_currentInteractingNpcId);
-			}
-			
-			foreach (var kvp in _npcEntities)
-			{
-				var npcEntity = kvp.Value;
-				var npcId = kvp.Key;
-				var npcData = _gameEngine.GameState.GetNPC(kvp.Key);
-				
-				// Freeze/Unfreeze
-				npcEntity.SetFrozen(frozenNpcIds.Contains(npcId));
-
-				if (npcData != null)
-				{
-					// Quadrants: 0:TL, 1:TR, 2:BL, 3:BR
-					float midX = _worldSize.X / 2;
-					float midY = _worldSize.Y / 2;
-					int q = 0;
-					if (npcEntity.Position.X >= midX) q += 1;
-					if (npcEntity.Position.Y >= midY) q += 2;
-					
-					npcData.Quadrant = q;
-				}
-			}
-
 			_gameEngine.Update(delta);
 			
 			_timeRemaining -= delta;
@@ -2334,6 +2292,50 @@ public partial class GameWorld : Node2D
 				if (_broadcastTimer >= BROADCAST_INTERVAL)
 				{
 					_broadcastTimer = 0.0;
+
+					// --- THROTTLED UPDATES (10Hz) ---
+					// Update NPC Quadrants in Game Engine (for Editorial Focus)
+					// AND Freeze NPCs if they are being interviewed
+			
+					// 1. Get set of frozen NPCs (currently in interview)
+					var frozenNpcIds = new HashSet<string>();
+					if (_gameEngine.GameState.ActiveInterviews != null)
+					{
+						foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
+						{
+							if (!string.IsNullOrEmpty(kvp.Value.NpcId))
+								frozenNpcIds.Add(kvp.Value.NpcId);
+						}
+					}
+			
+					// Also freeze the NPC we are currently interacting with locally
+					if (!string.IsNullOrEmpty(_currentInteractingNpcId))
+					{
+						frozenNpcIds.Add(_currentInteractingNpcId);
+					}
+			
+					foreach (var kvp in _npcEntities)
+					{
+						var npcEntity = kvp.Value;
+						var npcId = kvp.Key;
+						var npcData = _gameEngine.GameState.GetNPC(kvp.Key);
+				
+						// Freeze/Unfreeze
+						npcEntity.SetFrozen(frozenNpcIds.Contains(npcId));
+
+						if (npcData != null)
+						{
+							// Quadrants: 0:TL, 1:TR, 2:BL, 3:BR
+							float midX = _worldSize.X / 2;
+							float midY = _worldSize.Y / 2;
+							int q = 0;
+							if (npcEntity.Position.X >= midX) q += 1;
+							if (npcEntity.Position.Y >= midY) q += 2;
+					
+							npcData.Quadrant = q;
+						}
+					}
+
 					BroadcastGameState();
 				}
 			}
@@ -2454,7 +2456,7 @@ public partial class GameWorld : Node2D
 				{ "tri_x", npc.TrianglePosition.X },
 				{ "tri_y", npc.TrianglePosition.Y }
 			};
-			Console.WriteLine($"[DEBUG] Serializing {npc.Name}: Norm={npc.NormalizedState} Tri={npc.TrianglePosition} (Raw: {npc.State})");
+			// Console.WriteLine($"[DEBUG] Serializing {npc.Name}: Norm={npc.NormalizedState} Tri={npc.TrianglePosition} (Raw: {npc.State})");
 			
 			// Include Position (SERVER AUTHORITY)
 			if (_npcEntities.TryGetValue(npc.Id, out var entity))
