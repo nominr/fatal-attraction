@@ -88,8 +88,13 @@ public partial class NPCEntity : CharacterBody2D
 	// Stuck detection
 	private Vector2 _lastPosition = Vector2.Zero;
 	private double _stuckTimer = 0.0;
-	private const float STUCK_DISTANCE_THRESHOLD = 3.0f; // pixels
-	private const float STUCK_TIME_THRESHOLD = 0.4f; // seconds (faster reaction)
+	private const float STUCK_DISTANCE_THRESHOLD = 5.0f;  // pixels — raised to avoid false triggers
+	private const float STUCK_TIME_THRESHOLD    = 0.75f; // seconds — raised so brief wall contacts don't trigger
+	
+	// Backoff-escape: when stuck, move away from wall briefly before retargeting
+	private double  _stuckBackoffTimer = 0.0;
+	private Vector2 _stuckBackoffDir   = Vector2.Zero;
+	private const float BACKOFF_DURATION = 0.35f; // seconds to back away from wall
 	
 	// Map bounds (encompass all NPC spawn zones globally)
 	private Vector2 _mapMin = new Vector2(-300, 160);
@@ -111,7 +116,7 @@ public partial class NPCEntity : CharacterBody2D
 
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
-	private string _lastFacingHorizontal = "right"; // "left" or "right"
+	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
 
 	public override void _Ready()
 	{
@@ -164,6 +169,56 @@ public partial class NPCEntity : CharacterBody2D
 		// Start with a random pause before first movement for all NPCs
 		_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
 		_targetPosition = Position;
+		
+		// Deferred: push NPC out of any collision box it may have spawned inside.
+		// Physics bodies are not fully registered until the next frame.
+		CallDeferred(MethodName.ResolveInitialOverlap);
+	}
+
+	/// <summary>
+	/// Tries to move the NPC out of any static collision body it may have spawned inside.
+	/// Called one frame deferred from _Ready() so all physics bodies are registered.
+	/// </summary>
+	private void ResolveInitialOverlap()
+	{
+		const float NUDGE = 40f;      // pixels per nudge attempt
+		const int   MAX_TRIES = 16;   // limit so we don't loop forever
+
+		// Eight cardinal + diagonal directions to try
+		var dirs = new Vector2[]
+		{
+			Vector2.Right, Vector2.Left, Vector2.Down, Vector2.Up,
+			new Vector2( 1,  1).Normalized(),
+			new Vector2(-1,  1).Normalized(),
+			new Vector2( 1, -1).Normalized(),
+			new Vector2(-1, -1).Normalized(),
+		};
+
+		for (int attempt = 0; attempt < MAX_TRIES; attempt++)
+		{
+			// TestMove with zero motion: returns true if the CURRENT position is overlapping something.
+			// We detect overlap by testing a tiny move in each direction; if none move cleanly,
+			// the NPC is embedded in geometry.
+			var motion = new KinematicCollision2D();
+			bool stuck = TestMove(GlobalTransform, Vector2.Zero, motion);
+			if (!stuck)
+			{
+				// Clear — done
+				if (attempt > 0)
+					GD.Print($"[NPCEntity] {NpcId} resolved initial overlap after {attempt} nudge(s). Final pos: {Position}");
+				return;
+			}
+
+			// Move in the collision normal direction (or cycle through dirs if normal is zero)
+			Vector2 pushDir = motion.GetNormal();
+			if (pushDir == Vector2.Zero)
+				pushDir = dirs[attempt % dirs.Length];
+
+			// Position += pushDir * NUDGE;
+			// GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
+		}
+
+		// GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
 	}
 
 	public override void _Process(double delta)
@@ -203,49 +258,101 @@ public partial class NPCEntity : CharacterBody2D
 		// Use a small threshold to detect movement
 		if (velocity.Length() > 5.0f)
 		{
-			if (Mathf.Abs(velocity.X) > Mathf.Abs(velocity.Y))
+			float absX = Mathf.Abs(velocity.X);
+			float absY = Mathf.Abs(velocity.Y);
+			bool movingUp = velocity.Y < -5.0f;
+			bool movingDown = velocity.Y > 5.0f;
+
+			if (movingUp)
 			{
-				// Horizontal movement
+				if (absX < absY * 0.5f)
+				{
+					animToPlay = "walk_up";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "up";
+				}
+				else if (velocity.X > 0)
+				{
+					animToPlay = "walk_up_right";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "up_right";
+				}
+				else
+				{
+					animToPlay = "walk_up_left";
+					_sprite.FlipH = true;
+					_lastFacingDirection = "up_left";
+				}
+			}
+			else if (movingDown)
+			{
+				if (absX < absY * 0.5f)
+				{
+					animToPlay = "walk_down";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "down";
+				}
+				else if (velocity.X > 0)
+				{
+					animToPlay = "walk_right"; // Front-facing
+					_sprite.FlipH = true;
+					_lastFacingDirection = "right";
+				}
+				else
+				{
+					animToPlay = "walk_left"; // Front-facing
+					_sprite.FlipH = false;
+					_lastFacingDirection = "left";
+				}
+			}
+			else // Pure horizontal
+			{
 				if (velocity.X > 0)
 				{
 					animToPlay = "walk_right";
-					_sprite.FlipH = true; // Swap
-					_lastFacingHorizontal = "right";
+					_sprite.FlipH = true;
+					_lastFacingDirection = "right";
 				}
 				else
 				{
 					animToPlay = "walk_left";
-					_sprite.FlipH = false; // Swap
-					_lastFacingHorizontal = "left";
-				}
-			}
-			else
-			{
-				// Vertical movement
-				if (velocity.Y > 0)
-				{
-					animToPlay = "walk_down";
 					_sprite.FlipH = false;
-				}
-				else
-				{
-					animToPlay = "walk_up";
-					_sprite.FlipH = false;
+					_lastFacingDirection = "left";
 				}
 			}
 		}
 		else
 		{
 			// Idle
-			if (_lastFacingHorizontal == "right")
+			if (_lastFacingDirection == "right")
 			{
 				animToPlay = "idle_right";
 				_sprite.FlipH = true; // Swap
 			}
-			else
+			else if (_lastFacingDirection == "left")
 			{
 				animToPlay = "idle_left";
 				_sprite.FlipH = false; // Swap
+			}
+			else if (_lastFacingDirection == "up")
+			{
+				animToPlay = "idle_up";
+				_sprite.FlipH = false;
+			}
+			else if (_lastFacingDirection == "up_right")
+			{
+				animToPlay = "idle_up_right";
+				_sprite.FlipH = false;
+			}
+			else if (_lastFacingDirection == "up_left")
+			{
+				animToPlay = "idle_up_left";
+				_sprite.FlipH = true;
+			}
+			else // down
+			{
+				animToPlay = "idle_down";
+				_sprite.FlipH = false;
 			}
 		}
 
@@ -263,20 +370,23 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
-		// Debug: Always log frozen state for target NPCs
+		/* Debug: Always log frozen state for target NPCs
 		if ((NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus") && Multiplayer.IsServer())
 		{
 			GD.Print($"[NPCEntity] UpdateWandering for {NpcId}: _isFrozen={_isFrozen}, _isSlipping={_isSlipping}");
 		}
+		*/
 		
 		// If slipping or frozen (interview), don't move
 		if (_isSlipping || _isFrozen)
 		{
+			/*
 			if (_isFrozen && Multiplayer.IsServer())
 			{
 				// Debug: Log when frozen NPC tries to move
 				GD.Print($"[NPCEntity] {NpcId} is frozen, skipping movement");
 			}
+			*/
 			return;
 		}
 
@@ -367,65 +477,83 @@ public partial class NPCEntity : CharacterBody2D
 					break;
 				}
 
-				// Normal room movement
+				// ── Backoff-escape phase ────────────────────────────────────────────────
+				// If the NPC was stuck and is now backing away from the wall, honour that
+				// movement until the timer expires, then pick a proper new target.
+				if (_stuckBackoffTimer > 0)
+				{
+					_stuckBackoffTimer -= delta;
+					Velocity = _stuckBackoffDir * MOVE_SPEED;
+					MoveAndSlide();
+					
+					if (_stuckBackoffTimer <= 0)
+					{
+						// Done backing off — pick a fresh target from current (now-clear) position
+						PickNewTarget();
+						_stuckTimer    = 0;
+						_lastPosition  = Position;
+					}
+					break;
+				}
+
+				// ── Normal room movement ─────────────────────────────────────────────────
 				Vector2 direction = (_targetPosition - Position).Normalized();
 				float distanceToTarget = Position.DistanceTo(_targetPosition);
 				if (distanceToTarget <= TARGET_REACHED_THRESHOLD)
 				{
 					Position = _targetPosition;
 					Velocity = Vector2.Zero;
-					_wanderState = WanderState.Pausing;
-					_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
+					_wanderState       = WanderState.Pausing;
+					_pauseTimer        = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
+					_stuckTimer        = 0;
+					_stuckBackoffTimer = 0;
+					_lastPosition      = Position;
 				}
 				else
 				{
+					// Set velocity toward target and let MoveAndSlide() handle wall sliding.
+					// (Manual slide-assist was removed — it amplified near-zero slide vectors
+					//  to full MOVE_SPEED in corner traps, causing the spinning/oscillation.)
 					Velocity = direction * MOVE_SPEED;
-
-					// Slide Assist: If we hit a wall last frame, redirect velocity along the wall
-					// to prevent "sticking" or slowing down.
-					if (GetSlideCollisionCount() > 0)
-					{
-						var collision = GetSlideCollision(0);
-						// Only if hitting a wall (Layer 1)
-						if ((collision.GetCollider() as Node)?.IsInGroup("players") == false && !(collision.GetCollider() is NPCEntity))
-						{
-							// Project velocity onto the wall plane to get "slide" vector
-							Vector2 normal = collision.GetNormal();
-							Vector2 slide = Velocity.Slide(normal);
-							// Preserve speed (sprint along the wall)
-							Velocity = slide.Normalized() * MOVE_SPEED;
-						}
-					}
-
 					MoveAndSlide();
 
-					// INTEGRATED STUCK CHECK:
-					// 1. Immediate "Vibration" Check: Touching wall + Low Speed = Jammed
-					if (GetSlideCollisionCount() > 0 && Velocity.Length() < 5.0f)
-					{
-						// We are pushing a wall and not moving -> VIBRATING
-						_stuckTimer = STUCK_TIME_THRESHOLD; // Force stuck trigger immediately
-					}
-
-					// 2. Positional Stuck Check (Corner Trap)
+					// ── Stuck detection ─────────────────────────────────────────────────
+					// Only accumulate if the NPC is barely moving relative to last frame.
 					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD)
 					{
-						_stuckTimer += delta; 
+						_stuckTimer += delta;
 					}
-					else 
-					{ 
-						_stuckTimer = 0; 
-						_lastPosition = Position; 
+					else
+					{
+						_stuckTimer   = 0;
+						_lastPosition = Position;
 					}
 
-					// Trigger Retargeting
 					if (_stuckTimer >= STUCK_TIME_THRESHOLD)
 					{
-						// Pick a new random target instantly to break the loop
-						PickNewTarget();
-						_stuckTimer = 0.0;
-						// Also reset state to Pause briefly to let physics settle? No, keep moving to break free.
-						// actually, let's just pick and go.
+						// Determine backoff direction: use the last collision normal if we have one,
+						// otherwise use the reverse of our current heading.
+						Vector2 backDir = Vector2.Zero;
+						if (GetSlideCollisionCount() > 0)
+						{
+							for (int ci = 0; ci < GetSlideCollisionCount(); ci++)
+							{
+								var col = GetSlideCollision(ci);
+								// Only walls (not other NPCs or players)
+								if (col.GetCollider() is not NPCEntity &&
+									(col.GetCollider() as Node)?.IsInGroup("players") == false)
+								{
+									backDir += col.GetNormal();
+								}
+							}
+						}
+						if (backDir == Vector2.Zero)
+							backDir = -direction; // reverse heading as fallback
+
+						_stuckBackoffDir   = backDir.Normalized();
+						_stuckBackoffTimer = BACKOFF_DURATION;
+						_stuckTimer        = 0;
+						// GD.Print($"[NPCEntity] {NpcId} stuck — backing off in dir {_stuckBackoffDir}");
 					}
 				}
 				break;
@@ -640,7 +768,7 @@ public partial class NPCEntity : CharacterBody2D
 		string basePath = "res://assets/new-character-assets/";
 		
 		// Helper to load frames from a split texture (6x6 grid, limit to 35)
-		void AddAnimationFrames(string animName, string path)
+		void AddAnimationFrames(string animName, string path, bool skipFirstFrame = false, float scaleMultiplier = 1.0f)
 		{
 			var tex = GD.Load<Texture2D>(path);
 			if (tex == null) return;
@@ -651,11 +779,11 @@ public partial class NPCEntity : CharacterBody2D
 			float width = tex.GetWidth();
 			float height = tex.GetHeight();
 			
-			// New isometric assets are 6x6 grids (36 frames total)
 			int gridCols = 6;
 			int gridRows = 6;
-			float frameWidth = width / gridCols;
-			float frameHeight = height / gridRows;
+
+			float frameWidth = width / (float)gridCols;
+			float frameHeight = height / (float)gridRows;
 
 			if (animName == "idle_right") _frameWidth = frameWidth;
 
@@ -664,6 +792,7 @@ public partial class NPCEntity : CharacterBody2D
 			{
 				for (int x = 0; x < gridCols; x++)
 				{
+					if (skipFirstFrame && x == 0 && y == 0) continue;
 					if (totalAdded >= 35) break;
 
 					var atlasKey = new AtlasTexture();
@@ -680,8 +809,7 @@ public partial class NPCEntity : CharacterBody2D
 
 			// Calculate and store scale for this specific animation to ensure 243 world unit height
 			float targetWorldHeight = 243.0f;
-			frameHeight = height / gridRows;
-			generatedScales[animName] = targetWorldHeight / frameHeight;
+			generatedScales[animName] = (targetWorldHeight / frameHeight) * scaleMultiplier;
 
 			// For portrait/base reference, use the front-idle texture
 			if (animName == "idle_right") _baseTexture = tex;
@@ -692,9 +820,22 @@ public partial class NPCEntity : CharacterBody2D
 		AddAnimationFrames("walk_right", $"{basePath}{npcAsset}-front-walk.png");
 		AddAnimationFrames("walk_left", $"{basePath}{npcAsset}-front-walk.png");
 		
+		// Add back-directional walk for up-diagonals
+		AddAnimationFrames("walk_up_right", $"{basePath}{npcAsset}-back-walk.png");
+		AddAnimationFrames("walk_up_left", $"{basePath}{npcAsset}-back-walk.png");
+
 		AddAnimationFrames("idle_right", $"{basePath}{npcAsset}-front-idle.png");
 		AddAnimationFrames("idle_left", $"{basePath}{npcAsset}-front-idle.png");
-		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png");
+		
+		// Admirer's back-idle has a broken first frame and is exported smaller than other sides
+		bool isAdmirer = (npcAsset == "admirer2"); 
+		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		
+		// Add back-directional idle for up-diagonals
+		AddAnimationFrames("idle_up_right", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_left", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+
+		AddAnimationFrames("idle_down", $"{basePath}{npcAsset}-front-idle.png");
 
 		_animationScales = generatedScales;
 		_spriteFramesCache[npcAsset] = frames;
@@ -1007,18 +1148,18 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	public void SetFrozen(bool frozen)
 	{
-		GD.Print($"[NPCEntity] SetFrozen called on {NpcId}: {frozen} (was {_isFrozen})");
+		// GD.Print($"[NPCEntity] SetFrozen called on {NpcId}: {frozen} (was {_isFrozen})");
 		if (!frozen && (NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus"))
 		{
 			// Print where unfreeze is coming from
-			GD.Print($"[NPCEntity] WARNING: UNFREEZING target NPC {NpcId}");
+			// GD.Print($"[NPCEntity] WARNING: UNFREEZING target NPC {NpcId}");
 		}
 		_isFrozen = frozen;
 		if (frozen)
 		{
 			// Optional: Stop current velocity
 			Velocity = Vector2.Zero;
-			GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
+			// GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
 		}
 	}
 	public void UpdateNameTagColor(Color bgColor)

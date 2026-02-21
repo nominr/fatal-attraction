@@ -114,9 +114,11 @@ public partial class GameWorld : Node2D
 	private double _plusOneTimer = 0;
 	private Texture2D _plusOneTexture;
 
-	// Global Influence Counter
-	private PanelContainer _globalInfluencePanel;
-	private RichTextLabel _globalInfluenceLabel;
+	// Global Influence Counter (Triangle UI)
+	private TriangleScene _globalInfluenceTriangle;
+	private Label _globalAdmirerCountLabel;
+	private Label _globalProphetCountLabel;
+	private Label _globalProducerCountLabel;
 
 	// Bottom-Left Status Container (for role-specific stats)
 	private PanelContainer _bottomLeftStatusPanel;
@@ -542,35 +544,86 @@ public partial class GameWorld : Node2D
 
 		// _metersContainer removed
 
-		// Global Influence Counter
-		_globalInfluencePanel = new PanelContainer();
-		// Ensure panel shrinks to fit content exactly with no extra width
-		_globalInfluencePanel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin; 
-		_globalInfluencePanel.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-		
-		var globalCounterStyle = new StyleBoxFlat();
-		globalCounterStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.9f); // White background
-		globalCounterStyle.SetCornerRadiusAll(4);
-		// Minimal padding to fit tightly
-		globalCounterStyle.SetContentMarginAll(4);
-		_globalInfluencePanel.AddThemeStyleboxOverride("panel", globalCounterStyle);
-		
-		hudContainer.AddChild(_globalInfluencePanel);
+		// Global Influence Counter — Triangle UI card
+		// Uses SubViewportContainer so rendering is isolated: no layout/anchor fighting.
+		// Camera2D centres on the triangle and zooms so the full image fits the viewport.
+		var globalInfluenceCard = new PanelContainer();
+		globalInfluenceCard.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		var globalCardStyle = new StyleBoxFlat();
+		globalCardStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.55f);
+		globalCardStyle.SetCornerRadiusAll(8);
+		globalCardStyle.SetContentMarginAll(6);
+		globalInfluenceCard.AddThemeStyleboxOverride("panel", globalCardStyle);
+		hudContainer.AddChild(globalInfluenceCard);
 
-		_globalInfluenceLabel = new RichTextLabel();
-		_globalInfluenceLabel.BbcodeEnabled = true;
-		_globalInfluenceLabel.FitContent = true;
-		_globalInfluenceLabel.ScrollActive = false;
-		_globalInfluenceLabel.AutowrapMode = TextServer.AutowrapMode.Off; // Prevent wrapping adding width
-		// Remove custom min size to allow shrinking
-		_globalInfluenceLabel.CustomMinimumSize = Vector2.Zero;
-		_globalInfluenceLabel.AddThemeFontOverride("normal_font", _customFont);
-		_globalInfluenceLabel.AddThemeFontSizeOverride("normal_font_size", 24); 
-		
-		// Default color
-		_globalInfluenceLabel.AddThemeColorOverride("default_color", Colors.Black);
-		
-		_globalInfluencePanel.AddChild(_globalInfluenceLabel);
+		var globalInfluenceVBox = new VBoxContainer();
+		globalInfluenceVBox.AddThemeConstantOverride("separation", 6);
+		globalInfluenceVBox.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		globalInfluenceCard.AddChild(globalInfluenceVBox);
+
+		// SubViewportContainer — this is the visible window into the triangle render
+		var globalSvContainer = new SubViewportContainer();
+		globalSvContainer.CustomMinimumSize = new Vector2(215, 180);
+		globalSvContainer.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		globalSvContainer.Stretch = true;
+		// Nearest filtering keeps the viewport texture pixel-sharp; default Linear softens it.
+		globalSvContainer.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+		globalInfluenceVBox.AddChild(globalSvContainer);
+
+		var globalSv = new SubViewport();
+		globalSv.Size = new Vector2I(215, 180);
+		globalSv.Disable3D = true;
+		globalSv.TransparentBg = true;
+		globalSv.RenderTargetUpdateMode = SubViewport.UpdateMode.Always;
+		globalSvContainer.AddChild(globalSv);
+
+		// Camera centred at triangle image centre (77,82) in TriangleScene local space.
+		// Zoom=1.5: viewport shows 120×100 world units around centre, giving ~18px padding
+		// around the outermost vertices (±30 wide, ±28 tall from centre).
+		var globalTriangleCam = new Camera2D();
+		globalTriangleCam.Position = new Vector2(77, 82);
+		globalTriangleCam.Zoom = new Vector2(1.8f, 1.8f);
+		globalSv.AddChild(globalTriangleCam);
+
+		var globalTrianglePrefab = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
+		_globalInfluenceTriangle = globalTrianglePrefab.Instantiate<TriangleScene>();
+		_globalInfluenceTriangle.Visible = true;
+		globalSv.AddChild(_globalInfluenceTriangle);
+		_globalInfluenceTriangle.ShowAllPoints();
+
+		// Icon + count rows below triangle — mirrors the leaderboard CreateDetailRow style.
+		// GridContainer: 2 columns (icon | label), one row per role.
+		var globalCountsGrid = new GridContainer();
+		globalCountsGrid.Columns = 2;
+		globalCountsGrid.AddThemeConstantOverride("h_separation", 8);
+		globalCountsGrid.AddThemeConstantOverride("v_separation", 6);
+		globalCountsGrid.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		globalInfluenceVBox.AddChild(globalCountsGrid);
+
+		// Helper to add one icon+label row
+		void AddGlobalCountRow(string iconPath, out Label countLabel)
+		{
+			var iconRect = new TextureRect();
+			iconRect.Texture = ResourceLoader.Load<Texture2D>(iconPath);
+			iconRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+			iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			iconRect.CustomMinimumSize = new Vector2(38, 38);
+			globalCountsGrid.AddChild(iconRect);
+
+			countLabel = new Label();
+			countLabel.AddThemeFontOverride("font", _customFont);
+			countLabel.AddThemeFontSizeOverride("font_size", 24);
+			countLabel.AddThemeColorOverride("font_color", Colors.Black);
+			countLabel.VerticalAlignment = VerticalAlignment.Center;
+			globalCountsGrid.AddChild(countLabel);
+		}
+
+		AddGlobalCountRow("res://assets/prophet-btn.png",   out _globalProphetCountLabel);
+		_globalProphetCountLabel.Text  = "Prophet: 0";
+		AddGlobalCountRow("res://assets/producer-btn.png",  out _globalProducerCountLabel);
+		_globalProducerCountLabel.Text = "Producer: 0";
+		AddGlobalCountRow("res://assets/admirer-bttn.png",  out _globalAdmirerCountLabel);
+		_globalAdmirerCountLabel.Text  = "Admirer: 0";
 
 		// Producer Stats Container (Active Cameras / Police)
 
@@ -1326,28 +1379,67 @@ public partial class GameWorld : Node2D
 		RpcId(1, MethodName.RequestGameState);
 	}
 
-	private Vector2 GetRandomNPCSpawnPosition()
+	/// <summary>
+	/// Returns a spawn position that does not overlap any layer-1 (wall/world) collision body.
+	/// Tries up to <paramref name="maxAttempts"/> random candidates; returns the last candidate
+	/// if none are completely clear (best-effort fallback).
+	/// </summary>
+	private Vector2 FindFreeNPCSpawnPosition(int maxAttempts = 30)
 	{
-		// Define spawn ranges (rectangular zones)
+		// The isometric map is positioned at world (600, 250) with 4x scale.
+		const float CX = 600f;
+		const float CY = 250f;
+
 		var spawnRanges = new List<(float minX, float maxX, float minY, float maxY)>
 		{
-			(50, 1000, 175, 400),      // Range 1
-			(-300, 2700, 930, 950),    // Range 2
-			(2500, 2850, 1450, 1450),  // Range 3 (single Y value)
-			(580, 2030, 1450, 1740),   // Range 4
-			(1600, 2300, 160, 440)     // Range 5
+			(CX - 300, CX + 300, CY - 150, CY + 150),   // Central cluster
+			(CX - 150, CX + 450, CY + 100, CY + 350),   // Slightly south
+			(CX - 450, CX + 150, CY - 300, CY + 100),   // Slightly north/west
+			(CX + 150, CX + 500, CY - 200, CY + 200),   // East corridor
+			(CX - 500, CX - 100, CY - 100, CY + 250),   // West corridor
 		};
 
 		var random = new Random();
-		// Pick a random spawn range
-		var range = spawnRanges[random.Next(spawnRanges.Count)];
+		var spaceState = GetWorld2D()?.DirectSpaceState;
 
-		// Generate random position within the selected range
-		float x = (float)(random.NextDouble() * (range.maxX - range.minX) + range.minX);
-		float y = (float)(random.NextDouble() * (range.maxY - range.minY) + range.minY);
+		Vector2 candidate = Vector2.Zero;
+		for (int attempt = 0; attempt < maxAttempts; attempt++)
+		{
+			var range = spawnRanges[random.Next(spawnRanges.Count)];
+			float x = (float)(random.NextDouble() * (range.maxX - range.minX) + range.minX);
+			float y = (float)(random.NextDouble() * (range.maxY - range.minY) + range.minY);
+			candidate = new Vector2(x, y);
 
-		return new Vector2(x, y);
+			if (spaceState == null)
+				break; // Physics not ready yet, just use the candidate
+
+			// Query for any *static bodies* (layer 1 = walls/world geometry) at this point.
+			// Use a small circle to account for the NPC collision shape half-width (≈19 px).
+			var shape = new CircleShape2D { Radius = 20f };
+			var shapeParams = new PhysicsShapeQueryParameters2D
+			{
+				Shape = shape,
+				Transform = new Transform2D(0f, candidate),
+				CollisionMask = 1,          // Only layer 1 (world/walls)
+				CollideWithBodies = true,
+				CollideWithAreas = false,
+			};
+
+			var hits = spaceState.IntersectShape(shapeParams, maxResults: 1);
+			if (hits.Count == 0)
+			{
+				// Position is clear — use it
+				GD.Print($"[SpawnNPC] Found free position {candidate} on attempt {attempt + 1}");
+				return candidate;
+			}
+
+			GD.Print($"[SpawnNPC] Attempt {attempt + 1}: {candidate} blocked, retrying…");
+		}
+
+		GD.PrintErr($"[SpawnNPC] Could not find clear spawn after {maxAttempts} attempts; using last candidate {candidate}");
+		return candidate;
 	}
+
 
 	private void SpawnNPCs()
 	{
@@ -1373,7 +1465,7 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npc.Id;
 			entity.NpcName = npc.Name;
 			entity.NpcColor = npcColors.GetValueOrDefault(npc.Id, Colors.Blue);
-			entity.Position = GetRandomNPCSpawnPosition();
+			entity.Position = FindFreeNPCSpawnPosition();
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npc.Id] = entity;
@@ -2130,7 +2222,7 @@ public partial class GameWorld : Node2D
 			if (_plusOneTimer <= 0 && _plusOneOverlay != null)
 			{
 				_plusOneOverlay.Visible = false;
-				GD.Print("[GameWorld] Hiding +1 rating visual feedback");
+				// GD.Print("[GameWorld] Hiding +1 rating visual feedback");
 			}
 		}
 		// Handle Admirer Eliminated timer for non-Admirer players
@@ -2159,48 +2251,6 @@ public partial class GameWorld : Node2D
 			}
 			
 			// Update Game Engine (Traps, etc.)
-			// Update NPC Quadrants in Game Engine (for Editorial Focus)
-			// AND Freeze NPCs if they are being interviewed
-			
-			// 1. Get set of frozen NPCs (currently in interview)
-			var frozenNpcIds = new HashSet<string>();
-			if (_gameEngine.GameState.ActiveInterviews != null)
-			{
-				foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
-				{
-					if (!string.IsNullOrEmpty(kvp.Value.NpcId))
-						frozenNpcIds.Add(kvp.Value.NpcId);
-				}
-			}
-			
-			// Also freeze the NPC we are currently interacting with locally
-			if (!string.IsNullOrEmpty(_currentInteractingNpcId))
-			{
-				frozenNpcIds.Add(_currentInteractingNpcId);
-			}
-			
-			foreach (var kvp in _npcEntities)
-			{
-				var npcEntity = kvp.Value;
-				var npcId = kvp.Key;
-				var npcData = _gameEngine.GameState.GetNPC(kvp.Key);
-				
-				// Freeze/Unfreeze
-				npcEntity.SetFrozen(frozenNpcIds.Contains(npcId));
-
-				if (npcData != null)
-				{
-					// Quadrants: 0:TL, 1:TR, 2:BL, 3:BR
-					float midX = _worldSize.X / 2;
-					float midY = _worldSize.Y / 2;
-					int q = 0;
-					if (npcEntity.Position.X >= midX) q += 1;
-					if (npcEntity.Position.Y >= midY) q += 2;
-					
-					npcData.Quadrant = q;
-				}
-			}
-
 			_gameEngine.Update(delta);
 			
 			_timeRemaining -= delta;
@@ -2235,6 +2285,50 @@ public partial class GameWorld : Node2D
 				if (_broadcastTimer >= BROADCAST_INTERVAL)
 				{
 					_broadcastTimer = 0.0;
+
+					// --- THROTTLED UPDATES (10Hz) ---
+					// Update NPC Quadrants in Game Engine (for Editorial Focus)
+					// AND Freeze NPCs if they are being interviewed
+			
+					// 1. Get set of frozen NPCs (currently in interview)
+					var frozenNpcIds = new HashSet<string>();
+					if (_gameEngine.GameState.ActiveInterviews != null)
+					{
+						foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
+						{
+							if (!string.IsNullOrEmpty(kvp.Value.NpcId))
+								frozenNpcIds.Add(kvp.Value.NpcId);
+						}
+					}
+			
+					// Also freeze the NPC we are currently interacting with locally
+					if (!string.IsNullOrEmpty(_currentInteractingNpcId))
+					{
+						frozenNpcIds.Add(_currentInteractingNpcId);
+					}
+			
+					foreach (var kvp in _npcEntities)
+					{
+						var npcEntity = kvp.Value;
+						var npcId = kvp.Key;
+						var npcData = _gameEngine.GameState.GetNPC(kvp.Key);
+				
+						// Freeze/Unfreeze
+						npcEntity.SetFrozen(frozenNpcIds.Contains(npcId));
+
+						if (npcData != null)
+						{
+							// Quadrants: 0:TL, 1:TR, 2:BL, 3:BR
+							float midX = _worldSize.X / 2;
+							float midY = _worldSize.Y / 2;
+							int q = 0;
+							if (npcEntity.Position.X >= midX) q += 1;
+							if (npcEntity.Position.Y >= midY) q += 2;
+					
+							npcData.Quadrant = q;
+						}
+					}
+
 					BroadcastGameState();
 				}
 			}
@@ -2340,7 +2434,7 @@ public partial class GameWorld : Node2D
 				{ "tri_x", npc.TrianglePosition.X },
 				{ "tri_y", npc.TrianglePosition.Y }
 			};
-			Console.WriteLine($"[DEBUG] Serializing {npc.Name}: Norm={npc.NormalizedState} Tri={npc.TrianglePosition} (Raw: {npc.State})");
+			// Console.WriteLine($"[DEBUG] Serializing {npc.Name}: Norm={npc.NormalizedState} Tri={npc.TrianglePosition} (Raw: {npc.State})");
 			
 			// Include Position (SERVER AUTHORITY)
 			if (_npcEntities.TryGetValue(npc.Id, out var entity))
@@ -2503,17 +2597,19 @@ public partial class GameWorld : Node2D
 				}
 				_leaderboardTriangle.UpdateActiveStates(states);
 				
-				// Update Global Influence Counter
-				if (_globalInfluenceLabel != null)
+				// Update Global Influence Counter (Triangle UI)
+				if (_globalInfluenceTriangle != null)
 				{
-					int admirerCount = _leaderboardTriangle.AdmirerZoneCount;
-					int prophetCount = _leaderboardTriangle.ProphetZoneCount;
-					int producerCount = _leaderboardTriangle.ProducerZoneCount;
-					
-					// Counter: Black, Names: Colored
-					// "Counter:" in Black
-					string text = $"[color=black]Counter:[/color] [color=#cc0000]{admirerCount}[/color], [color=#0044cc]{prophetCount}[/color], [color=#00bb00]{producerCount}[/color]";
-					_globalInfluenceLabel.Text = text;
+					_globalInfluenceTriangle.UpdateActiveStates(states);
+					_globalInfluenceTriangle.ShowAllPoints();
+
+					int admirerCount  = _globalInfluenceTriangle.AdmirerZoneCount;
+					int prophetCount  = _globalInfluenceTriangle.ProphetZoneCount;
+					int producerCount = _globalInfluenceTriangle.ProducerZoneCount;
+
+					if (_globalAdmirerCountLabel  != null) _globalAdmirerCountLabel.Text  = $"Admirer: {admirerCount}";
+					if (_globalProphetCountLabel   != null) _globalProphetCountLabel.Text   = $"Prophet: {prophetCount}";
+					if (_globalProducerCountLabel  != null) _globalProducerCountLabel.Text  = $"Producer: {producerCount}";
 				}
 
 				ProcessInfluenceNotifications(states);
@@ -2682,7 +2778,7 @@ public partial class GameWorld : Node2D
 			entity.NpcColor = npcColors.GetValueOrDefault(npcId, Colors.Blue);
 			
 			// Try to get initial position from state
-			Vector2 initPos = GetRandomNPCSpawnPosition();
+			Vector2 initPos = FindFreeNPCSpawnPosition();
 			var npcStates = _localGameState["npc_states"] as JObject;
 			if (npcStates != null && npcStates[npcId] != null)
 			{
