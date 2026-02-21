@@ -126,7 +126,7 @@ public partial class ActionTable : Control
         AddRowHeader("Contestant\nInteractions");
         AddActionCell(null, "Convert:\n+CHAOS", _prophetColor);
         AddActionCell(null, "Flirt:\n+LOVE", _admirerColor);
-        AddActionCell(null, "Money:\n+APPEAL", _producerColor);
+        AddActionCell(null, "Interview:\n+APPEAL", _producerColor);
 
         // --- Row 2: Physical Interactions ---
         AddRowHeader("Physical\nInteractions");

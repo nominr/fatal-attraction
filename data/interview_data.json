@@ -1,164 +1,374 @@
-{
-    "default": {
-        "intro_topics": [
-            {
-                "id": "flirt_eyes",
-                "text": "Your eyes are mesmerizing.",
-                "score": 1,
-                "response": "Oh wow... nobody's ever said it quite like that.",
-                "followups": [
-                    "followup_deep",
-                    "followup_playful",
-                    "followup_creepy"
-                ]
-            },
-            {
-                "id": "flirt_smile",
-                "text": "You have the most beautiful smile.",
-                "score": 1,
-                "response": "You're sweet! You're making me smile right now.",
-                "followups": [
-                    "followup_genuine",
-                    "followup_cheesy",
-                    "followup_intense"
-                ]
-            },
-            {
-                "id": "flirt_outfit",
-                "text": "That outfit looks great on you.",
-                "score": 0,
-                "response": "Thanks! I wasn't sure about it, glad you like it.",
-                "followups": [
-                    "followup_style",
-                    "followup_ask_fashion",
-                    "followup_negging"
-                ]
-            },
-            {
-                "id": "flirt_pickup",
-                "text": "Are you a magician? Because whenever I look at you, everyone else disappears.",
-                "score": 0,
-                "response": "Haha, that was incredibly cheesy! But cute.",
-                "followups": [
-                    "followup_laugh",
-                    "followup_doubledown",
-                    "followup_apologize"
-                ]
-            },
-            {
-                "id": "flirt_intense",
-                "text": "I've been watching you. You're different.",
-                "score": -1,
-                "response": "Uh... okay? That's a little intense.",
-                "followups": [
-                    "followup_obsessed",
-                    "followup_backtrack",
-                    "followup_stare"
-                ]
-            },
-            {
-                "id": "flirt_touch",
-                "text": "*Touch their arm intimately*",
-                "score": -1,
-                "response": "Woah, personal space! I don't know you like that.",
-                "followups": [
-                    "followup_aggressive",
-                    "followup_sorry_awkward",
-                    "followup_dismiss"
-                ]
-            }
-        ],
-        "followups": {
-            "followup_deep": {
-                "text": "I could get lost in them forever.",
-                "score": 1,
-                "response": "You're really charming, you know that?"
-            },
-            "followup_playful": {
-                "text": "Don't blink, I might steal a glance.",
-                "score": 0,
-                "response": "Haha, you're funny."
-            },
-            "followup_creepy": {
-                "text": "I want to keep them.",
-                "score": -1,
-                "response": "Excuse me? I'm leaving."
-            },
-            "followup_genuine": {
-                "text": "I mean it, it lights up the room.",
-                "score": 1,
-                "response": "Aww, stop! (Blushes)"
-            },
-            "followup_cheesy": {
-                "text": "Do you have a map? I keep getting lost in your smile.",
-                "score": 0,
-                "response": "Okay, definitely cheesy. But I like it."
-            },
-            "followup_intense": {
-                "text": "I never want you to stop smiling at me.",
-                "score": -1,
-                "response": "That's... nice, I guess?"
-            },
-            "followup_style": {
-                "text": "You really have an eye for fashion.",
-                "score": 1,
-                "response": "Thank you! I love expressing myself."
-            },
-            "followup_ask_fashion": {
-                "text": "Where did you get it?",
-                "score": 0,
-                "response": "A little boutique downtown."
-            },
-            "followup_negging": {
-                "text": "It's brave to wear something so bold.",
-                "score": -1,
-                "response": "Brave? What's that supposed to mean?"
-            },
-            "followup_laugh": {
-                "text": "*Laugh with them*",
-                "score": 1,
-                "response": "It's nice to laugh with someone."
-            },
-            "followup_doubledown": {
-                "text": "I'm serious! Poof!",
-                "score": 0,
-                "response": "You're ridiculous."
-            },
-            "followup_apologize": {
-                "text": "Sorry, bad line?",
-                "score": 0,
-                "response": "No, it was fine. Just unexpected."
-            },
-            "followup_obsessed": {
-                "text": "I can't help it. I need you.",
-                "score": -1,
-                "response": "Please leave me alone."
-            },
-            "followup_backtrack": {
-                "text": "I just mean you stand out!",
-                "score": 0,
-                "response": "Right. Thanks."
-            },
-            "followup_stare": {
-                "text": "*Stare silently*",
-                "score": -1,
-                "response": "Okay, I'm going over there now."
-            },
-            "followup_aggressive": {
-                "text": "Why? You don't like me?",
-                "score": -1,
-                "response": "I didn't say that, but you're being pushy."
-            },
-            "followup_sorry_awkward": {
-                "text": "Sorry, I misread the moment.",
-                "score": 0,
-                "response": "It's okay. Just ask next time."
-            },
-            "followup_dismiss": {
-                "text": "Whatever, your loss.",
-                "score": -1,
-                "response": "Wow. Rude."
-            }
-        }
+[
+    {
+        "id": "intro_mood",
+        "text": "How are you feeling about the show?",
+        "score": 1,
+        "response": "I'm a bit nervous, but I think it's going well."
+    },
+    {
+        "id": "intro_outfit",
+        "text": "You look great today! Who are you wearing?",
+        "score": 1,
+        "response": "Oh, thank you! It's just something I threw on."
+    },
+    {
+        "id": "intro_drama",
+        "text": "I heard some rumors about you. Care to comment?",
+        "score": -1,
+        "response": "Excuse me? I don't listen to baseless gossip."
+    },
+    {
+        "id": "intro_excited",
+        "text": "What are you most excited for today?",
+        "score": 1,
+        "response": "I really hope to make a connection with someone special."
+    },
+    {
+        "id": "intro_pregnant",
+        "text": "Are you pregnant?",
+        "score": -1,
+        "response": "That is incredibly rude! No!"
+    },
+    {
+        "id": "intro_fans",
+        "text": "The fans seem to really love you!",
+        "score": 1,
+        "response": "Really? That makes me so happy to hear!"
+    },
+    {
+        "id": "intro_breakup",
+        "text": "Why did your last relationship end?",
+        "score": -1,
+        "response": "That is extremely personal and none of your business."
+    },
+    {
+        "id": "intro_backstory",
+        "text": "What made you sign up for this show in the first place?",
+        "score": 1,
+        "response": "I figured… why not? Life's short, and I needed a change."
+    },
+    {
+        "id": "intro_rival",
+        "text": "Who do you think is your biggest competition here?",
+        "score": 1,
+        "response": "Honestly? There are a few strong personalities. We'll see."
+    },
+    {
+        "id": "intro_redflags",
+        "text": "What's a red flag that would make you walk away immediately?",
+        "score": 1,
+        "response": "Dishonesty. If I catch even a whiff of it, I'm out."
+    },
+    {
+        "id": "intro_strength",
+        "text": "What's your best quality in relationships?",
+        "score": 1,
+        "response": "I'm loyal. Maybe too loyal sometimes, but it's who I am."
+    },
+    {
+        "id": "intro_socials",
+        "text": "Your DMs must be wild right now. How are you handling the attention?",
+        "score": 1,
+        "response": "I'm trying not to look. It's… a lot."
+    },
+    {
+        "id": "intro_family",
+        "text": "What would your family say about you being here?",
+        "score": 1,
+        "response": "They'd act surprised, but they're secretly thrilled."
+    },
+    {
+        "id": "intro_secret",
+        "text": "Is there anything you're nervous the audience might find out about you?",
+        "score": -1,
+        "response": "That question feels like a trap. Next."
+    },
+    {
+        "id": "intro_conflict",
+        "text": "How do you handle conflict when you're upset?",
+        "score": 1,
+        "response": "I take a minute, then I talk it through. I don't like playing games."
+    },
+    {
+        "id": "intro_winner",
+        "text": "Do you think you're going to win this whole thing?",
+        "score": 1,
+        "response": "I'm not here to win a game. I'm here to find something real."
+    },
+    {
+        "id": "intro_fake",
+        "text": "A lot of people think reality TV is totally fake. Are you putting on an act?",
+        "score": -1,
+        "response": "Wow, okay. No. What you see is what you get with me."
+    },
+    {
+        "id": "intro_age",
+        "text": "How old are you exactly? You look older in person.",
+        "score": -1,
+        "response": "...Did you just say that out loud? Bold choice."
+    },
+    {
+        "id": "intro_love_language",
+        "text": "What's your love language?",
+        "score": 1,
+        "response": "Acts of service, probably. I notice when people show up."
+    },
+    {
+        "id": "intro_dealbreaker",
+        "text": "What's your biggest dealbreaker in a partner?",
+        "score": 1,
+        "response": "Someone who can't admit when they're wrong. That's a hard no for me."
+    },
+    {
+        "id": "intro_villain",
+        "text": "Are you the villain this season?",
+        "score": -1,
+        "response": "Why would you even say that? That's not funny."
+    },
+    {
+        "id": "intro_crying",
+        "text": "We saw you tear up earlier. Everything okay?",
+        "score": 1,
+        "response": "Yeah, I'm fine. It's just… emotional. In a good way, I think."
+    },
+    {
+        "id": "intro_strategy",
+        "text": "Do you have a strategy going into this?",
+        "score": 1,
+        "response": "Just be myself. I know that sounds cliché, but I mean it."
+    },
+    {
+        "id": "intro_type",
+        "text": "What's your type?",
+        "score": 1,
+        "response": "Someone kind. Smart. Who makes me laugh without even trying."
+    },
+    {
+        "id": "intro_heartbreak",
+        "text": "Have you ever had your heart broken?",
+        "score": 1,
+        "response": "Yeah. Hasn't everyone? It made me who I am."
+    },
+    {
+        "id": "intro_insult_laugh",
+        "text": "You seem like the type who cries in the bathroom on night one.",
+        "score": -1,
+        "response": "Wow. That's… a really unkind thing to say."
+    },
+    {
+        "id": "intro_social_media",
+        "text": "Are you doing this for the followers, honestly?",
+        "score": -1,
+        "response": "No. And I resent the implication."
+    },
+    {
+        "id": "intro_nervous_habit",
+        "text": "What do you do when you get nervous?",
+        "score": 1,
+        "response": "I talk too much. Which, ironically, is happening right now."
+    },
+    {
+        "id": "intro_open_book",
+        "text": "Would you say you're an open book?",
+        "score": 1,
+        "response": "Pretty much. I don't see the point in hiding who I am."
+    },
+    {
+        "id": "intro_past_show",
+        "text": "Have you been on a show like this before?",
+        "score": 1,
+        "response": "No, this is my first time. I'm still learning the ropes."
+    },
+    {
+        "id": "intro_first_impression",
+        "text": "What kind of first impression do you want to make tonight?",
+        "score": 1,
+        "response": "Warm. Genuine. Someone worth remembering."
+    },
+    {
+        "id": "intro_regret",
+        "text": "Do you ever regret signing up for this?",
+        "score": -1,
+        "response": "Not yet. Ask me again in a week."
+    },
+    {
+        "id": "intro_therapy",
+        "text": "Have you ever been to therapy? This show can be a lot.",
+        "score": -1,
+        "response": "That is an incredibly invasive question. Why are you asking that?"
+    },
+    {
+        "id": "intro_dream_date",
+        "text": "What would your perfect date look like?",
+        "score": 1,
+        "response": "Something low-key. Good food, no phones, just real conversation."
+    },
+    {
+        "id": "intro_compliment_personality",
+        "text": "You seem like someone who really knows themselves.",
+        "score": 1,
+        "response": "I've worked hard on that. It didn't happen overnight."
+    },
+    {
+        "id": "intro_shallow",
+        "text": "Be honest — looks matter a lot to you, don't they?",
+        "score": -1,
+        "response": "Attraction matters. But it's not everything. That's a reductive question."
+    },
+    {
+        "id": "intro_laugh",
+        "text": "What makes you laugh?",
+        "score": 1,
+        "response": "Absurd stuff. Timing. People who don't take themselves too seriously."
+    },
+    {
+        "id": "intro_goals",
+        "text": "Where do you see yourself in five years?",
+        "score": 1,
+        "response": "Hopefully happy. Maybe in love. Definitely still learning."
+    },
+    {
+        "id": "intro_move_fast",
+        "text": "Do you fall in love fast?",
+        "score": 1,
+        "response": "I feel things deeply. I wouldn't say fast — I'd say fully."
+    },
+    {
+        "id": "intro_past_cheating",
+        "text": "Have you ever cheated on someone?",
+        "score": -1,
+        "response": "I'm not going to answer that. Next question, please."
+    },
+    {
+        "id": "intro_marriage",
+        "text": "Are you actually ready to get married if this goes well?",
+        "score": 1,
+        "response": "I'm open to it. I wouldn't be here if I wasn't."
+    },
+    {
+        "id": "intro_awkward_silence",
+        "text": "You went quiet for a second there. Nervous?",
+        "score": -1,
+        "response": "I was just thinking. Not everything needs to be filled with noise."
+    },
+    {
+        "id": "intro_gut_feeling",
+        "text": "Do you trust your gut in relationships?",
+        "score": 1,
+        "response": "Always. My gut has never really steered me wrong."
+    },
+    {
+        "id": "intro_insecurity",
+        "text": "What's your biggest insecurity?",
+        "score": 1,
+        "response": "I worry I care more than other people do. But I'm working on it."
+    },
+    {
+        "id": "intro_toxic",
+        "text": "Would people who've dated you say you were toxic?",
+        "score": -1,
+        "response": "Are you seriously asking me that? On camera? Right now?"
+    },
+    {
+        "id": "intro_camera",
+        "text": "Does the camera make you uncomfortable?",
+        "score": 1,
+        "response": "A little. I keep forgetting it's there, which is probably good."
+    },
+    {
+        "id": "intro_adventure",
+        "text": "Are you spontaneous or more of a planner?",
+        "score": 1,
+        "response": "Somewhere in between. I like adventure with a backup plan."
+    },
+    {
+        "id": "intro_compliment_smile",
+        "text": "Your smile is really something. Does anyone ever tell you that?",
+        "score": 1,
+        "response": "Ha — sometimes. That's very sweet, thank you."
+    },
+    {
+        "id": "intro_deal_sealed",
+        "text": "What would make you know, without a doubt, that someone is the one?",
+        "score": 1,
+        "response": "When I stop trying to impress them and just… breathe. That's it."
+    },
+    {
+        "id": "intro_clique",
+        "text": "Have you already started forming alliances in there?",
+        "score": -1,
+        "response": "Alliances? This isn't Survivor. I'm just being friendly."
+    },
+    {
+        "id": "intro_loud_vs_quiet",
+        "text": "You seem quieter than the others. Is that just who you are?",
+        "score": -1,
+        "response": "I don't need to be the loudest person in the room. That's not a flaw."
+    },
+    {
+        "id": "intro_hardest_part",
+        "text": "What's the hardest part of being on a show like this?",
+        "score": 1,
+        "response": "Sharing the process. Love usually happens privately. This is anything but."
+    },
+    {
+        "id": "intro_bored",
+        "text": "Honestly, you look a little bored. Is this not what you expected?",
+        "score": -1,
+        "response": "I'm not bored. I'm focused. There's a difference."
+    },
+    {
+        "id": "intro_past_crazy",
+        "text": "Any exes who might show up and cause chaos?",
+        "score": -1,
+        "response": "I really hope not. And I'm not answering that in any more detail."
+    },
+    {
+        "id": "intro_ideal_morning",
+        "text": "Describe your ideal Sunday morning.",
+        "score": 1,
+        "response": "Coffee, no alarm, maybe a walk. Someone worth staying in bed with."
+    },
+    {
+        "id": "intro_music",
+        "text": "What does your playlist say about you?",
+        "score": 1,
+        "response": "That I'm nostalgic, a little dramatic, and have great taste."
+    },
+    {
+        "id": "intro_crowd_favorite",
+        "text": "You're clearly a crowd favorite. Does that add pressure?",
+        "score": 1,
+        "response": "A little, yeah. But I'm trying not to play to the audience."
+    },
+    {
+        "id": "intro_jealous",
+        "text": "Are you the jealous type?",
+        "score": 1,
+        "response": "I can be. I try to be self-aware about it though."
+    },
+    {
+        "id": "intro_producer_plant",
+        "text": "Some viewers think you were cast just to cause drama. What do you say to that?",
+        "score": -1,
+        "response": "That's insulting. I'm a real person with real feelings, not a plot device."
+    },
+    {
+        "id": "intro_crying_again",
+        "text": "You cried again today. Is this show too much for you emotionally?",
+        "score": -1,
+        "response": "Having emotions isn't weakness. I'd think carefully before framing it that way."
+    },
+    {
+        "id": "intro_pet",
+        "text": "Are you a dog person or a cat person?",
+        "score": 1,
+        "response": "Dog. Loyal, affectionate, a little chaotic. Sounds like me, honestly."
+    },
+    {
+        "id": "intro_deal_or_no",
+        "text": "If you don't find love here, was it all worth it?",
+        "score": 1,
+        "response": "Even if this doesn't work, I'll know I tried. That matters to me."
     }
-}
+]

@@ -75,7 +75,6 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
-	private MoneyGameOverlay _moneyGameOverlay;
 	private PanelContainer _notificationPanel;
 	private Button _collapseNotificationButton;
 	private bool _notificationCollapsed = false;
@@ -687,10 +686,6 @@ public partial class GameWorld : Node2D
 		// Ideally we verify role in UpdateUI.
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
-
-		_moneyGameOverlay = new MoneyGameOverlay();
-		_moneyGameOverlay.ActionSelected += OnMoneyGameAction;
-		_uiLayer.AddChild(_moneyGameOverlay);
 
 		// +1 Rating Visual Feedback Overlay
 		_plusOneTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_plusone-nobg.png");
@@ -1550,20 +1545,6 @@ public partial class GameWorld : Node2D
 		// OnActionSelected("global", "set_trap");
 	}
 
-	private void OnMoneyGameAction(string actionId)
-	{
-		if (_localGameState == null) return;
-		var moneyGames = _localGameState["active_money_games"] as JObject;
-		if (moneyGames != null && moneyGames.ContainsKey(_myRole))
-		{
-			string npcId = moneyGames[_myRole]["npcId"]?.Value<string>();
-			if (!string.IsNullOrEmpty(npcId))
-			{
-				_networkManager.SendInteract(npcId, actionId);
-			}
-		}
-	}
-
 	private void OnNetworkPlayerInteraction(long senderId, string npcId, string actionId)
 	{
 		if (!Multiplayer.IsServer()) return;
@@ -2296,21 +2277,6 @@ public partial class GameWorld : Node2D
 			cPanel.Visible = false;
 			var btn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 			if (btn != null) btn.SetPressedNoSignal(false);
-			// Check Money Game
-			var moneyGames = _localGameState["active_money_games"] as JObject;
-			if (moneyGames != null && moneyGames.ContainsKey(_myRole))
-			{
-				var ctx = moneyGames[_myRole];
-				int target = ctx["target"]?.Value<int>() ?? 0;
-				int current = ctx["current"]?.Value<int>() ?? 0;
-				
-				_moneyGameOverlay.UpdateState(target, current);
-				_moneyGameOverlay.ShowGame();
-			}
-			else
-			{
-				_moneyGameOverlay.HideGame();
-			}
 		}
 
 	}
@@ -2439,20 +2405,6 @@ public partial class GameWorld : Node2D
 			};
 		}
 		status["active_interviews"] = interviews;
-
-		// Active Money Games (for UI)
-		var moneyGames = new JObject();
-		foreach (var kvp in _gameEngine.GameState.ActiveMoneyGames)
-		{
-			var ctx = kvp.Value;
-			moneyGames[kvp.Key.ToString()] = new JObject
-			{
-				{ "npcId", ctx.NpcId },
-				{ "target", ctx.TargetSum },
-				{ "current", ctx.CurrentSum }
-			};
-		}
-		status["active_money_games"] = moneyGames;
 
 		return status.ToString();
 	}
@@ -2636,19 +2588,6 @@ public partial class GameWorld : Node2D
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
-			}
-		}
-
-		// MONEY GAME UI OVERRIDE
-		var moneyGames = _localGameState?["active_money_games"] as JObject;
-		if (moneyGames != null && !string.IsNullOrEmpty(_myRole) && moneyGames.ContainsKey(_myRole))
-		{
-			var ctx = moneyGames[_myRole];
-			string mNpcId = ctx["npcId"]?.Value<string>();
-			if (mNpcId == npcId)
-			{
-				int target = ctx["target"]?.Value<int>() ?? 0;
-				desc = $"{npcName} requests [b]{target} coins[/b].";
 			}
 		}
 
