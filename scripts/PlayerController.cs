@@ -53,7 +53,7 @@ public partial class PlayerController : CharacterBody2D
 
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
-	private string _lastFacingHorizontal = "right"; // "left" or "right"
+	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
 
 	public override void _Ready()
 	{
@@ -177,49 +177,102 @@ public partial class PlayerController : CharacterBody2D
 		
 		if (velocity.Length() > 0.1f)
 		{
-			if (Mathf.Abs(velocity.X) > Mathf.Abs(velocity.Y))
+			float absX = Mathf.Abs(velocity.X);
+			float absY = Mathf.Abs(velocity.Y);
+			bool movingUp = velocity.Y < -0.1f;
+			bool movingDown = velocity.Y > 0.1f;
+			bool movingHorizontal = absX > 0.1f;
+
+			if (movingUp)
 			{
-				// Horizontal movement
+				if (absX < absY * 0.5f)
+				{
+					animToPlay = "walk_up";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "up";
+				}
+				else if (velocity.X > 0)
+				{
+					animToPlay = "walk_up_right";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "up_right";
+				}
+				else
+				{
+					animToPlay = "walk_up_left";
+					_sprite.FlipH = true;
+					_lastFacingDirection = "up_left";
+				}
+			}
+			else if (movingDown)
+			{
+				if (absX < absY * 0.5f)
+				{
+					animToPlay = "walk_down";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "down";
+				}
+				else if (velocity.X > 0)
+				{
+					animToPlay = "walk_right"; // Front-facing
+					_sprite.FlipH = true;
+					_lastFacingDirection = "right";
+				}
+				else
+				{
+					animToPlay = "walk_left"; // Front-facing
+					_sprite.FlipH = false;
+					_lastFacingDirection = "left";
+				}
+			}
+			else // Pure horizontal
+			{
 				if (velocity.X > 0)
 				{
 					animToPlay = "walk_right";
-					_sprite.FlipH = true; // Swap: assets naturally face left
-					_lastFacingHorizontal = "right";
+					_sprite.FlipH = true;
+					_lastFacingDirection = "right";
 				}
 				else
 				{
 					animToPlay = "walk_left";
-					_sprite.FlipH = false; // Swap: assets naturally face left
-					_lastFacingHorizontal = "left";
-				}
-			}
-			else
-			{
-				// Vertical movement
-				if (velocity.Y > 0)
-				{
-					animToPlay = "walk_down";
 					_sprite.FlipH = false;
-				}
-				else
-				{
-					animToPlay = "walk_up";
-					_sprite.FlipH = false;
+					_lastFacingDirection = "left";
 				}
 			}
 		}
 		else
 		{
 			// Idle
-			if (_lastFacingHorizontal == "right")
+			if (_lastFacingDirection == "right")
 			{
 				animToPlay = "idle_right";
 				_sprite.FlipH = true; // Swap
 			}
-			else
+			else if (_lastFacingDirection == "left")
 			{
 				animToPlay = "idle_left";
 				_sprite.FlipH = false; // Swap
+			}
+			else if (_lastFacingDirection == "up")
+			{
+				animToPlay = "idle_up";
+				_sprite.FlipH = false;
+			}
+			else if (_lastFacingDirection == "up_right")
+			{
+				animToPlay = "idle_up_right";
+				_sprite.FlipH = false;
+			}
+			else if (_lastFacingDirection == "up_left")
+			{
+				animToPlay = "idle_up_left";
+				_sprite.FlipH = true;
+			}
+			else // down
+			{
+				animToPlay = "idle_down";
+				_sprite.FlipH = false;
 			}
 		}
 
@@ -275,7 +328,7 @@ public partial class PlayerController : CharacterBody2D
 		var generatedScales = new Dictionary<string, float>();
 		
 		// Helper to load frames from a split texture (6x6 grid, but we limit to 35 frames)
-		void AddAnimationFrames(string animName, string texturePath, bool cropShadow = false)
+		void AddAnimationFrames(string animName, string texturePath, bool cropShadow = false, bool skipFirstFrame = false, float scaleMultiplier = 1.0f)
 		{
 			var texture = GD.Load<Texture2D>(texturePath);
 			if (texture == null)
@@ -292,14 +345,16 @@ public partial class PlayerController : CharacterBody2D
 			
 			int gridCols = 6;
 			int gridRows = 6;
-			float frameWidth = width / gridCols;
-			float frameHeight = height / gridRows;
+			
+			float frameWidth = width / (float)gridCols;
+			float frameHeight = height / (float)gridRows;
 
 			int totalAdded = 0;
 			for (int y = 0; y < gridRows; y++)
 			{
 				for (int x = 0; x < gridCols; x++)
 				{
+					if (skipFirstFrame && x == 0 && y == 0) continue;
 					if (totalAdded >= 35) break;
 
 					var atlasKey = new AtlasTexture();
@@ -321,7 +376,7 @@ public partial class PlayerController : CharacterBody2D
 			float targetWorldHeight = 243.0f; // Standard size for all isometric characters
 			
 			// Use the full frame height for scale calculation to keep consistency
-			generatedScales[animName] = targetWorldHeight / frameHeight;
+			generatedScales[animName] = (targetWorldHeight / frameHeight) * scaleMultiplier;
 		}
 
 		string frontIdle = $"{basePath}{roleName}-front-idle.png";
@@ -340,9 +395,22 @@ public partial class PlayerController : CharacterBody2D
 		AddAnimationFrames("walk_right", frontWalk);
 		AddAnimationFrames("walk_left", frontWalk);
 		
+		// Add back-directional walk for up-diagonals
+		AddAnimationFrames("walk_up_right", backWalk);
+		AddAnimationFrames("walk_up_left", backWalk);
+
 		AddAnimationFrames("idle_right", frontIdle);
 		AddAnimationFrames("idle_left", frontIdle);
-		AddAnimationFrames("idle_up", backIdle); 
+		
+		// Admirer's back-idle has a broken first frame and is exported smaller than other sides
+		bool isAdmirer = (roleName == "admirer2");
+		AddAnimationFrames("idle_up", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f); 
+		
+		// Add back-directional idle for up-diagonals
+		AddAnimationFrames("idle_up_right", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_left", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f);
+
+		AddAnimationFrames("idle_down", frontIdle);
 
 		_animationScales = generatedScales;
 		_spriteFramesCache[roleName] = frames;

@@ -116,7 +116,7 @@ public partial class NPCEntity : CharacterBody2D
 
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
-	private string _lastFacingHorizontal = "right"; // "left" or "right"
+	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
 
 	public override void _Ready()
 	{
@@ -258,49 +258,101 @@ public partial class NPCEntity : CharacterBody2D
 		// Use a small threshold to detect movement
 		if (velocity.Length() > 5.0f)
 		{
-			if (Mathf.Abs(velocity.X) > Mathf.Abs(velocity.Y))
+			float absX = Mathf.Abs(velocity.X);
+			float absY = Mathf.Abs(velocity.Y);
+			bool movingUp = velocity.Y < -5.0f;
+			bool movingDown = velocity.Y > 5.0f;
+
+			if (movingUp)
 			{
-				// Horizontal movement
+				if (absX < absY * 0.5f)
+				{
+					animToPlay = "walk_up";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "up";
+				}
+				else if (velocity.X > 0)
+				{
+					animToPlay = "walk_up_right";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "up_right";
+				}
+				else
+				{
+					animToPlay = "walk_up_left";
+					_sprite.FlipH = true;
+					_lastFacingDirection = "up_left";
+				}
+			}
+			else if (movingDown)
+			{
+				if (absX < absY * 0.5f)
+				{
+					animToPlay = "walk_down";
+					_sprite.FlipH = false;
+					_lastFacingDirection = "down";
+				}
+				else if (velocity.X > 0)
+				{
+					animToPlay = "walk_right"; // Front-facing
+					_sprite.FlipH = true;
+					_lastFacingDirection = "right";
+				}
+				else
+				{
+					animToPlay = "walk_left"; // Front-facing
+					_sprite.FlipH = false;
+					_lastFacingDirection = "left";
+				}
+			}
+			else // Pure horizontal
+			{
 				if (velocity.X > 0)
 				{
 					animToPlay = "walk_right";
-					_sprite.FlipH = true; // Swap
-					_lastFacingHorizontal = "right";
+					_sprite.FlipH = true;
+					_lastFacingDirection = "right";
 				}
 				else
 				{
 					animToPlay = "walk_left";
-					_sprite.FlipH = false; // Swap
-					_lastFacingHorizontal = "left";
-				}
-			}
-			else
-			{
-				// Vertical movement
-				if (velocity.Y > 0)
-				{
-					animToPlay = "walk_down";
 					_sprite.FlipH = false;
-				}
-				else
-				{
-					animToPlay = "walk_up";
-					_sprite.FlipH = false;
+					_lastFacingDirection = "left";
 				}
 			}
 		}
 		else
 		{
 			// Idle
-			if (_lastFacingHorizontal == "right")
+			if (_lastFacingDirection == "right")
 			{
 				animToPlay = "idle_right";
 				_sprite.FlipH = true; // Swap
 			}
-			else
+			else if (_lastFacingDirection == "left")
 			{
 				animToPlay = "idle_left";
 				_sprite.FlipH = false; // Swap
+			}
+			else if (_lastFacingDirection == "up")
+			{
+				animToPlay = "idle_up";
+				_sprite.FlipH = false;
+			}
+			else if (_lastFacingDirection == "up_right")
+			{
+				animToPlay = "idle_up_right";
+				_sprite.FlipH = false;
+			}
+			else if (_lastFacingDirection == "up_left")
+			{
+				animToPlay = "idle_up_left";
+				_sprite.FlipH = true;
+			}
+			else // down
+			{
+				animToPlay = "idle_down";
+				_sprite.FlipH = false;
 			}
 		}
 
@@ -486,7 +538,7 @@ public partial class NPCEntity : CharacterBody2D
 								var col = GetSlideCollision(ci);
 								// Only walls (not other NPCs or players)
 								if (col.GetCollider() is not NPCEntity &&
-								    (col.GetCollider() as Node)?.IsInGroup("players") == false)
+									(col.GetCollider() as Node)?.IsInGroup("players") == false)
 								{
 									backDir += col.GetNormal();
 								}
@@ -713,7 +765,7 @@ public partial class NPCEntity : CharacterBody2D
 		string basePath = "res://assets/new-character-assets/";
 		
 		// Helper to load frames from a split texture (6x6 grid, limit to 35)
-		void AddAnimationFrames(string animName, string path)
+		void AddAnimationFrames(string animName, string path, bool skipFirstFrame = false, float scaleMultiplier = 1.0f)
 		{
 			var tex = GD.Load<Texture2D>(path);
 			if (tex == null) return;
@@ -724,11 +776,11 @@ public partial class NPCEntity : CharacterBody2D
 			float width = tex.GetWidth();
 			float height = tex.GetHeight();
 			
-			// New isometric assets are 6x6 grids (36 frames total)
 			int gridCols = 6;
 			int gridRows = 6;
-			float frameWidth = width / gridCols;
-			float frameHeight = height / gridRows;
+
+			float frameWidth = width / (float)gridCols;
+			float frameHeight = height / (float)gridRows;
 
 			if (animName == "idle_right") _frameWidth = frameWidth;
 
@@ -737,6 +789,7 @@ public partial class NPCEntity : CharacterBody2D
 			{
 				for (int x = 0; x < gridCols; x++)
 				{
+					if (skipFirstFrame && x == 0 && y == 0) continue;
 					if (totalAdded >= 35) break;
 
 					var atlasKey = new AtlasTexture();
@@ -753,8 +806,7 @@ public partial class NPCEntity : CharacterBody2D
 
 			// Calculate and store scale for this specific animation to ensure 243 world unit height
 			float targetWorldHeight = 243.0f;
-			frameHeight = height / gridRows;
-			generatedScales[animName] = targetWorldHeight / frameHeight;
+			generatedScales[animName] = (targetWorldHeight / frameHeight) * scaleMultiplier;
 
 			// For portrait/base reference, use the front-idle texture
 			if (animName == "idle_right") _baseTexture = tex;
@@ -765,9 +817,22 @@ public partial class NPCEntity : CharacterBody2D
 		AddAnimationFrames("walk_right", $"{basePath}{npcAsset}-front-walk.png");
 		AddAnimationFrames("walk_left", $"{basePath}{npcAsset}-front-walk.png");
 		
+		// Add back-directional walk for up-diagonals
+		AddAnimationFrames("walk_up_right", $"{basePath}{npcAsset}-back-walk.png");
+		AddAnimationFrames("walk_up_left", $"{basePath}{npcAsset}-back-walk.png");
+
 		AddAnimationFrames("idle_right", $"{basePath}{npcAsset}-front-idle.png");
 		AddAnimationFrames("idle_left", $"{basePath}{npcAsset}-front-idle.png");
-		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png");
+		
+		// Admirer's back-idle has a broken first frame and is exported smaller than other sides
+		bool isAdmirer = (npcAsset == "admirer2"); 
+		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		
+		// Add back-directional idle for up-diagonals
+		AddAnimationFrames("idle_up_right", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_left", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+
+		AddAnimationFrames("idle_down", $"{basePath}{npcAsset}-front-idle.png");
 
 		_animationScales = generatedScales;
 		_spriteFramesCache[npcAsset] = frames;
