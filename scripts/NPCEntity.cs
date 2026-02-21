@@ -83,8 +83,13 @@ public partial class NPCEntity : CharacterBody2D
 	// Stuck detection
 	private Vector2 _lastPosition = Vector2.Zero;
 	private double _stuckTimer = 0.0;
-	private const float STUCK_DISTANCE_THRESHOLD = 3.0f; // pixels
-	private const float STUCK_TIME_THRESHOLD = 0.4f; // seconds (faster reaction)
+	private const float STUCK_DISTANCE_THRESHOLD = 5.0f;  // pixels — raised to avoid false triggers
+	private const float STUCK_TIME_THRESHOLD    = 0.75f; // seconds — raised so brief wall contacts don't trigger
+	
+	// Backoff-escape: when stuck, move away from wall briefly before retargeting
+	private double  _stuckBackoffTimer = 0.0;
+	private Vector2 _stuckBackoffDir   = Vector2.Zero;
+	private const float BACKOFF_DURATION = 0.35f; // seconds to back away from wall
 	
 	// Map bounds (encompass all NPC spawn zones globally)
 	private Vector2 _mapMin = new Vector2(-300, 160);
@@ -158,6 +163,56 @@ public partial class NPCEntity : CharacterBody2D
 		// Start with a random pause before first movement for all NPCs
 		_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
 		_targetPosition = Position;
+		
+		// Deferred: push NPC out of any collision box it may have spawned inside.
+		// Physics bodies are not fully registered until the next frame.
+		CallDeferred(MethodName.ResolveInitialOverlap);
+	}
+
+	/// <summary>
+	/// Tries to move the NPC out of any static collision body it may have spawned inside.
+	/// Called one frame deferred from _Ready() so all physics bodies are registered.
+	/// </summary>
+	private void ResolveInitialOverlap()
+	{
+		const float NUDGE = 40f;      // pixels per nudge attempt
+		const int   MAX_TRIES = 16;   // limit so we don't loop forever
+
+		// Eight cardinal + diagonal directions to try
+		var dirs = new Vector2[]
+		{
+			Vector2.Right, Vector2.Left, Vector2.Down, Vector2.Up,
+			new Vector2( 1,  1).Normalized(),
+			new Vector2(-1,  1).Normalized(),
+			new Vector2( 1, -1).Normalized(),
+			new Vector2(-1, -1).Normalized(),
+		};
+
+		for (int attempt = 0; attempt < MAX_TRIES; attempt++)
+		{
+			// TestMove with zero motion: returns true if the CURRENT position is overlapping something.
+			// We detect overlap by testing a tiny move in each direction; if none move cleanly,
+			// the NPC is embedded in geometry.
+			var motion = new KinematicCollision2D();
+			bool stuck = TestMove(GlobalTransform, Vector2.Zero, motion);
+			if (!stuck)
+			{
+				// Clear — done
+				if (attempt > 0)
+					GD.Print($"[NPCEntity] {NpcId} resolved initial overlap after {attempt} nudge(s). Final pos: {Position}");
+				return;
+			}
+
+			// Move in the collision normal direction (or cycle through dirs if normal is zero)
+			Vector2 pushDir = motion.GetNormal();
+			if (pushDir == Vector2.Zero)
+				pushDir = dirs[attempt % dirs.Length];
+
+			Position += pushDir * NUDGE;
+			GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
+		}
+
+		GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
 	}
 
 	public override void _Process(double delta)
@@ -361,65 +416,83 @@ public partial class NPCEntity : CharacterBody2D
 					break;
 				}
 
-				// Normal room movement
+				// ── Backoff-escape phase ────────────────────────────────────────────────
+				// If the NPC was stuck and is now backing away from the wall, honour that
+				// movement until the timer expires, then pick a proper new target.
+				if (_stuckBackoffTimer > 0)
+				{
+					_stuckBackoffTimer -= delta;
+					Velocity = _stuckBackoffDir * MOVE_SPEED;
+					MoveAndSlide();
+					
+					if (_stuckBackoffTimer <= 0)
+					{
+						// Done backing off — pick a fresh target from current (now-clear) position
+						PickNewTarget();
+						_stuckTimer    = 0;
+						_lastPosition  = Position;
+					}
+					break;
+				}
+
+				// ── Normal room movement ─────────────────────────────────────────────────
 				Vector2 direction = (_targetPosition - Position).Normalized();
 				float distanceToTarget = Position.DistanceTo(_targetPosition);
 				if (distanceToTarget <= TARGET_REACHED_THRESHOLD)
 				{
 					Position = _targetPosition;
 					Velocity = Vector2.Zero;
-					_wanderState = WanderState.Pausing;
-					_pauseTimer = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
+					_wanderState       = WanderState.Pausing;
+					_pauseTimer        = (float)(_random.NextDouble() * (MAX_PAUSE - MIN_PAUSE) + MIN_PAUSE);
+					_stuckTimer        = 0;
+					_stuckBackoffTimer = 0;
+					_lastPosition      = Position;
 				}
 				else
 				{
+					// Set velocity toward target and let MoveAndSlide() handle wall sliding.
+					// (Manual slide-assist was removed — it amplified near-zero slide vectors
+					//  to full MOVE_SPEED in corner traps, causing the spinning/oscillation.)
 					Velocity = direction * MOVE_SPEED;
-
-					// Slide Assist: If we hit a wall last frame, redirect velocity along the wall
-					// to prevent "sticking" or slowing down.
-					if (GetSlideCollisionCount() > 0)
-					{
-						var collision = GetSlideCollision(0);
-						// Only if hitting a wall (Layer 1)
-						if ((collision.GetCollider() as Node)?.IsInGroup("players") == false && !(collision.GetCollider() is NPCEntity))
-						{
-							// Project velocity onto the wall plane to get "slide" vector
-							Vector2 normal = collision.GetNormal();
-							Vector2 slide = Velocity.Slide(normal);
-							// Preserve speed (sprint along the wall)
-							Velocity = slide.Normalized() * MOVE_SPEED;
-						}
-					}
-
 					MoveAndSlide();
 
-					// INTEGRATED STUCK CHECK:
-					// 1. Immediate "Vibration" Check: Touching wall + Low Speed = Jammed
-					if (GetSlideCollisionCount() > 0 && Velocity.Length() < 5.0f)
-					{
-						// We are pushing a wall and not moving -> VIBRATING
-						_stuckTimer = STUCK_TIME_THRESHOLD; // Force stuck trigger immediately
-					}
-
-					// 2. Positional Stuck Check (Corner Trap)
+					// ── Stuck detection ─────────────────────────────────────────────────
+					// Only accumulate if the NPC is barely moving relative to last frame.
 					if (Position.DistanceTo(_lastPosition) < STUCK_DISTANCE_THRESHOLD)
 					{
-						_stuckTimer += delta; 
+						_stuckTimer += delta;
 					}
-					else 
-					{ 
-						_stuckTimer = 0; 
-						_lastPosition = Position; 
+					else
+					{
+						_stuckTimer   = 0;
+						_lastPosition = Position;
 					}
 
-					// Trigger Retargeting
 					if (_stuckTimer >= STUCK_TIME_THRESHOLD)
 					{
-						// Pick a new random target instantly to break the loop
-						PickNewTarget();
-						_stuckTimer = 0.0;
-						// Also reset state to Pause briefly to let physics settle? No, keep moving to break free.
-						// actually, let's just pick and go.
+						// Determine backoff direction: use the last collision normal if we have one,
+						// otherwise use the reverse of our current heading.
+						Vector2 backDir = Vector2.Zero;
+						if (GetSlideCollisionCount() > 0)
+						{
+							for (int ci = 0; ci < GetSlideCollisionCount(); ci++)
+							{
+								var col = GetSlideCollision(ci);
+								// Only walls (not other NPCs or players)
+								if (col.GetCollider() is not NPCEntity &&
+								    (col.GetCollider() as Node)?.IsInGroup("players") == false)
+								{
+									backDir += col.GetNormal();
+								}
+							}
+						}
+						if (backDir == Vector2.Zero)
+							backDir = -direction; // reverse heading as fallback
+
+						_stuckBackoffDir   = backDir.Normalized();
+						_stuckBackoffTimer = BACKOFF_DURATION;
+						_stuckTimer        = 0;
+						GD.Print($"[NPCEntity] {NpcId} stuck — backing off in dir {_stuckBackoffDir}");
 					}
 				}
 				break;

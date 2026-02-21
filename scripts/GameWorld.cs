@@ -1470,28 +1470,67 @@ public partial class GameWorld : Node2D
 		RpcId(1, MethodName.RequestGameState);
 	}
 
-	private Vector2 GetRandomNPCSpawnPosition()
+	/// <summary>
+	/// Returns a spawn position that does not overlap any layer-1 (wall/world) collision body.
+	/// Tries up to <paramref name="maxAttempts"/> random candidates; returns the last candidate
+	/// if none are completely clear (best-effort fallback).
+	/// </summary>
+	private Vector2 FindFreeNPCSpawnPosition(int maxAttempts = 30)
 	{
-		// Define spawn ranges (rectangular zones)
+		// The isometric map is positioned at world (600, 250) with 4x scale.
+		const float CX = 600f;
+		const float CY = 250f;
+
 		var spawnRanges = new List<(float minX, float maxX, float minY, float maxY)>
 		{
-			(50, 1000, 175, 400),      // Range 1
-			(-300, 2700, 930, 950),    // Range 2
-			(2500, 2850, 1450, 1450),  // Range 3 (single Y value)
-			(580, 2030, 1450, 1740),   // Range 4
-			(1600, 2300, 160, 440)     // Range 5
+			(CX - 300, CX + 300, CY - 150, CY + 150),   // Central cluster
+			(CX - 150, CX + 450, CY + 100, CY + 350),   // Slightly south
+			(CX - 450, CX + 150, CY - 300, CY + 100),   // Slightly north/west
+			(CX + 150, CX + 500, CY - 200, CY + 200),   // East corridor
+			(CX - 500, CX - 100, CY - 100, CY + 250),   // West corridor
 		};
 
 		var random = new Random();
-		// Pick a random spawn range
-		var range = spawnRanges[random.Next(spawnRanges.Count)];
+		var spaceState = GetWorld2D()?.DirectSpaceState;
 
-		// Generate random position within the selected range
-		float x = (float)(random.NextDouble() * (range.maxX - range.minX) + range.minX);
-		float y = (float)(random.NextDouble() * (range.maxY - range.minY) + range.minY);
+		Vector2 candidate = Vector2.Zero;
+		for (int attempt = 0; attempt < maxAttempts; attempt++)
+		{
+			var range = spawnRanges[random.Next(spawnRanges.Count)];
+			float x = (float)(random.NextDouble() * (range.maxX - range.minX) + range.minX);
+			float y = (float)(random.NextDouble() * (range.maxY - range.minY) + range.minY);
+			candidate = new Vector2(x, y);
 
-		return new Vector2(x, y);
+			if (spaceState == null)
+				break; // Physics not ready yet, just use the candidate
+
+			// Query for any *static bodies* (layer 1 = walls/world geometry) at this point.
+			// Use a small circle to account for the NPC collision shape half-width (≈19 px).
+			var shape = new CircleShape2D { Radius = 20f };
+			var shapeParams = new PhysicsShapeQueryParameters2D
+			{
+				Shape = shape,
+				Transform = new Transform2D(0f, candidate),
+				CollisionMask = 1,          // Only layer 1 (world/walls)
+				CollideWithBodies = true,
+				CollideWithAreas = false,
+			};
+
+			var hits = spaceState.IntersectShape(shapeParams, maxResults: 1);
+			if (hits.Count == 0)
+			{
+				// Position is clear — use it
+				GD.Print($"[SpawnNPC] Found free position {candidate} on attempt {attempt + 1}");
+				return candidate;
+			}
+
+			GD.Print($"[SpawnNPC] Attempt {attempt + 1}: {candidate} blocked, retrying…");
+		}
+
+		GD.PrintErr($"[SpawnNPC] Could not find clear spawn after {maxAttempts} attempts; using last candidate {candidate}");
+		return candidate;
 	}
+
 
 	private void SpawnNPCs()
 	{
@@ -1517,7 +1556,7 @@ public partial class GameWorld : Node2D
 			entity.NpcId = npc.Id;
 			entity.NpcName = npc.Name;
 			entity.NpcColor = npcColors.GetValueOrDefault(npc.Id, Colors.Blue);
-			entity.Position = GetRandomNPCSpawnPosition();
+			entity.Position = FindFreeNPCSpawnPosition();
 			entity.NPCClicked += OnNPCClicked;
 			AddChild(entity);
 			_npcEntities[npc.Id] = entity;
@@ -3625,7 +3664,7 @@ public partial class GameWorld : Node2D
 			entity.NpcColor = npcColors.GetValueOrDefault(npcId, Colors.Blue);
 			
 			// Try to get initial position from state
-			Vector2 initPos = GetRandomNPCSpawnPosition();
+			Vector2 initPos = FindFreeNPCSpawnPosition();
 			var npcStates = _localGameState["npc_states"] as JObject;
 			if (npcStates != null && npcStates[npcId] != null)
 			{
