@@ -27,6 +27,11 @@ public partial class NPCEntity : CharacterBody2D
 	private Label _nameLabel;
 	private CollisionShape2D _collisionShape;
 	private Font _customFont;
+	private static Font _sharedFont;
+	private static readonly Dictionary<string, SpriteFrames> _spriteFramesCache = new();
+	private static readonly Dictionary<string, Dictionary<string, float>> _animationScalesCache = new();
+	private static readonly Dictionary<string, Texture2D> _baseTextureCache = new();
+	private static readonly Dictionary<string, float> _frameWidthCache = new();
 	
 	// State indicators
 	private Sprite2D _convertedIndicator;
@@ -119,7 +124,8 @@ public partial class NPCEntity : CharacterBody2D
 		YSortEnabled = true;
 		
 		// Load custom font
-		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		_sharedFont ??= ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
+		_customFont = _sharedFont;
 		
 		// Initialize room and corridor definitions
 		_rooms = new List<Room>
@@ -681,7 +687,29 @@ public partial class NPCEntity : CharacterBody2D
 			npcAsset = $"npc{(hash % 10) + 1}";
 		}
 
+		if (_spriteFramesCache.TryGetValue(npcAsset, out var cachedFrames) &&
+			_animationScalesCache.TryGetValue(npcAsset, out var cachedScales))
+		{
+			_sprite.SpriteFrames = cachedFrames;
+			_animationScales = new Dictionary<string, float>(cachedScales);
+			if (_baseTextureCache.TryGetValue(npcAsset, out var cachedBaseTexture))
+			{
+				_baseTexture = cachedBaseTexture;
+			}
+			if (_frameWidthCache.TryGetValue(npcAsset, out var cachedFrameWidth))
+			{
+				_frameWidth = cachedFrameWidth;
+			}
+			_sprite.Play("idle_right");
+			if (_animationScales.TryGetValue("idle_right", out float cachedScale))
+			{
+				_sprite.Scale = new Vector2(cachedScale, cachedScale);
+			}
+			return;
+		}
+
 		var frames = new SpriteFrames();
+		var generatedScales = new Dictionary<string, float>();
 		string basePath = "res://assets/new-character-assets/";
 		
 		// Helper to load frames from a split texture (6x6 grid, limit to 35)
@@ -726,7 +754,7 @@ public partial class NPCEntity : CharacterBody2D
 			// Calculate and store scale for this specific animation to ensure 243 world unit height
 			float targetWorldHeight = 243.0f;
 			frameHeight = height / gridRows;
-			_animationScales[animName] = targetWorldHeight / frameHeight;
+			generatedScales[animName] = targetWorldHeight / frameHeight;
 
 			// For portrait/base reference, use the front-idle texture
 			if (animName == "idle_right") _baseTexture = tex;
@@ -741,6 +769,14 @@ public partial class NPCEntity : CharacterBody2D
 		AddAnimationFrames("idle_left", $"{basePath}{npcAsset}-front-idle.png");
 		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png");
 
+		_animationScales = generatedScales;
+		_spriteFramesCache[npcAsset] = frames;
+		_animationScalesCache[npcAsset] = new Dictionary<string, float>(generatedScales);
+		if (_baseTexture != null)
+		{
+			_baseTextureCache[npcAsset] = _baseTexture;
+		}
+		_frameWidthCache[npcAsset] = _frameWidth;
 		_sprite.SpriteFrames = frames;
 		
 		_sprite.Play("idle_right");
@@ -894,7 +930,10 @@ public partial class NPCEntity : CharacterBody2D
 			// effectively a "mugshot"
 			var atlas = new AtlasTexture();
 			atlas.Atlas = _baseTexture;
-			atlas.Region = new Rect2(0, 0, _frameWidth, _baseTexture.GetHeight());
+			// New isometric assets are 6x6 grids
+			float frameHeight = _baseTexture.GetHeight() / 6.0f;
+			
+			atlas.Region = new Rect2(0, 0, _frameWidth, frameHeight);
 			return atlas;
 		}
 		return null;

@@ -25,14 +25,14 @@ public partial class Lobby : Control
 	private bool _isHosting = false;
 	private bool _isConnected = false;
 	private string _autoJoinRole = null;
-	
-	// Background animation
+
+	// Background animation (same as InfoScene)
+	private const int TotalFrames = 191;
 	private Sprite2D _background;
 	private Timer _backgroundTimer;
-	private Texture2D _bg1;
-	private Texture2D _bg2;
-	private bool _showingBg1 = true;
-	
+	private Texture2D[] _bgFrames;
+	private int _currentFrame = 0;
+
 	// Hover color for buttons
 	private Color _normalColor = new Color(1, 1, 1, 1); // White
 	private Color _hoverColor = new Color(1, 0.9f, 0.2f, 1); // Yellowish
@@ -41,7 +41,7 @@ public partial class Lobby : Control
 	{
 		// Assuming NetworkManager is an autoload named "NetworkManager"
 		_networkManager = GetNode<NetworkManager>("/root/NetworkManager");
-		
+
 		// Map UI nodes
 		_nameInput = GetNode<LineEdit>("NameInputContainer/NameInput");
 		_ipInput = GetNode<LineEdit>("IPInputContainer/IPInput");
@@ -55,20 +55,60 @@ public partial class Lobby : Control
 		_admireButton = GetNode<Button>("RoleButtonsContainer/AdmirerButton");
 		_prophetButton = GetNode<Button>("RoleButtonsContainer/ProphetButton");
 		_producerButton = GetNode<Button>("RoleButtonsContainer/ProducerButton");
-		
+
 		// Map background nodes
 		_background = GetNode<Sprite2D>("Background");
 		_backgroundTimer = GetNode<Timer>("BackgroundTimer");
 
-		// Load background textures
-		_bg1 = GD.Load<Texture2D>("res://assets/Title_BG_1.png");
-		_bg2 = GD.Load<Texture2D>("res://assets/Title_BG_2.png");
-		
+		// Load frames (191) exactly like InfoScene
+		_bgFrames = new Texture2D[TotalFrames];
+		int loaded = 0;
+		for (int i = 0; i < TotalFrames; i++)
+		{
+			// If your filenames are zero-padded (bg_frame_001.png), use this instead:
+			// string path = $"res://assets/Title_BG_Frames/bg_frame_{(i + 1).ToString("000")}.png";
+			string path = $"res://assets/Title_BG_Frames/bg_frame_{i + 1}.png";
+
+			var tex = GD.Load<Texture2D>(path);
+			if (tex == null)
+				GD.PushWarning($"[Lobby] Missing/failed to load frame: {path}");
+			else
+				loaded++;
+
+			_bgFrames[i] = tex;
+		}
+
+		if (loaded == 0)
+		{
+			GD.PushError("[Lobby] No background frames loaded. Check folder path / filenames / import settings.");
+		}
+		else
+		{
+			// Set first non-null frame
+			_currentFrame = 0;
+			while (_currentFrame < TotalFrames && _bgFrames[_currentFrame] == null)
+				_currentFrame++;
+
+			if (_currentFrame >= TotalFrames)
+			{
+				GD.PushError("[Lobby] All background frames are null. Check imports/paths.");
+			}
+			else
+			{
+				_background.Texture = _bgFrames[_currentFrame];
+
+				// Connect timer ONCE, then start
+				_backgroundTimer.Timeout += OnBackgroundTimerTimeout;
+				_backgroundTimer.WaitTime = 1.0f / 24.0f; // ~24 FPS
+				_backgroundTimer.Start();
+			}
+		}
+
 		// Make back label clickable and set up hover signals
 		_backLabel.MouseFilter = MouseFilterEnum.Stop;
 		_backLabel.MouseEntered += OnBackLabelMouseEntered;
 		_backLabel.MouseExited += OnBackLabelMouseExited;
-		
+
 		// Connect signals
 		_hostButton.Pressed += OnHostPressed;
 		_joinButton.Pressed += OnJoinPressed;
@@ -77,7 +117,6 @@ public partial class Lobby : Control
 		_admireButton.Pressed += () => OnRoleButtonPressed("Admirer");
 		_prophetButton.Pressed += () => OnRoleButtonPressed("Prophet");
 		_producerButton.Pressed += () => OnRoleButtonPressed("Producer");
-		_backgroundTimer.Timeout += OnBackgroundTimerTimeout;
 
 		// Initially hide the cancel button
 		_cancelButton.Visible = false;
@@ -90,15 +129,15 @@ public partial class Lobby : Control
 		_networkManager.RoleRejected += OnRoleRejected;
 
 		_startButton.Disabled = true;
-		
+
 		// Display Local IP(s) to help with LAN hosting
 		var ips = Godot.IP.GetLocalAddresses();
 		string ipText = "Your IP: ";
 		bool firstIP = true;
 		bool foundIP = false;
-		
+
 		GD.Print("[Lobby] Checking local IP addresses...");
-		foreach(string ip in ips)
+		foreach (string ip in ips)
 		{
 			GD.Print($"[Lobby] Found IP: {ip}");
 			// Filter for likely LAN IPs (IPv4, not localhost)
@@ -110,12 +149,12 @@ public partial class Lobby : Control
 				foundIP = true;
 			}
 		}
-		
+
 		if (!foundIP)
 		{
 			ipText += "No network found";
 		}
-		
+
 		// Update the IP address label
 		var ipAddressLabel = GetNode<Label>("IPAddressLabel");
 		if (ipAddressLabel != null)
@@ -135,7 +174,6 @@ public partial class Lobby : Control
 	public override void _ExitTree()
 	{
 		// Disconnect signal handlers to prevent ObjectDisposedException
-		// when this node is freed but NetworkManager still exists
 		if (_networkManager != null)
 		{
 			_networkManager.PlayerConnected -= OnPlayerConnected;
@@ -144,6 +182,13 @@ public partial class Lobby : Control
 			_networkManager.ConnectionSucceeded -= OnConnectionSucceeded;
 			_networkManager.GameStarted -= OnGameStarted;
 			_networkManager.RoleRejected -= OnRoleRejected;
+		}
+
+		// Optional cleanup: stop timer to avoid callbacks after node is gone
+		if (_backgroundTimer != null)
+		{
+			_backgroundTimer.Stop();
+			_backgroundTimer.Timeout -= OnBackgroundTimerTimeout;
 		}
 	}
 
@@ -185,17 +230,14 @@ public partial class Lobby : Control
 		_hostButton.Disabled = true;
 		_joinButton.Disabled = true;
 		_cancelButton.Visible = true;
-		_startButton.Disabled = true; // Disabled until role is selected
+		_startButton.Disabled = true;
 		_isHosting = true;
-		_isConnected = false; // Not considered connected until role is selected
-		
-		// Enable role buttons for host
+		_isConnected = false;
+
 		_admireButton.Disabled = false;
 		_prophetButton.Disabled = false;
 		_producerButton.Disabled = false;
 		UpdateAvailableRoles();
-		
-		// Don't send role yet - wait for host to select one
 	}
 
 	private void OnJoinPressed()
@@ -206,7 +248,6 @@ public partial class Lobby : Control
 			return;
 		}
 
-		// Check player count before allowing join (this will be validated server-side too)
 		if (_networkManager.Players.Count >= MAX_PLAYERS)
 		{
 			_statusLabel.Text = "Lobby is full (max 3 players).";
@@ -228,17 +269,14 @@ public partial class Lobby : Control
 
 	private void OnCancelPressed()
 	{
-		// Close connection
 		if (Multiplayer.MultiplayerPeer != null)
 		{
 			Multiplayer.MultiplayerPeer.Close();
 			Multiplayer.MultiplayerPeer = null;
 		}
 
-		// Reset network manager state
 		_networkManager.Players.Clear();
 
-		// Reset UI
 		_statusLabel.Text = _isHosting ? "Hosting cancelled." : "Left the game.";
 		_hostButton.Disabled = false;
 		_joinButton.Disabled = false;
@@ -246,61 +284,54 @@ public partial class Lobby : Control
 		_startButton.Disabled = true;
 		_isHosting = false;
 		_isConnected = false;
-		
-		// Disable role selection buttons instead of hiding
+
 		_admireButton.Disabled = true;
 		_prophetButton.Disabled = true;
 		_producerButton.Disabled = true;
-		
+
 		UpdatePlayerList();
 		UpdateAvailableRoles();
 	}
 
 	private void OnPlayerConnected(long id, string name)
 	{
-		// Enforce player limit on server
 		if (Multiplayer.IsServer() && _networkManager.Players.Count > MAX_PLAYERS)
 		{
 			GD.Print($"[Lobby] Player limit exceeded. Disconnecting player {id}");
-			// Disconnect the player who exceeded the limit
 			Multiplayer.MultiplayerPeer.DisconnectPeer((int)id);
 			return;
 		}
-		
+
 		UpdatePlayerList();
 	}
 
 	private void OnPlayerDisconnected(long id)
 	{
-		// Check if the host/server disconnected (ID 1 is always the server)
 		if (id == 1 && !_isHosting)
 		{
-			// Host disconnected - reset to default screen for clients
 			if (Multiplayer.MultiplayerPeer != null)
 			{
 				Multiplayer.MultiplayerPeer.Close();
 				Multiplayer.MultiplayerPeer = null;
 			}
-			
+
 			_networkManager.Players.Clear();
-			
-			// Reset UI to default state
+
 			_statusLabel.Text = "Host disconnected. Returned to lobby.";
 			_hostButton.Disabled = false;
 			_joinButton.Disabled = false;
 			_cancelButton.Visible = false;
 			_startButton.Disabled = true;
 			_isConnected = false;
-			
-			// Disable role selection buttons instead of hiding
+
 			_admireButton.Disabled = true;
 			_prophetButton.Disabled = true;
 			_producerButton.Disabled = true;
-			
+
 			UpdatePlayerList();
 			return;
 		}
-		
+
 		UpdatePlayerList();
 	}
 
@@ -312,49 +343,42 @@ public partial class Lobby : Control
 		_cancelButton.Visible = false;
 		_isConnected = false;
 		_isHosting = false;
-		
-		// Disable role selection buttons instead of hiding
+
 		_admireButton.Disabled = true;
 		_prophetButton.Disabled = true;
 		_producerButton.Disabled = true;
-		
-		// Clear player list
+
 		_networkManager.Players.Clear();
 		UpdatePlayerList();
 	}
 
 	private void OnRoleButtonPressed(string role)
 	{
-		// If host hasn't confirmed yet, this is the confirmation
 		if (_isHosting && !_isConnected)
 		{
 			_isConnected = true;
 			_statusLabel.Text = "Hosting... Waiting for players.";
-			_startButton.Disabled = false; // Now host can start
+			_startButton.Disabled = false;
 		}
-		
-		// Send role request
+
 		_networkManager.SendRoleRequest(role);
 	}
-
 
 	private void OnConnectionSucceeded()
 	{
 		_statusLabel.Text = "Connected! Please select a role.";
 		_isConnected = true;
-		
-		// Enable role buttons for client
+
 		_admireButton.Disabled = false;
 		_prophetButton.Disabled = false;
 		_producerButton.Disabled = false;
-		
+
 		UpdateAvailableRoles();
 
-		// Auto-select role if requested via command line
 		if (!string.IsNullOrEmpty(_autoJoinRole))
 		{
 			OnRoleButtonPressed(_autoJoinRole);
-			_autoJoinRole = null; // Clear it
+			_autoJoinRole = null;
 		}
 	}
 
@@ -388,28 +412,23 @@ public partial class Lobby : Control
 
 	private void UpdateAvailableRoles()
 	{
-		// Only filter roles for clients who are connected
-		// Host (server) can see all roles
 		bool isServer = Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
-		
+
 		if (!_isConnected || isServer)
 		{
-			// Host or not connected - enable all buttons
 			_admireButton.Disabled = false;
 			_prophetButton.Disabled = false;
 			_producerButton.Disabled = false;
 			return;
 		}
 
-		// Get roles already taken by other players
 		var takenRoles = new System.Collections.Generic.HashSet<string>();
 		long myId = Multiplayer.GetUniqueId();
-		
+
 		GD.Print($"[Lobby] UpdateAvailableRoles - My ID: {myId}, Total Players: {_networkManager.Players.Count}");
-		
+
 		foreach (var kvp in _networkManager.Players)
 		{
-			// Skip our own role selection
 			if (kvp.Key != myId && kvp.Value.Role != "Observer")
 			{
 				GD.Print($"[Lobby] Player {kvp.Value.Name} (ID: {kvp.Key}) has role: {kvp.Value.Role}");
@@ -417,23 +436,32 @@ public partial class Lobby : Control
 			}
 		}
 
-		// Enable/disable buttons based on taken roles
 		_admireButton.Disabled = takenRoles.Contains("Admirer");
 		_prophetButton.Disabled = takenRoles.Contains("Prophet");
 		_producerButton.Disabled = takenRoles.Contains("Producer");
-		
+
 		if (_admireButton.Disabled) GD.Print("[Lobby] Admirer role is taken");
 		if (_prophetButton.Disabled) GD.Print("[Lobby] Prophet role is taken");
 		if (_producerButton.Disabled) GD.Print("[Lobby] Producer role is taken");
 	}
-	
+
+	// Same animation logic as InfoScene: advance frames, skip nulls so it never turns black
 	private void OnBackgroundTimerTimeout()
 	{
-		// Alternate between the two background images
-		_showingBg1 = !_showingBg1;
-		_background.Texture = _showingBg1 ? _bg1 : _bg2;
+		for (int tries = 0; tries < TotalFrames; tries++)
+		{
+			_currentFrame = (_currentFrame + 1) % TotalFrames;
+			var tex = _bgFrames[_currentFrame];
+			if (tex != null)
+			{
+				_background.Texture = tex;
+				return;
+			}
+		}
+
+		GD.PushWarning("[Lobby] Background animation: all frames are null.");
 	}
-	
+
 	private void OnBackLabelMouseEntered()
 	{
 		_backLabel.AddThemeColorOverride("font_color", _hoverColor);
@@ -443,12 +471,11 @@ public partial class Lobby : Control
 	{
 		_backLabel.AddThemeColorOverride("font_color", _normalColor);
 	}
-	
+
 	public override void _Input(InputEvent @event)
 	{
 		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
 		{
-			// Check if click is within the Back label bounds
 			if (_backLabel != null)
 			{
 				var labelRect = _backLabel.GetGlobalRect();
@@ -459,15 +486,14 @@ public partial class Lobby : Control
 			}
 		}
 	}
-	
+
 	private void OnBackClicked()
 	{
-		// Disconnect if connected
 		if (_isConnected || _isHosting)
 		{
 			OnCancelPressed();
 		}
-		
+
 		GD.Print("Going back to Info scene");
 		GetTree().ChangeSceneToFile("res://scenes/InfoScene.tscn");
 	}

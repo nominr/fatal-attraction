@@ -21,15 +21,6 @@ namespace FatalAttraction.Engine
 		public string CreatorRole { get; set; }
 	}
 
-	public class ConversionContext
-	{
-		public string NpcId { get; set; }
-		public int Round { get; set; } = 1; // 1 or 2
-		public int Score { get; set; } = 0; // Win=+1, Loss=-1, Tie=0
-		public string BaseActionId { get; set; } 
-		public List<string> VisibleOptions { get; set; } = new();
-	}
-
 	public class MoneyGameContext
 	{
 		public string NpcId { get; set; }
@@ -85,7 +76,6 @@ namespace FatalAttraction.Engine
 		public bool IsLoveInterest { get; set; } = false;
 		public bool IsTarget { get; set; } = false;
 		public bool PrankActive { get; set; } = false;
-		public int PunchesTaken { get; set; } = 0;
 		public int Quadrant { get; set; } = -1; // 0:TL, 1:TR, 2:BL, 3:BR
 		public string CurrentRoomId { get; set; } = "Hallways";
 		
@@ -127,7 +117,6 @@ namespace FatalAttraction.Engine
 		// Meters removed in favor of vector-based NPC state
 		public List<string> ActionsTaken { get; set; } = new();
 		public List<string> GoalsMet { get; set; } = new();
-		public int PunchesTaken { get; set; } = 0;
 		public bool Alive { get; set; } = true;
 
 		public PlayerState(Role role)
@@ -157,7 +146,6 @@ namespace FatalAttraction.Engine
 		public bool AdmirerEliminated { get; set; } = false;
 		public bool MonitoringActive { get; set; } = false; // "Set Focus" essentially activates monitoring
 		public int InteractionSeed { get; set; } = 0;
-		public Dictionary<Role, ConversionContext> ActiveConversions { get; private set; } = new();
 		public Dictionary<Role, MoneyGameContext> ActiveMoneyGames { get; private set; } = new();
 		public Dictionary<Role, InterviewContext> ActiveInterviews { get; private set; } = new();
 		public JObject InterviewData { get; private set; }
@@ -343,52 +331,15 @@ namespace FatalAttraction.Engine
 
 			foreach (var option in options)
 			{
-				// Check for Prophet "convert_npc" power/action
-				// The JSON config has "convert_<npcname>" or generic "convert" IDs.
-				// We need to detect if this is a "RPS" resolution type or specific ID logic.
-				// User wants: Hard (0-3 chaos) -> 3 options. Normal (3-7) -> 2 options. Easy (7-10) -> 1 option.
-				
-				// Identify convert action by ID or properties
 				string id = option["id"]?.Value<string>();
 				// Admirer target kills are handled by punch mechanic, so hide kill actions.
 				if (playerRole == Role.Admirer && npc.IsTarget && !string.IsNullOrEmpty(id) && id.StartsWith("kill"))
 				{
 					continue;
 				}
-				bool isConvert = id != null && (id.StartsWith("convert") || id.Contains("convert_"));
-				
-				if (isConvert && playerRole == Role.Prophet)
+				if (IsOptionAvailable(option, playerRole, npc, player))
 				{
-					if (!IsOptionAvailable(option, playerRole, npc, player)) continue;
-
-					// Check active conversion
-					if (_gameState.ActiveConversions.TryGetValue(playerRole, out var ctx) && ctx.NpcId == npcId)
-					{
-						// STEP 2: Show RPS Options (User has already started conversion)
-						// Show all visible options from context
-						foreach (var move in ctx.VisibleOptions)
-						{
-							availableOptions.Add(CreateRPSOption(id, $"Use {Capitalize(move)}", move));
-						}
-					}
-					else
-					{
-						// STEP 1: Show "Start Conversion" button
-						var startOption = new JObject
-						{
-							{ "id", $"start_convert_{npcId}" },
-							{ "text", "Start Conversion Ritual" },
-							{ "requires", new JObject() }
-						};
-						availableOptions.Add(startOption);
-					}
-				}
-				else
-				{
-					if (IsOptionAvailable(option, playerRole, npc, player))
-					{
-						availableOptions.Add(option);
-					}
+					availableOptions.Add(option);
 				}
 			}
 			
@@ -445,16 +396,6 @@ namespace FatalAttraction.Engine
 		}
 
 		private string Capitalize(string s) => char.ToUpper(s[0]) + s.Substring(1);
-
-		private JObject CreateRPSOption(string baseId, string label, string moveSuffix)
-		{
-			return new JObject
-			{
-				{ "id", $"{baseId}_{moveSuffix}" }, // e.g. convert_katy_rock
-				{ "text", label },
-				{ "requires", new JObject() } // Already validated
-			};
-		}
 
 		private bool IsOptionAvailable(JToken option, Role playerRole, NPC npc, PlayerState player = null)
 		{
@@ -568,31 +509,33 @@ namespace FatalAttraction.Engine
 				
 				if (optionId.StartsWith("toggle_camera_"))
 				{
-					// Expected: toggle_camera_Room1
-					var parts = optionId.Split('_');
-					if (parts.Length == 3)
-					{
-						string roomId = parts[2];
-						if (_gameState.ActiveCameraRoomIds.Contains(roomId))
-						{
-							_gameState.ActiveCameraRoomIds.Remove(roomId);
-							_gameState.AddNotification($"Producer deactivated camera in {roomId}.");
-						}
-						else
-						{
-							if (_gameState.ActiveCameraRoomIds.Count >= 2)
-							{
-								// Remove oldest
-								string removed = _gameState.ActiveCameraRoomIds[0];
-								_gameState.ActiveCameraRoomIds.RemoveAt(0);
-								_gameState.AddNotification($"Producer camera limit reached. Deactivating {removed}.");
-							}
-							_gameState.ActiveCameraRoomIds.Add(roomId);
-							_gameState.AddNotification($"Producer activated camera in {roomId}.");
-						}
-						return (true, null);
-					}
-					return (false, "Invalid camera room");
+					// Camera logic disabled per request.
+					// // Expected: toggle_camera_Room1
+					// var parts = optionId.Split('_');
+					// if (parts.Length == 3)
+					// {
+					// 	string roomId = parts[2];
+					// 	if (_gameState.ActiveCameraRoomIds.Contains(roomId))
+					// 	{
+					// 		_gameState.ActiveCameraRoomIds.Remove(roomId);
+					// 		_gameState.AddNotification($"Producer deactivated camera in {roomId}.");
+					// 	}
+					// 	else
+					// 	{
+					// 		if (_gameState.ActiveCameraRoomIds.Count >= 2)
+					// 		{
+					// 			// Remove oldest
+					// 			string removed = _gameState.ActiveCameraRoomIds[0];
+					// 			_gameState.ActiveCameraRoomIds.RemoveAt(0);
+					// 			_gameState.AddNotification($"Producer camera limit reached. Deactivating {removed}.");
+					// 		}
+					// 		_gameState.ActiveCameraRoomIds.Add(roomId);
+					// 		_gameState.AddNotification($"Producer activated camera in {roomId}.");
+					// 	}
+					// 	return (true, null);
+					// }
+					// return (false, "Invalid camera room");
+					return (true, null);
 				}
 
 
@@ -729,7 +672,6 @@ namespace FatalAttraction.Engine
 				if (resurrectSuccess)
 				{
 					npc.Alive = true;
-					npc.PunchesTaken = 0; // Reset health to full (requires 50 punches again)
 					// Allow logic to flow or just notify?
 					// Probably just notify + update state field implies it will be synced
 					_gameState.AddNotification($"MIRACLE! {npc.Name} has been resurrected by the Prophet!");
@@ -737,18 +679,19 @@ namespace FatalAttraction.Engine
 					// Optional: Add Prophet Points for a miracle?
 					// npc.State += new Vector3(0, 5, 0); // Big boost?
 					
-					// CHECK FOR CAMERA (Prophet Resurrection)
-					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
-					{
-						_gameState.AddNotification($"Prophet resurrected {npc.Name} and was caught on camera!");
-						_gameState.AddNotification($"Prophet's influence waned due to exposure!");
-						
-						// Apply Penalty to ALL Prophet Scores
-						foreach (var n in _gameState.NPCs.Values)
-						{
-							n.State = new Vector3(n.State.X, n.State.Y * ScoringRules.CaughtPenalty, n.State.Z);
-						}
-					}
+					// Camera detection disabled per request.
+					// // CHECK FOR CAMERA (Prophet Resurrection)
+					// if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
+					// {
+					// 	_gameState.AddNotification($"Prophet resurrected {npc.Name} and was caught on camera!");
+					// 	_gameState.AddNotification($"Prophet's influence waned due to exposure!");
+					// 	
+					// 	// Apply Penalty to ALL Prophet Scores
+					// 	foreach (var n in _gameState.NPCs.Values)
+					// 	{
+					// 		n.State = new Vector3(n.State.X, n.State.Y * ScoringRules.CaughtPenalty, n.State.Z);
+					// 	}
+					// }
 				}
 				else
 				{
@@ -760,84 +703,41 @@ namespace FatalAttraction.Engine
 
 
 
-			// CHECK FOR CAMERA CATCH (Admirer Kill)
-			if (playerRole == Role.Admirer && optionId.StartsWith("kill_"))
-			{
-				Console.WriteLine($"[DEBUG] Kill attempt on {npcId}. NPC Room: '{npc.CurrentRoomId}'. Active Cams: {string.Join(", ", _gameState.ActiveCameraRoomIds)}");
-				
-				if (_gameState.ActiveCameraRoomIds.Count > 0)
-				{
-					// Check if NPC is in a monitored room
-					if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
-					{
-
-						_gameState.AdmirerCaught = true;
-						_gameState.AdmirerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-						_gameState.AdmirerEliminated = false; 
-						_gameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
-						_gameState.AddNotification($"Producer's Camera captured the crime!");
-						
-						// Apply Penalty to ALL Admirer Scores
-						foreach (var n in _gameState.NPCs.Values)
-						{
-							n.State = new Vector3(n.State.X * ScoringRules.CaughtPenalty, n.State.Y, n.State.Z);
-						}
-
-						// We do NOT instantly end game, Producer must Call Police.
-					}
-					else
-					{
-						Console.WriteLine($"[DEBUG] Detection Failed. NPC Room '{npc.CurrentRoomId}' not in Active List.");
-						// Add failing notification for debug as requested
-						// Only show to Admirer ideally, but global notif is fine for now or handle via UI filtering
-						// _gameState.AddNotification($"[DEBUG] Murder in {npc.CurrentRoomId} (Unmonitored)");
-					}
-				}
-			}
-
-			// 3. Prophet RPS Resolution (Step 1 Trigger - Virtual Action)
-			if (optionId.StartsWith("start_convert_"))
-			{
-				if (playerRole != Role.Prophet) return (false, "Only Prophets can convert.");
-				
-				// Find valid RPS action for this NPC to store as context
-				var npcActions = npcConfig["interactionTree"]?["root"]?["options"] as JArray;
-				string baseActionId = null;
-				if (npcActions != null)
-				{
-					foreach (var act in npcActions)
-					{
-						string aId = act["id"]?.Value<string>();
-						if (aId != null && (aId.StartsWith("convert") || aId.Contains("convert_")))
-						{
-							// Ideally confirm it is the RPS one
-							baseActionId = aId;
-							break; 
-						}
-					}
-				}
-				
-				if (baseActionId == null) return (false, "This NPC cannot be converted (No RPS action found).");
-
-				// Prophet Logic: 2-Round RPS
-				// Start conversion initializes the context
-				
-				var ctx = new ConversionContext
-				{
-					NpcId = npcId,
-					BaseActionId = baseActionId,
-					Round = 1,
-					Score = 0
-				};
-				
-				// Generate options for Round 1
-				string[] moves = { "rock", "paper", "scissors" };
-				ctx.VisibleOptions = moves.ToList(); // Show all options
-				
-				_gameState.ActiveConversions[playerRole] = ctx;
-				_gameState.AddNotification($"Prophet started conversion ritual with {npcId}. Round 1!");
-				return (true, null);
-			}
+			// Camera detection disabled per request.
+			// // CHECK FOR CAMERA CATCH (Admirer Kill)
+			// if (playerRole == Role.Admirer && optionId.StartsWith("kill_"))
+			// {
+			// 	Console.WriteLine($"[DEBUG] Kill attempt on {npcId}. NPC Room: '{npc.CurrentRoomId}'. Active Cams: {string.Join(", ", _gameState.ActiveCameraRoomIds)}");
+			// 	
+			// 	if (_gameState.ActiveCameraRoomIds.Count > 0)
+			// 	{
+			// 		// Check if NPC is in a monitored room
+			// 		if (_gameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
+			// 		{
+			// 
+			// 			_gameState.AdmirerCaught = true;
+			// 			_gameState.AdmirerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			// 			_gameState.AdmirerEliminated = false; 
+			// 			_gameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
+			// 			_gameState.AddNotification($"Producer's Camera captured the crime!");
+			// 			
+			// 			// Apply Penalty to ALL Admirer Scores
+			// 			foreach (var n in _gameState.NPCs.Values)
+			// 			{
+			// 				n.State = new Vector3(n.State.X * ScoringRules.CaughtPenalty, n.State.Y, n.State.Z);
+			// 			}
+			// 
+			// 			// We do NOT instantly end game, Producer must Call Police.
+			// 		}
+			// 		else
+			// 		{
+			// 			Console.WriteLine($"[DEBUG] Detection Failed. NPC Room '{npc.CurrentRoomId}' not in Active List.");
+			// 			// Add failing notification for debug as requested
+			// 			// Only show to Admirer ideally, but global notif is fine for now or handle via UI filtering
+			// 			// _gameState.AddNotification($"[DEBUG] Murder in {npc.CurrentRoomId} (Unmonitored)");
+			// 		}
+			// 	}
+			// }
 
 			// 5. PRODUCER MONEY GAME
 			if (optionId == "start_money_game")
@@ -902,69 +802,6 @@ namespace FatalAttraction.Engine
 				return (true, null);
 			}
 
-			// 4. Prophet RPS Resolution (Step 2 - Choice Made)
-			if (optionId.StartsWith("convert_") && _gameState.ActiveConversions.TryGetValue(playerRole, out var convCtx))
-			{
-				// Format: convert_katy_rock
-				string selectedMove = optionId.Split('_').Last(); // rock/paper/scissors
-				
-				// Server chooses move
-				string[] moves = { "rock", "paper", "scissors" };
-				string npcMove = moves[Random.Shared.Next(moves.Length)];
-				
-				// Determine result
-				int roundScore = 0;
-				if (selectedMove == npcMove) roundScore = 0; // Tie
-				else if ((selectedMove == "rock" && npcMove == "scissors") || 
-						 (selectedMove == "paper" && npcMove == "rock") ||
-						 (selectedMove == "scissors" && npcMove == "paper"))
-				{
-					roundScore = 1; // Win
-				}
-				else
-				{
-					roundScore = -1; // Loss
-				}
-				
-				convCtx.Score += roundScore;
-				_gameState.AddNotification($"Round {convCtx.Round}: Prophet played {selectedMove} vs {npcMove}. Result: {(roundScore > 0 ? "WIN" : (roundScore < 0 ? "LOSS" : "TIE"))}");
-
-				if (convCtx.Round < 2)
-				{
-					// Prepare Round 2
-					convCtx.Round++;
-					_gameState.AddNotification($"Starting Round 2...");
-					return (true, null);
-				}
-				else
-				{
-					// Finished
-					// Finished
-					var targetNpc = _gameState.GetNPC(convCtx.NpcId); // Use unique variable name
-					if (targetNpc != null)
-					{
-						Vector3 points = ScoringRules.GetConversionPoints(convCtx.Score);
-						targetNpc.State += points;
-						Console.WriteLine($"[DEBUG] Convert: {targetNpc.Name} State += {points} -> {targetNpc.State}");
-						
-						// Notify score change for feedback
-						Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {convCtx.Score}");
-						_gameState.TriggerScoreChange(playerRole, convCtx.Score);
-						
-						// Check for "Conversion" status update based on State?
-						// "Prophet successful conversion... generates points"
-						// User didn't specify threshold for "Converted" status, just points accumulation.
-						// We'll keep the boolean "Converted" flag logic if the Prophet dominates the state?
-						// For now, just accumulation.
-					}
-					
-					_gameState.AddNotification($"Conversion ritual finished. Total Score: {convCtx.Score}");
-					_gameState.ActiveConversions.Remove(playerRole);
-					return (true, null);
-				}
-			}
-
-
 			var options = npcConfig["interactionTree"]?["root"]?["options"] as JArray ?? new();
 			var option = options.FirstOrDefault(o => o["id"]?.Value<string>() == optionId);
 
@@ -996,15 +833,10 @@ namespace FatalAttraction.Engine
 			{
 				// Standard resolution
 				var resolutionType = option["resolution"]?["type"]?.Value<string>();
-				if (resolutionType == "chance")
+				if (resolutionType == "chance" || resolutionType == "rps")
 				{
-					var successChance = option["resolution"]["successChance"].Value<double>();
+					double successChance = option["resolution"]["successChance"]?.Value<double>() ?? 0.5;
 					success = _random.NextDouble() < successChance;
-				}
-				else if (resolutionType == "rps")
-				{
-					// Simplified RPS: 50% success for demo
-					success = _random.NextDouble() < 0.5;
 				}
 			}
 
@@ -1336,18 +1168,6 @@ namespace FatalAttraction.Engine
 
 			status["players"] = playersObj;
 			
-			var conversionsObj = new JObject();
-			foreach (var kvp in GameState.ActiveConversions)
-			{
-				conversionsObj[kvp.Key.ToString().ToLower()] = new JObject
-				{
-					{ "npcId", kvp.Value.NpcId },
-					{ "baseActionId", kvp.Value.BaseActionId },
-					{ "visibleOptions", new JArray(kvp.Value.VisibleOptions) }
-				};
-			}
-			status["active_conversions"] = conversionsObj;
-
 			return status;
 		}
 	}

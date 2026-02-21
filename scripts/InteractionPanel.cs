@@ -267,17 +267,13 @@ public partial class InteractionPanel : PanelContainer
 			child.QueueFree();
 		}
 
-		// Count visible actions (non-RPS moves)
+		// Count visible actions
 		int visibleActionCount = 0;
 		if (actions != null)
 		{
 			foreach (var action in actions)
 			{
-				string actionId = action["id"]?.Value<string>() ?? "unknown";
-				if (!actionId.EndsWith("_rock") && !actionId.EndsWith("_paper") && !actionId.EndsWith("_scissors"))
-				{
-					visibleActionCount++;
-				}
+				visibleActionCount++;
 			}
 		}
 
@@ -333,10 +329,6 @@ public partial class InteractionPanel : PanelContainer
 			foreach (var action in actions)
 			{
 				string actionId = action["id"]?.Value<string>() ?? "unknown";
-				
-				// FILTER: Don't show RPS moves in the text box (handled by bottom bar)
-				if (actionId.EndsWith("_rock") || actionId.EndsWith("_paper") || actionId.EndsWith("_scissors"))
-					continue;
 
 				string actionText = action["text"]?.Value<string>() ?? "Unknown Action";
 

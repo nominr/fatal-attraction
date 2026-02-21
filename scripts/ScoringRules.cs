@@ -18,7 +18,7 @@ namespace FatalAttraction.Engine
         public static Vector3 GetConversionPoints(int score)
         {
             // Prophet: Conversion generates points from -2 to 2
-            // Score based on 2-round RPS (Win=+1, Loss=-1, Tie=0)
+            // Score uses conversion outcome scale (Win=+1, Loss=-1, Tie=0)
             return new Vector3(0, score, 0);
         }
 

@@ -15,7 +15,7 @@ public partial class GameWorld : Node2D
 {
 	// ==================== NOTIFICATION BOX TOGGLE (line 16) ====================
 	// Set to true to show the notification box, false to hide it entirely.
-	private bool _notificationBoxEnabled = true;
+	private bool _notificationBoxEnabled = false;
 	// ============================================================================
 
 	// Triangle Scene Reference
@@ -34,7 +34,6 @@ public partial class GameWorld : Node2D
 	// Local State Cache
 	private JObject _localGameState;
 	private string _myRole = "";
-	private string _lastRPSKey = ""; // Track RPS state to avoid constant rebuilds
 
 	// Spawned entities
 	private Dictionary<string, NPCEntity> _npcEntities = new();
@@ -68,7 +67,6 @@ public partial class GameWorld : Node2D
 	
 	// Interaction tracking
 	private string _currentInteractingNpcId = null;
-	private string _currentConversionNpcId = null;
 	private int _lastGameStateHash = 0; // Track when game state changes to prevent unnecessary refreshes
 	private bool _goalsShownAtStart = false;
 	
@@ -77,7 +75,6 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
-	private RPSResultOverlay _rpsResultOverlay;
 	private MoneyGameOverlay _moneyGameOverlay;
 	private PanelContainer _notificationPanel;
 	private Button _collapseNotificationButton;
@@ -86,25 +83,7 @@ public partial class GameWorld : Node2D
 	private Vector2 _notificationPanelExpandedPosition;
 	private int _lastNotificationCount = 0; // Track which notifications have been displayed
 
-	// Bomb Target Selection UI
-	private Control _bombTargetOverlay;
-	private string _selectedBombTarget = null;
-	private Node2D _targetRedDot = null;
-	private HashSet<string> _bombFrozenNpcs = new HashSet<string>();
-	private Label _bombCounterLabel;
-	private int _bombsRemaining = 3;
-	private Control _bombSliderOverlay;
-	private bool _bombOperationActive = false;
-	private float _sliderPosition = 0f;
-	private float _sliderDirection = 1f;
-	private bool _sliderMoving = true;
-	private const float SLIDER_SPEED = 500f; // pixels per second (increased from 200)
-	private List<Vector2> _targetZones = new List<Vector2>(); // x position and width
-	private BombSlider _sliderControl;
-
-	// Admirer punch logic
-	private const int PUNCHES_TO_KILL = 50;
-	private const int PLAYER_PUNCHES_TO_KILL = 200;
+	// Punch logic
 	private const float PUNCH_RANGE = 120f;
 	private bool _wasPunchPressed = false;
 
@@ -135,10 +114,6 @@ public partial class GameWorld : Node2D
 	private double _plusOneTimer = 0;
 	private Texture2D _plusOneTexture;
 
-	// Player Health Display (Visual Health Bar)
-	private HBoxContainer _healthBarRow;
-	private ProgressBar _playerHealthBar;
-
 	// Global Influence Counter
 	private PanelContainer _globalInfluencePanel;
 	private RichTextLabel _globalInfluenceLabel;
@@ -146,9 +121,6 @@ public partial class GameWorld : Node2D
 	// Bottom-Left Status Container (for role-specific stats)
 	private PanelContainer _bottomLeftStatusPanel;
 	private VBoxContainer _bottomLeftStatusContainer;
-
-	// Room 5 Health Regeneration
-	private double _room5RegenAccumulator = 0;
 
 	// Notification System Enhancements
 	private Dictionary<string, string> _previousNpcZones = new();
@@ -205,7 +177,7 @@ public partial class GameWorld : Node2D
 		YSortEnabled = true;
 		
 		// RUN DEBUG TESTS
-		FatalAttraction.Tests.MurderTest.RunTests();
+		// FatalAttraction.Tests.MurderTest.RunTests();
 
 		_networkManager = GetNode<NetworkManager>("/root/NetworkManager");
 		// Listen for network player events to keep controllers in sync
@@ -568,57 +540,9 @@ public partial class GameWorld : Node2D
 		_convertedLabel.Visible = false; // Only relevant for Prophet
 		_bottomLeftStatusContainer.AddChild(_convertedLabel);
 
-		// Knife Counter (Admirer only)
-		_bombCounterLabel = new Label();
-		_bombCounterLabel.Text = $"KNIVES LEFT: {_bombsRemaining}";
-		_bombCounterLabel.AddThemeFontOverride("font", _customFont);
-		_bombCounterLabel.AddThemeFontSizeOverride("font_size", 26);
-		_bombCounterLabel.AddThemeColorOverride("font_color", Colors.White);
-		_bombCounterLabel.Visible = false;
-		_bottomLeftStatusContainer.AddChild(_bombCounterLabel);
-
-		// Player Health Bar (current player only, with heart icon)
-		_healthBarRow = new HBoxContainer();
-		_healthBarRow.AddThemeConstantOverride("separation", 10); // More separation for larger icons
-		_healthBarRow.Visible = false;
-		hudContainer.AddChild(_healthBarRow); // Move back to top-left area
-
-		// Heart icon (Increased size by another 50%: 72x72)
-		var heartTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_heart.png");
-		var heartIcon = new TextureRect();
-		heartIcon.Texture = heartTexture;
-		heartIcon.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-		heartIcon.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-		heartIcon.CustomMinimumSize = new Vector2(50, 50);
-		heartIcon.TextureFilter = TextureFilterEnum.Nearest; // Pixelated sharp look
-		_healthBarRow.AddChild(heartIcon);
-
-		// Health bar (Increased size by another 50%: 420x48)
-		_playerHealthBar = new ProgressBar();
-		_playerHealthBar.MinValue = 0;
-		_playerHealthBar.MaxValue = PLAYER_PUNCHES_TO_KILL;
-		_playerHealthBar.Value = PLAYER_PUNCHES_TO_KILL;
-		_playerHealthBar.ShowPercentage = false;
-		_playerHealthBar.CustomMinimumSize = new Vector2(294, 34);
-		_playerHealthBar.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-
-		var healthFillStyle = new StyleBoxFlat();
-		healthFillStyle.BgColor = new Color(0.9f, 0.2f, 0.2f, 1); // Red fill
-		healthFillStyle.SetCornerRadiusAll(0); // Sharp pixelated corners
-		healthFillStyle.AntiAliasing = false; // Pixelated look
-		healthFillStyle.BorderColor = Colors.Black; // Sharp black border
-		healthFillStyle.SetBorderWidthAll(3);
-		_playerHealthBar.AddThemeStyleboxOverride("fill", healthFillStyle);
-
-		// Background removed per user request
-		var emptyBg = new StyleBoxEmpty();
-		_playerHealthBar.AddThemeStyleboxOverride("background", emptyBg);
-
-		_healthBarRow.AddChild(_playerHealthBar);
-
 		// _metersContainer removed
 
-		// Global Influence Counter (Under Health Bar)
+		// Global Influence Counter
 		_globalInfluencePanel = new PanelContainer();
 		// Ensure panel shrinks to fit content exactly with no extra width
 		_globalInfluencePanel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin; 
@@ -757,78 +681,12 @@ public partial class GameWorld : Node2D
 		trapButton.AddThemeColorOverride("font_focus_color", new Color(0, 0, 0, 1));
 		trapButton.AddThemeColorOverride("font_disabled_color", new Color(0, 0, 0, 1));
 		
-		trapButton.Pressed += OnTrapButtonPressed;
+		// trapButton.Pressed += OnTrapButtonPressed; // Set Trap disabled per request
 		_uiLayer.AddChild(trapButton);
 		// Only visible if Prophet (handled in UpdateUI or default hidden?)
 		// Ideally we verify role in UpdateUI.
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
-
-		// Admirer Knife Button
-		var bombButton = new Button();
-		bombButton.Text = "Throw Knife";
-		bombButton.AddThemeFontOverride("font", _customFont);
-		bombButton.AddThemeFontSizeOverride("font_size", 26);
-		bombButton.Position = new Vector2(20, 600);
-		bombButton.CustomMinimumSize = new Vector2(180, 60);
-		
-		// Add Knife Icon
-		Texture2D bombTexture = null;
-		try 
-		{
-			bombTexture = ResourceLoader.Load<Texture2D>("res://assets/knife.png");
-		}
-		catch (Exception e)
-		{
-			GD.PrintErr($"[GameWorld] Failed to load knife.png: {e.Message}");
-		}
-
-		if (bombTexture == null)
-		{
-			// Fallback if missing
-			var gradient = new Gradient();
-			gradient.SetColor(0, Colors.Red);
-			gradient.SetColor(1, Colors.Black);
-			var gen = new GradientTexture2D();
-			gen.Gradient = gradient;
-			gen.Width = 32;
-			gen.Height = 32;
-			bombTexture = gen;
-		}
-		
-		bombButton.Icon = bombTexture;
-		bombButton.ExpandIcon = true;
-		bombButton.IconAlignment = HorizontalAlignment.Left;
-		bombButton.AddThemeConstantOverride("h_separation", 10);
-		bombButton.AddThemeConstantOverride("icon_max_width", 60);
-
-		// Style settings (same as trap button)
-		var bombNormalStyle = CreateTrapStyle(Colors.White, Colors.Black);
-		var bombHoverStyle = CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black);
-		var bombPressedStyle = CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black);
-		var bombDisabledStyle = CreateTrapStyle(new Color(0.6f, 0.6f, 0.6f, 1), Colors.Black);
-		bombDisabledStyle.SetBorderWidthAll(0);
-
-		bombButton.AddThemeStyleboxOverride("normal", bombNormalStyle);
-		bombButton.AddThemeStyleboxOverride("hover", bombHoverStyle);
-		bombButton.AddThemeStyleboxOverride("pressed", bombPressedStyle);
-		bombButton.AddThemeStyleboxOverride("disabled", bombDisabledStyle);
-		
-		// Black text that stays black
-		bombButton.AddThemeColorOverride("font_color", new Color(0, 0, 0, 1));
-		bombButton.AddThemeColorOverride("font_hover_color", new Color(0, 0, 0, 1));
-		bombButton.AddThemeColorOverride("font_pressed_color", new Color(0, 0, 0, 1));
-		bombButton.AddThemeColorOverride("font_focus_color", new Color(0, 0, 0, 1));
-		bombButton.AddThemeColorOverride("font_disabled_color", new Color(0, 0, 0, 1));
-		
-		bombButton.Pressed += OnBombButtonPressed;
-		_uiLayer.AddChild(bombButton);
-		bombButton.Name = "BombButton";
-		bombButton.Visible = false;
-
-		// RPS Result Overlay
-		_rpsResultOverlay = new RPSResultOverlay();
-		_uiLayer.AddChild(_rpsResultOverlay);
 
 		_moneyGameOverlay = new MoneyGameOverlay();
 		_moneyGameOverlay.ActionSelected += OnMoneyGameAction;
@@ -917,17 +775,17 @@ public partial class GameWorld : Node2D
 		manageCamsBtn.MouseFilter = Control.MouseFilterEnum.Stop;
 
 			// Use Toggled to bind visibility directly to button state
-		manageCamsBtn.Toggled += (pressed) => 
-		{
-			var panel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
-			if (panel != null) panel.Visible = pressed;
-			
-			if (pressed)
-			{
-				// Capture open position for distance check
-				if (_localPlayer != null) _cameraSelectPanelOpenPos = _localPlayer.Position;
-			}
-		};
+		// manageCamsBtn.Toggled += (pressed) => 
+		// {
+		// 	var panel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
+		// 	if (panel != null) panel.Visible = pressed;
+		// 	
+		// 	if (pressed)
+		// 	{
+		// 		// Capture open position for distance check
+		// 		if (_localPlayer != null) _cameraSelectPanelOpenPos = _localPlayer.Position;
+		// 	}
+		// };
 		_uiLayer.AddChild(manageCamsBtn);
 
 		// _uiLayer.AddChild(cPanel); // REMOVED
@@ -1025,8 +883,8 @@ public partial class GameWorld : Node2D
 						{
 							// Remove spaces to match command format (e.g. "Room 1" -> "Room1")
 							string cleanName = roomName.Replace(" ", "");
-							GD.Print($"[GameWorld] Producer selected camera: {cleanName}");
-							OnActionSelected("producer_global", $"toggle_camera_{cleanName}");
+							// GD.Print($"[GameWorld] Producer selected camera: {cleanName}");
+							// OnActionSelected("producer_global", $"toggle_camera_{cleanName}"); // Camera logic disabled per request
 						}));
 					}
 				}
@@ -1622,44 +1480,19 @@ public partial class GameWorld : Node2D
 
 	private void OnNPCClicked(string npcId)
 	{
-		// Don't allow dead players to interact with NPCs
 		if (IsLocalPlayerDead())
 		{
 			GD.Print($"[GameWorld] Dead player tried to interact with NPC {npcId}, ignoring.");
 			return;
 		}
-		
-		// Don't allow interactions when in bomb mode - show "too close" message
-		if (_bombOperationActive)
-		{
-			GD.Print($"[BOMB] NPC {npcId} clicked. Selecting as target.");
-			// Check if this is one of the target NPCs
-			var targetNPCs = new[] { "john", "rebecca", "marcus" };
-			// Convert to lower case for comparison just in case
-			if (targetNPCs.Contains(npcId.ToLower()))
-			{
-				_selectedBombTarget = npcId;
-				
-				// Hide selection overlay
-				if (_bombTargetOverlay != null)
-				{
-					_bombTargetOverlay.Visible = false;
-				}
-				
-				// Proceed to slider minigame
-				ShowBombSlider();
-			}
-			return;
-		}
-		
+
 		GD.Print($"GameWorld received OnNPCClicked for {npcId}. Current Role: '{_myRole}'");
-		if (string.IsNullOrEmpty(_myRole)) 
+		if (string.IsNullOrEmpty(_myRole))
 		{
 			GD.Print("Role is empty, ignoring click.");
 			return;
 		}
 
-		// Get available actions from cached state
 		var allActions = _localGameState?["all_actions"] as JObject;
 		var myActions = allActions?[_myRole.ToLower()] as JObject;
 		var npcActions = myActions?[npcId];
@@ -1668,18 +1501,11 @@ public partial class GameWorld : Node2D
 		string npcName = npcEntity?.NpcName ?? npcId;
 
 		var npcConfig = _localGameState?["npcs"]?[npcId];
-		string desc = npcConfig?["interactionTree"]?["root"]?["text"]?.Value<string>() 
+		string desc = npcConfig?["interactionTree"]?["root"]?["text"]?.Value<string>()
 			?? "An NPC awaits your action.";
 
-		// INTERVIEW UI OVERRIDE
-		// Check if we are interviewing this NPC
 		var activeInterviews = _localGameState?["active_interviews"] as JObject;
-		// _myRole is e.g. "producer", key in dictionary is "Producer" (Enum strings usually PascalCase?)
-		// Let's check both or normalize. Using Enum.Parse logic earlier means keys are likely Role.ToString().
-		// GameEngine generates keys as Role.ToString() -> "Producer".
-		// _myRole from network might be "producer" (lowercase).
-		
-		string roleKey = Capitalize(_myRole); // Ensure "Producer"
+		string roleKey = Capitalize(_myRole);
 		if (activeInterviews != null && activeInterviews.ContainsKey(roleKey))
 		{
 			var interviewInfo = activeInterviews[roleKey];
@@ -1690,9 +1516,7 @@ public partial class GameWorld : Node2D
 		}
 
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
-		
 
-		// Unfreeze previous NPC if any (safety check if panel was somehow bypassed)
 		if (!string.IsNullOrEmpty(_currentInteractingNpcId) && _currentInteractingNpcId != npcId)
 		{
 			if (_npcEntities.TryGetValue(_currentInteractingNpcId, out var prevNpc))
@@ -1701,14 +1525,13 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		// Freeze the NPC
 		if (_npcEntities.TryGetValue(npcId, out var npc))
 		{
 			npc.SetFrozen(true);
 		}
 
 		_currentInteractingNpcId = npcId;
-		
+
 		Vector3 npcState = Vector3.Zero;
 		var npcStates = _localGameState?["npc_states"] as JObject;
 		if (npcStates != null && npcStates.ContainsKey(npcId))
@@ -1720,14 +1543,12 @@ public partial class GameWorld : Node2D
 			float tx = s["tri_x"]?.Value<float>() ?? 0;
 			float ty = s["tri_y"]?.Value<float>() ?? 0;
 			npcState = new Vector3(x, y, z);
-			
-			// Show Triangle Scene with fetched coordinates
+
 			if (_triangleScene != null)
 			{
 				_triangleScene.Show(npcName, new Vector2(tx, ty));
 			}
 		}
-		
 
 		Texture2D npcPortrait = null;
 		if (_npcEntities.ContainsKey(npcId))
@@ -1740,42 +1561,36 @@ public partial class GameWorld : Node2D
 
 	private void OnActionSelected(string npcId, string actionId)
 	{
-		// Send to server - overlay will be shown when result comes back in notifications
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
 	}
 
 	private void OnTrapButtonPressed()
 	{
-		// Local cooldown: disable for 10 seconds and send action
-		var trapBtn = _uiLayer.GetNodeOrNull<Button>("TrapButton");
-		if (trapBtn != null)
-		{
-			if (!trapBtn.Disabled)
-			{
-				trapBtn.Disabled = true;
-				var timer = new Timer();
-				timer.Name = $"TrapCooldownTimer_{Time.GetTicksMsec()}";
-				timer.OneShot = true;
-				timer.WaitTime = 10.0;
-				timer.Timeout += () =>
-				{
-					if (IsInstanceValid(trapBtn)) trapBtn.Disabled = false;
-					timer.QueueFree();
-				};
-				AddChild(timer);
-				timer.Start();
-			}
-		}
-		OnActionSelected("global", "set_trap");
+		// Set Trap disabled per request.
+		// var trapBtn = _uiLayer.GetNodeOrNull<Button>("TrapButton");
+		// if (trapBtn != null)
+		// {
+		// 	if (!trapBtn.Disabled)
+		// 	{
+		// 		trapBtn.Disabled = true;
+		// 		var timer = new Timer();
+		// 		timer.Name = $"TrapCooldownTimer_{Time.GetTicksMsec()}";
+		// 		timer.OneShot = true;
+		// 		timer.WaitTime = 10.0;
+		// 		timer.Timeout += () =>
+		// 		{
+		// 			if (IsInstanceValid(trapBtn)) trapBtn.Disabled = false;
+		// 			timer.QueueFree();
+		// 		};
+		// 		AddChild(timer);
+		// 		timer.Start();
+		// 	}
+		// }
+		// OnActionSelected("global", "set_trap");
 	}
 
 	private void OnMoneyGameAction(string actionId)
 	{
-		// Context: "money_add_5" or "money_submit"
-		// We need to know WHICH NPC we are interacting with.
-		// We can get it from local cache of ActiveMoneyGames or current interaction.
-		// Since we trust server state, we should check active game in local cache.
-		
 		if (_localGameState == null) return;
 		var moneyGames = _localGameState["active_money_games"] as JObject;
 		if (moneyGames != null && moneyGames.ContainsKey(_myRole))
@@ -1792,7 +1607,6 @@ public partial class GameWorld : Node2D
 	{
 		if (!Multiplayer.IsServer()) return;
 
-		// Resolve role
 		if (_networkManager.Players.TryGetValue(senderId, out var info))
 		{
 			if (Enum.TryParse<Role>(info.Role, true, out var role))
@@ -1800,368 +1614,10 @@ public partial class GameWorld : Node2D
 				var result = _gameEngine.PerformAction(npcId, actionId, role);
 				if (!result.success)
 				{
-					// Could notify user of failure, but for now we just log
 					GD.Print($"[GameWorld] Interaction failed: {result.failReason}");
 				}
 				BroadcastGameState();
 			}
-		}
-	}
-
-	private void OnBombButtonPressed()
-	{
-		ShowBombTargetSelection();
-	}
-	
-	
-	private void ShowBombTargetSelection()
-	{
-		// Create overlay if it doesn't exist
-		if (_bombTargetOverlay == null)
-		{
-			_bombTargetOverlay = new Control();
-			_bombTargetOverlay.Name = "BombTargetOverlay";
-			_bombTargetOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-			_bombTargetOverlay.MouseFilter = Control.MouseFilterEnum.Ignore; // Allow clicks through to NPCs
-			
-			// Top instruction label (smaller, inside overlay with transparent background)
-			var instructionPanel = new PanelContainer();
-			var bgStyle = new StyleBoxFlat();
-			bgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.7f); // Transparent grey
-			bgStyle.ContentMarginLeft = 10;
-			bgStyle.ContentMarginRight = 10;
-			bgStyle.ContentMarginTop = 5;
-			bgStyle.ContentMarginBottom = 5;
-			instructionPanel.AddThemeStyleboxOverride("panel", bgStyle);
-			instructionPanel.Position = new Vector2(GetViewportRect().Size.X / 2 - 120, 50);
-			
-			var instructionLabel = new Label();
-			instructionLabel.Name = "InstructionLabel";
-			instructionLabel.Text = "Choose your target.";
-			instructionLabel.AddThemeFontSizeOverride("font_size", 24);
-			instructionLabel.AddThemeColorOverride("font_color", Colors.White);
-			instructionLabel.HorizontalAlignment = HorizontalAlignment.Center;
-			instructionPanel.AddChild(instructionLabel);
-			_bombTargetOverlay.AddChild(instructionPanel);
-			
-			// Close button (top right)
-			var closeButton = new Button();
-			closeButton.Name = "CloseButton";
-			closeButton.Text = "Close";
-			closeButton.Position = new Vector2(GetViewportRect().Size.X - 120, 20);
-			closeButton.CustomMinimumSize = new Vector2(100, 50);
-			closeButton.AddThemeFontSizeOverride("font_size", 20);
-			closeButton.Pressed += OnBombTargetClose;
-			_bombTargetOverlay.AddChild(closeButton);
-			
-			_uiLayer.AddChild(_bombTargetOverlay);
-		}
-		
-		// Show the overlay
-		_bombTargetOverlay.Visible = true;
-		_selectedBombTarget = null;
-		_bombOperationActive = true;
-		GD.Print($"[BOMB] _bombOperationActive set to true in ShowBombTargetSelection");
-		
-		// Pause all target NPCs
-		PauseTargetNPCs(true);
-		
-		// Enable click detection on target NPCs
-		EnableTargetNPCClicks(true);
-	}
-	
-	private void OnBombTargetClose()
-	{
-		// Stop the entire bomb operation
-		_bombOperationActive = false;
-		
-		if (_bombTargetOverlay != null)
-		{
-			_bombTargetOverlay.Visible = false;
-		}
-		
-		if (_bombSliderOverlay != null)
-		{
-			_bombSliderOverlay.Visible = false;
-		}
-		
-		// Unpause target NPCs
-		PauseTargetNPCs(false);
-		
-		// Disable click detection
-		EnableTargetNPCClicks(false);
-		
-		// Remove red dot if exists
-		if (_targetRedDot != null && IsInstanceValid(_targetRedDot))
-		{
-			_targetRedDot.QueueFree();
-			_targetRedDot = null;
-		}
-		
-		_selectedBombTarget = null;
-	}
-	
-	private void ShowBombSlider()
-	{
-		GD.Print("[GameWorld] ShowBombSlider called");
-		
-		// Reset slider state
-		_sliderPosition = 0f;
-		_sliderDirection = 1f;
-		_sliderMoving = true;
-		
-		// Generate random target zones (3-5 zones)
-		_targetZones.Clear();
-		var random = new Random();
-		int numZones = random.Next(3, 6); // 3 to 5 zones
-		const float barWidth = 400f;
-		
-		for (int i = 0; i < numZones; i++)
-		{
-			float zoneX = (float)(random.NextDouble() * (barWidth - 24)); // Leave room for zone width
-			float zoneWidth = (float)(random.Next(14, 24)); // Zone width 14-24 pixels (slightly bigger)
-			_targetZones.Add(new Vector2(zoneX, zoneWidth));
-		}
-		
-		// Create slider overlay if it doesn't exist
-		if (_bombSliderOverlay == null)
-		{
-			_bombSliderOverlay = new Control();
-			_bombSliderOverlay.Name = "BombSliderOverlay";
-			_bombSliderOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-			_bombSliderOverlay.MouseFilter = Control.MouseFilterEnum.Stop;
-			
-			// Panel at bottom left of screen (away from notifications)
-			var panel = new PanelContainer();
-			panel.Name = "SliderPanel";
-			var viewportSize = GetViewportRect().Size;
-			panel.Position = new Vector2(230, viewportSize.Y - 200);
-			panel.CustomMinimumSize = new Vector2(600, 120);
-			
-			// Panel styling - transparent grey background like HUD
-			var panelStyle = new StyleBoxFlat();
-			panelStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f);
-			panelStyle.SetCornerRadiusAll(4);
-			panelStyle.SetContentMarginAll(15);
-			panel.AddThemeStyleboxOverride("panel", panelStyle);
-			
-			var vbox = new VBoxContainer();
-			vbox.AddThemeConstantOverride("separation", 10);
-			panel.AddChild(vbox);
-			
-			// Header label (Modified from "Choose your target." to "Throw Knife")
-			var titleLabel = new Label();
-			titleLabel.Text = "Throw Knife";
-			titleLabel.AddThemeFontOverride("font", _customFont);
-			titleLabel.AddThemeFontSizeOverride("font_size", 24);
-			titleLabel.AddThemeColorOverride("font_color", Colors.White);
-			titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-			vbox.AddChild(titleLabel);
-			
-			// Instruction label
-			var instructionLabel = new Label();
-			instructionLabel.Text = "Stop the slider in the target zone!";
-			instructionLabel.AddThemeFontOverride("font", _customFont);
-			instructionLabel.AddThemeFontSizeOverride("font_size", 26);
-			instructionLabel.AddThemeColorOverride("font_color", Colors.White);
-			instructionLabel.HorizontalAlignment = HorizontalAlignment.Center;
-			vbox.AddChild(instructionLabel);
-			
-			// Custom slider container (centered)
-			var sliderHBox = new HBoxContainer();
-			sliderHBox.Alignment = BoxContainer.AlignmentMode.Center;
-			_sliderControl = new BombSlider();
-			_sliderControl.Name = "SliderContainer";
-			_sliderControl.CustomMinimumSize = new Vector2(400, 40);
-			sliderHBox.AddChild(_sliderControl);
-			vbox.AddChild(sliderHBox);
-			
-			// Buttons container
-			var buttonBox = new HBoxContainer();
-			buttonBox.Alignment = BoxContainer.AlignmentMode.Center;
-			buttonBox.AddThemeConstantOverride("separation", 20);
-			vbox.AddChild(buttonBox);
-			
-			// Stop button (renamed from Throw)
-			var stopButton = new Button();
-			stopButton.Name = "StopButton";
-			stopButton.Text = "Stop";
-			stopButton.AddThemeFontOverride("font", _customFont);
-			stopButton.AddThemeFontSizeOverride("font_size", 24);
-			stopButton.CustomMinimumSize = new Vector2(120, 40);
-			
-			// Apply trap-style button styling
-			stopButton.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
-			stopButton.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-			stopButton.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-			stopButton.AddThemeColorOverride("font_color", Colors.Black);
-			stopButton.AddThemeColorOverride("font_hover_color", Colors.Black);
-			stopButton.AddThemeColorOverride("font_pressed_color", Colors.Black);
-			
-			stopButton.Pressed += OnBombStop;
-			buttonBox.AddChild(stopButton);
-			
-			// Close button
-			var closeButton = new Button();
-			closeButton.Name = "CloseButton";
-			closeButton.Text = "Close";
-			closeButton.AddThemeFontOverride("font", _customFont);
-			closeButton.AddThemeFontSizeOverride("font_size", 24);
-			closeButton.CustomMinimumSize = new Vector2(120, 40);
-			
-			// Apply trap-style button styling
-			closeButton.AddThemeStyleboxOverride("normal", CreateTrapStyle(Colors.White, Colors.Black));
-			closeButton.AddThemeStyleboxOverride("hover", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-			closeButton.AddThemeStyleboxOverride("pressed", CreateTrapStyle(new Color(0.85f, 0.85f, 0.85f, 1), Colors.Black));
-			closeButton.AddThemeColorOverride("font_color", Colors.Black);
-			closeButton.AddThemeColorOverride("font_hover_color", Colors.Black);
-			closeButton.AddThemeColorOverride("font_pressed_color", Colors.Black);
-			
-			closeButton.Pressed += OnBombTargetClose;
-			buttonBox.AddChild(closeButton);
-			
-			_bombSliderOverlay.AddChild(panel);
-			_uiLayer.AddChild(_bombSliderOverlay);
-		}
-		
-		// Ensure slider control state is synced to current target zones and position
-		if (_sliderControl != null)
-		{
-			_sliderControl.TargetZones = _targetZones;
-			_sliderControl.SliderPosition = _sliderPosition;
-		}
-
-		// Show the slider
-		_bombSliderOverlay.Visible = true;
-		_bombOperationActive = true;
-	}
-
-	private bool IsSliderInTargetZone(float sliderPosition)
-	{
-		const float HITBOX_EXTENSION = 10f;
-		foreach (var zone in _targetZones)
-		{
-			float zoneStart = zone.X - HITBOX_EXTENSION;
-			float zoneEnd = zone.X + zone.Y + HITBOX_EXTENSION;
-			if (sliderPosition >= zoneStart && sliderPosition <= zoneEnd)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	private void OnBombStop()
-	{
-		if (!_bombOperationActive || string.IsNullOrEmpty(_selectedBombTarget))
-		{
-			GD.Print("[GameWorld] Cannot throw bomb - operation not active or no target");
-			return;
-		}
-		
-		if (_bombsRemaining <= 0)
-		{
-			GD.Print("[GameWorld] No bombs remaining");
-			return;
-		}
-		
-		// Stop the slider movement
-		_sliderMoving = false;
-
-		// Use the visual slider position to avoid mismatch between UI and hit detection
-		float barWidth = 400f;
-		if (_sliderControl != null && _sliderControl.Size.X > 0)
-		{
-			barWidth = _sliderControl.Size.X;
-		}
-		float sliderPosition = _sliderControl?.SliderPosition ?? _sliderPosition;
-		sliderPosition = Mathf.Clamp(sliderPosition, 0f, barWidth);
-		_sliderPosition = sliderPosition;
-
-		bool inTargetZone = IsSliderInTargetZone(sliderPosition);
-		
-		GD.Print($"[GameWorld] Slider stopped at {_sliderPosition}, in target zone: {inTargetZone}");
-		
-		// Decrement knife counter
-		_bombsRemaining--;
-		if (_bombCounterLabel != null)
-		{
-			_bombCounterLabel.Text = $"KNIVES LEFT: {_bombsRemaining}";
-		}
-		
-		// Hide knife button if no knives left
-		if (_bombsRemaining <= 0)
-		{
-			var bombBtn = _uiLayer.GetNodeOrNull<Button>("BombButton");
-			if (bombBtn != null)
-			{
-				bombBtn.Visible = false;
-			}
-		}
-		
-		if (inTargetZone)
-		{
-			// Successful hit - kill the NPC (same as punch effect)
-			GD.Print($"[GameWorld] Bomb hit! Killing NPC {_selectedBombTarget}");
-			RpcId(1, MethodName.BombKillNPC, _selectedBombTarget);
-		}
-		else
-		{
-			// Missed - show unsuccessful message
-			GD.Print("[GameWorld] Knife missed!");
-			if (_gameEngine != null)
-			{
-				_gameEngine.GameState.AddNotification("Knife unsuccessful.");
-				BroadcastGameState();
-			}
-		}
-		
-		// Clean up
-		OnBombTargetClose();
-	}
-	
-	private void OnDrawSliderBar()
-	{
-		// This method is no longer needed - drawing is handled by BombSlider class
-	}
-	
-	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-	private void BombKillNPC(string targetNpcId)
-	{
-		if (!Multiplayer.IsServer()) return;
-		
-		GD.Print($"[GameWorld] BombKillNPC called for {targetNpcId}");
-		
-		// Get the NPC and mark it as eliminated
-		var npc = _gameEngine.GameState.GetNPC(targetNpcId);
-		if (npc != null)
-		{
-			npc.Alive = false;
-			npc.PunchesTaken = PUNCHES_TO_KILL;
-			GD.Print($"[GameWorld] NPC {targetNpcId} marked as eliminated by bomb");
-			
-			// Apply immobilization effect visually
-			if (_npcEntities.TryGetValue(targetNpcId, out var npcEntity))
-			{
-				npcEntity.SetFrozen(true);
-				GD.Print($"[GameWorld] NPC {targetNpcId} frozen (immobilized)");
-			}
-
-			// CAMERA DETECTION LOGIC
-			if (_gameEngine.GameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
-			{
-				_gameEngine.GameState.AdmirerCaught = true;
-				_gameEngine.GameState.AdmirerEliminated = false;
-				_gameEngine.GameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
-				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
-			}
-			
-			_gameEngine.GameState.AddNotification($"Knife successful! {npc.Name} has been eliminated!");
-			BroadcastGameState();
-		}
-		else
-		{
-			GD.PrintErr($"[GameWorld] Could not find NPC {targetNpcId} for bomb kill");
 		}
 	}
 
@@ -2190,31 +1646,7 @@ public partial class GameWorld : Node2D
 		float distance = playerCtrl.Position.DistanceTo(npcEntity.Position);
 		if (distance > PUNCH_RANGE) return;
 
-		npc.PunchesTaken = Math.Min(npc.PunchesTaken + 1, PUNCHES_TO_KILL);
 		Rpc(MethodName.RpcFlashNpcDamage, targetNpcId);
-
-		if (npc.PunchesTaken >= PUNCHES_TO_KILL)
-		{
-			npc.Alive = false;
-			npc.PunchesTaken = PUNCHES_TO_KILL;
-
-			if (_npcEntities.TryGetValue(targetNpcId, out var targetEntity))
-			{
-				targetEntity.SetFrozen(true);
-			}
-
-			// CAMERA DETECTION LOGIC
-			if (_gameEngine.GameState.ActiveCameraRoomIds.Contains(npc.CurrentRoomId))
-			{
-				_gameEngine.GameState.AdmirerCaught = true;
-				_gameEngine.GameState.AdmirerEliminated = false;
-				_gameEngine.GameState.AddNotification($"Admirer killed {npc.Name} and was caught on camera!");
-				_gameEngine.GameState.AddNotification($"Producer's Camera captured the crime!");
-			}
-
-			_gameEngine.GameState.AddNotification($"{npc.Name} has been eliminated. Target down!");
-			BroadcastGameState();
-		}
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
@@ -2308,25 +1740,7 @@ public partial class GameWorld : Node2D
 		}
 
 		GD.Print($"[PunchPlayer] SUCCESS: {senderRole} punching {targetRole}");
-
-		// Increment punches taken
-		targetPlayerState.PunchesTaken = Math.Min(targetPlayerState.PunchesTaken + 1, PLAYER_PUNCHES_TO_KILL);
 		Rpc(MethodName.RpcFlashPlayerDamage, targetPlayerId);
-
-		if (targetPlayerState.PunchesTaken >= PLAYER_PUNCHES_TO_KILL)
-		{
-			targetPlayerState.Alive = false;
-			targetPlayerState.PunchesTaken = PLAYER_PUNCHES_TO_KILL;
-
-			// Set ghost mode for eliminated player
-			if (_playerControllers.TryGetValue(targetPlayerId, out var eliminatedPlayer))
-			{
-				eliminatedPlayer.SetGhostMode(true);
-			}
-
-			_gameEngine.GameState.AddNotification($"{targetRole} has been eliminated by the {senderRole}!");
-			BroadcastGameState();
-		}
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
@@ -2339,59 +1753,6 @@ public partial class GameWorld : Node2D
 	}
 	
 	
-	private void PauseTargetNPCs(bool pause)
-	{
-		GD.Print($"[GameWorld] PauseTargetNPCs called with pause={pause}");
-		
-		// Get target NPCs from game state
-		if (_gameEngine?.GameState?.NPCs == null)
-		{
-			GD.Print("[GameWorld] ERROR: GameState or NPCs is null");
-			return;
-		}
-		
-		// Freeze john, rebecca, and marcus specifically
-		string[] targetIds = { "john", "rebecca", "marcus" };
-		
-		foreach (var targetId in targetIds)
-		{
-			if (pause)
-			{
-				_bombFrozenNpcs.Add(targetId);
-			}
-			else
-			{
-				_bombFrozenNpcs.Remove(targetId);
-			}
-			
-			if (_npcEntities.TryGetValue(targetId, out var npcEntity))
-			{
-				GD.Print($"[GameWorld] Setting {targetId} frozen to {pause}");
-				npcEntity.SetFrozen(pause);
-				
-				// Broadcast to all clients
-				if (Multiplayer.IsServer())
-				{
-					Rpc(MethodName.RpcFreezeNPC, targetId, pause);
-				}
-			}
-			else
-			{
-				GD.Print($"[GameWorld] WARNING: No NPC entity found for {targetId}");
-			}
-		}
-	}
-	
-	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
-	public void RpcFreezeNPC(string npcId, bool frozen)
-	{
-		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
-		{
-			GD.Print($"[GameWorld] RPC: Setting {npcId} frozen to {frozen}");
-			npcEntity.SetFrozen(frozen);
-		}
-	}
-	
 	private bool IsNPCVisible(NPCEntity npc)
 	{
 		// Check if NPC node is in tree and visible
@@ -2400,88 +1761,6 @@ public partial class GameWorld : Node2D
 		// Simple visibility check: if the NPC is in the tree and not hidden, consider it visible
 		// A more sophisticated check could use camera bounds, but for now we'll check if it's spawned
 		return npc.Visible && npc.IsInsideTree();
-	}
-	
-	private void EnableTargetNPCClicks(bool enable)
-	{
-		// Get target NPCs from game state
-		if (_gameEngine?.GameState?.NPCs == null) return;
-		
-		var targetNpcIds = new HashSet<string>();
-		foreach (var npc in _gameEngine.GameState.NPCs.Values)
-		{
-			if (npc.IsTarget)
-			{
-				targetNpcIds.Add(npc.Id);
-			}
-		}
-		
-		foreach (var npcEntity in _npcEntities.Values)
-		{
-			if (targetNpcIds.Contains(npcEntity.NpcId))
-			{
-				// This is a target NPC - enable clicking
-				if (enable)
-				{
-					npcEntity.InputPickable = true;
-					npcEntity.InputEvent += (viewport, inputEvent, shapeIdx) => OnTargetNPCClicked(npcEntity, inputEvent);
-				}
-				else
-				{
-					npcEntity.InputPickable = false;
-				}
-			}
-		}
-	}
-	
-	private void OnTargetNPCClicked(NPCEntity npcEntity, InputEvent inputEvent)
-	{
-		if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
-		{
-			if (_bombTargetOverlay == null || !_bombTargetOverlay.Visible) return;
-			
-			GD.Print($"[BOMB] Target NPC clicked: {npcEntity.NpcId}");
-			
-			// Check if player is too close to the clicked NPC
-			GD.Print($"[BOMB] Target NPC clicked: {npcEntity.NpcId}");
-			
-			// Distance check removed per user request (Bomb Fix)
-			// Allow selection at any distance
-			
-			_selectedBombTarget = npcEntity.NpcId;
-			
-			// Remove old red dot if exists
-			if (_targetRedDot != null && IsInstanceValid(_targetRedDot))
-			{
-				_targetRedDot.QueueFree();
-			}
-			
-			// Create red dot on the NPC
-			_targetRedDot = new Node2D();
-			_targetRedDot.Name = "RedDot";
-			_targetRedDot.ZIndex = 100; // Above everything
-			
-			var circle = new Sprite2D();
-			var circleTexture = new GradientTexture2D();
-			var gradient = new Gradient();
-			gradient.SetColor(0, new Color(1, 0, 0, 1)); // Red center
-			gradient.SetColor(1, new Color(1, 0, 0, 0.5f)); // Transparent edge
-			circleTexture.Gradient = gradient;
-			circleTexture.Fill = GradientTexture2D.FillEnum.Radial;
-			circleTexture.Width = 64;
-			circleTexture.Height = 64;
-			circle.Texture = circleTexture;
-			circle.Scale = new Vector2(0.5f, 0.5f);
-			_targetRedDot.AddChild(circle);
-			
-			// Position on NPC
-			_targetRedDot.Position = npcEntity.Position + new Vector2(0, -40); // Above NPC head
-			AddChild(_targetRedDot);
-			
-			// Hide target selection overlay and show slider
-			_bombTargetOverlay.Visible = false;
-			ShowBombSlider();
-		}
 	}
 	
 	private void OnInteractionPanelClosed()
@@ -2577,10 +1856,6 @@ public partial class GameWorld : Node2D
 			{
 				kvp.Value.SetPunchHintVisible(false);
 			}
-			foreach (var kvp in _playerControllers)
-			{
-				kvp.Value.SetHealthHintVisible(false);
-			}
 			return;
 		}
 
@@ -2598,10 +1873,6 @@ public partial class GameWorld : Node2D
 			foreach (var kvp in _npcEntities)
 			{
 				kvp.Value.SetPunchHintVisible(false);
-			}
-			foreach (var kvp in _playerControllers)
-			{
-				kvp.Value.SetHealthHintVisible(false);
 			}
 			return;
 		}
@@ -2639,63 +1910,6 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		// Update Player health hints based on role
-		var playerStates = _localGameState?["player_states"] as JObject;
-		foreach (var kvp in _playerControllers)
-		{
-			long playerId = kvp.Key;
-			var playerCtrl = kvp.Value;
-
-			// Skip self
-			if (playerId == Multiplayer.GetUniqueId())
-			{
-				playerCtrl.SetHealthHintVisible(false);
-				continue;
-			}
-
-			// Get target player's role
-			if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo))
-			{
-				playerCtrl.SetHealthHintVisible(false);
-				continue;
-			}
-
-			string targetRole = playerInfo.Role;
-			
-			// All players can target any other player
-			bool isValidTarget = !string.Equals(targetRole, myRoleLower, StringComparison.OrdinalIgnoreCase);
-
-			if (!isValidTarget)
-			{
-				playerCtrl.SetHealthHintVisible(false);
-				continue;
-			}
-
-			// Check distance
-			float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
-			bool inRange = distance <= PUNCH_RANGE;
-
-			if (inRange && playerStates != null)
-			{
-				// Get player health
-				string roleKey = targetRole; // "Prophet", "Producer", or "Admirer"
-				var playerState = playerStates[roleKey];
-				if (playerState != null)
-				{
-					int punchesTaken = playerState["punches_taken"]?.Value<int>() ?? 0;
-					int healthRemaining = PLAYER_PUNCHES_TO_KILL - punchesTaken;
-					playerCtrl.SetHealthHintVisible(true, healthRemaining, PLAYER_PUNCHES_TO_KILL);
-				}
-				else
-				{
-					playerCtrl.SetHealthHintVisible(false);
-				}
-			}
-			else
-			{
-				playerCtrl.SetHealthHintVisible(false);
-			}
-		}
 	}
 
 	private void HandlePunchInput()
@@ -2976,32 +2190,6 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		// Update bomb slider animation
-		if (_bombSliderOverlay != null && _bombSliderOverlay.Visible && _sliderMoving)
-		{
-			const float barWidth = 400f;
-			_sliderPosition += _sliderDirection * SLIDER_SPEED * (float)delta;
-			
-			// Bounce at edges
-			if (_sliderPosition >= barWidth)
-			{
-				_sliderPosition = barWidth;
-				_sliderDirection = -1f;
-			}
-			else if (_sliderPosition <= 0)
-			{
-				_sliderPosition = 0;
-				_sliderDirection = 1f;
-			}
-			
-			// Update the slider control
-			if (_sliderControl != null)
-			{
-				_sliderControl.SliderPosition = _sliderPosition;
-				_sliderControl.TargetZones = _targetZones;
-			}
-		}
-		
 		if (Multiplayer.IsServer() && _gameActive)
 		{
 			// Check for Win Condition
@@ -3037,12 +2225,6 @@ public partial class GameWorld : Node2D
 				frozenNpcIds.Add(_currentInteractingNpcId);
 			}
 			
-			// Add bomb-frozen NPCs to the frozen set
-			foreach (var npcId in _bombFrozenNpcs)
-			{
-				frozenNpcIds.Add(npcId);
-			}
-
 			foreach (var kvp in _npcEntities)
 			{
 				var npcEntity = kvp.Value;
@@ -3062,40 +2244,6 @@ public partial class GameWorld : Node2D
 					if (npcEntity.Position.Y >= midY) q += 2;
 					
 					npcData.Quadrant = q;
-				}
-			}
-
-			// Player Health Regeneration in Room 5
-			foreach (var kvp in _playerControllers)
-			{
-				long playerId = kvp.Key;
-				var playerCtrl = kvp.Value;
-
-				// Get player role
-				if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
-				string role = playerInfo.Role;
-
-				// Only Prophet and Producer can regenerate
-				if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
-					!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
-
-				// Get player state
-				if (!Enum.TryParse<Role>(role, ignoreCase: true, out var roleEnum)) continue;
-				var playerState = _gameEngine.GameState.GetPlayerState(roleEnum);
-				if (playerState == null || !playerState.Alive) continue;
-
-				// Check if player is in Room 5
-				string roomId = GetRoomIdAtPosition(playerCtrl.Position);
-				if (roomId == "Room5" && playerState.PunchesTaken > 0)
-				{
-					// Regenerate health slowly (1 HP every 0.5 seconds = 2 HP per second)
-					// Using delta time to smooth the regeneration
-					_room5RegenAccumulator += delta;
-					if (_room5RegenAccumulator >= 0.5)
-					{
-						_room5RegenAccumulator = 0;
-						playerState.PunchesTaken = Math.Max(0, playerState.PunchesTaken - 1);
-					}
 				}
 			}
 
@@ -3165,71 +2313,6 @@ public partial class GameWorld : Node2D
 			}
 		}
 		
-		// If RPS conversion overlay is visible, check if player is still in range of NPC
-		if (_currentConversionNpcId != null)
-		{
-			// Try to find local player if not set
-			if (_localPlayer == null)
-			{
-				var myId = Multiplayer.GetUniqueId();
-				if (_playerControllers.TryGetValue(myId, out var localCtrl))
-				{
-					_localPlayer = localCtrl;
-				}
-			}
-			
-			var rpsOverlay = _uiLayer?.GetNodeOrNull<CenterContainer>("RPSOverlay");
-			
-			if (_localPlayer != null && rpsOverlay != null && rpsOverlay.Visible)
-			{
-				var npc = _npcEntities.GetValueOrDefault(_currentConversionNpcId);
-				
-				if (npc != null)
-				{
-					float distance = _localPlayer.Position.DistanceTo(npc.Position);
-					
-					// Close RPS overlay if player gets too far (200 = larger buffer for conversion game)
-					if (distance > 200)
-					{
-						GD.Print($"Player moved too far from NPC {_currentConversionNpcId} during conversion (distance: {distance}), cancelling RPS overlay");
-						
-						// Tell server to cancel the conversion
-						if (!string.IsNullOrEmpty(_myRole))
-						{
-							if (Multiplayer.IsServer())
-							{
-								// We are the server, directly cancel
-								if (Enum.TryParse<Role>(_myRole, ignoreCase: true, out var role))
-								{
-									if (_gameEngine.GameState.ActiveConversions.ContainsKey(role))
-									{
-										_gameEngine.GameState.ActiveConversions.Remove(role);
-										_gameEngine.GameState.AddNotification($"Conversion cancelled - moved too far away!");
-										BroadcastGameState();
-									}
-								}
-							}
-							else
-							{
-								// Send RPC to server
-								RpcId(1, MethodName.CancelConversionDueToDistance, _myRole);
-							}
-						}
-						
-						// Hide the overlay locally and clear state
-						var rpsRoot = rpsOverlay.GetNodeOrNull<PanelContainer>("RPSRootContainer");
-						if (rpsRoot != null)
-						{
-							foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
-						}
-						rpsOverlay.Visible = false;
-						_lastRPSKey = "";
-						_currentConversionNpcId = null;
-					}
-				}
-			}
-		}
-
 
 		// Check Producer Panels Auto-Close on Move
 		CheckProducerPanelsOnMove();
@@ -3371,14 +2454,13 @@ public partial class GameWorld : Node2D
 		}
 		status["network_players"] = netPlayers;
 
-		// Player Health States
+		// Player States
 		var playerStates = new JObject();
 		foreach (var kvp in _gameEngine.GameState.Players)
 		{
 			var playerState = kvp.Value;
 			playerStates[kvp.Key.ToString()] = new JObject
 			{
-				{ "punches_taken", playerState.PunchesTaken },
 				{ "alive", playerState.Alive }
 			};
 		}
@@ -3733,55 +2815,15 @@ public partial class GameWorld : Node2D
 		// Update Trap Button Visibility (Prophet only)
 		if (_uiLayer.GetNodeOrNull<Button>("TrapButton") is Button trapBtn)
 		{
-			trapBtn.Visible = isProphet;
-		}
-
-		// Update Bomb Button Visibility (Admirer only)
-		if (_uiLayer.GetNodeOrNull<Button>("BombButton") is Button bombBtn)
-		{
-			bombBtn.Visible = isAdmirer && _bombsRemaining > 0;
-		}
-		
-		// Update Bomb Counter Visibility (Admirer only)
-		if (_bombCounterLabel != null)
-		{
-			_bombCounterLabel.Visible = isAdmirer;
-		}
-
-		// Player Health Bar (current player only)
-		if (_healthBarRow != null)
-		{
-			var playerStatesForBars = _localGameState?["player_states"] as JObject;
-			if (playerStatesForBars != null && !string.IsNullOrEmpty(_myRole))
-			{
-				string myRoleKey = _myRole?.ToLower() switch
-				{
-					"prophet" => "Prophet",
-					"producer" => "Producer",
-					"admirer" => "Admirer",
-					_ => null
-				};
-				if (myRoleKey != null)
-				{
-					var myState = playerStatesForBars[myRoleKey];
-					if (myState != null)
-					{
-						int pt = myState["punches_taken"]?.Value<int>() ?? 0;
-						_playerHealthBar.Value = PLAYER_PUNCHES_TO_KILL - pt;
-						_healthBarRow.Visible = true;
-					}
-					else { _healthBarRow.Visible = false; }
-				}
-				else { _healthBarRow.Visible = false; }
-			}
-			else { _healthBarRow.Visible = false; }
+			// trapBtn.Visible = isProphet; // Set Trap disabled per request
+			trapBtn.Visible = false;
 		}
 
 		// Update bottom-left status panel visibility
 		if (_bottomLeftStatusPanel != null)
 		{
 			// Show panel if any of the role labels inside are visible
-			_bottomLeftStatusPanel.Visible = _convertedLabel.Visible || _bombCounterLabel.Visible || _activeCamerasLabel.Visible;
+			_bottomLeftStatusPanel.Visible = _convertedLabel.Visible;
 		}
 
 		// Prophet conversion progress
@@ -3799,65 +2841,62 @@ public partial class GameWorld : Node2D
 
 		bool isProducer = (_myRole?.ToLower() == "producer");
 		var manageCamsBtn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
-		if (manageCamsBtn != null) manageCamsBtn.Visible = isProducer;
+		if (manageCamsBtn != null) manageCamsBtn.Visible = false; // camera logic disabled per request
+		if (_activeCamerasLabel != null) _activeCamerasLabel.Visible = false; // camera logic disabled per request
 		if (isProducer)
 		{
-			// Update Active Cameras Text in HUD
-			var activeCameras = _localGameState?["active_camera_room_ids"]?.ToObject<List<string>>() ?? new List<string>();
-			if (_activeCamerasLabel != null)
-			{
-				_activeCamerasLabel.Visible = true;
-				_activeCamerasLabel.Text = activeCameras.Count > 0 
-					? $"Active Security Cameras:\n{string.Join(", ", activeCameras)}"
-					: "Active Security Cameras:\nNone";
-			}
-			
-			
-			// Update Camera Select Panel Buttons (if open)
-			var csPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
-			if (csPanel != null && csPanel.Visible)
-			{
-				foreach (var camRoom in new[] { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" })
-				{
-					var btn = csPanel.FindChild($"Btn_{camRoom}", true, false) as CheckButton;
-					if (btn != null)
-					{
-						bool isActive = activeCameras.Contains(camRoom);
-						btn.ButtonPressed = isActive; // Set check state
-					}
-				}
-
-				// Also update the visual overlay on the editorial asset (rooms greyed)
-				if (_editorialContentNode != null)
-				{
-					// Iterate children that are Area2D rooms and set their is_active property
-					foreach (var child in _editorialContentNode.GetChildren())
-					{
-						if (child is Node roomNode)
-						{
-							// Expect the room node to have an exported `room_name` property
-							var nameProp = roomNode.Get("room_name");
-							string roomName = nameProp.Obj != null ? nameProp.ToString().Replace(" ", "") : roomNode.Name.ToString().Replace(" ", "");
-							bool shouldBeActive = activeCameras.Contains(roomName);
-							// Only set if property exists to avoid errors
-							if (roomNode.HasMethod("set_active"))
-							{
-								roomNode.Call("set_active", shouldBeActive);
-							}
-							else 
-							{
-								// Fallback (shouldn't be needed after fix)
-								try
-								{
-									roomNode.Set("is_active", shouldBeActive);
-									if (roomNode.HasMethod("update_visual")) roomNode.Call("update_visual");
-								}
-								catch (Exception) { /* catch */ }
-							}
-						}
-					}
-				}
-			}
+			// Camera logic disabled per request.
+			// // Update Active Cameras Text in HUD
+			// var activeCameras = _localGameState?["active_camera_room_ids"]?.ToObject<List<string>>() ?? new List<string>();
+			// if (_activeCamerasLabel != null)
+			// {
+			// 	_activeCamerasLabel.Visible = true;
+			// 	_activeCamerasLabel.Text = activeCameras.Count > 0 
+			// 		? $"Active Security Cameras:\n{string.Join(", ", activeCameras)}"
+			// 		: "Active Security Cameras:\nNone";
+			// }
+			// 
+			// // Update Camera Select Panel Buttons (if open)
+			// var csPanel = _uiLayer.GetNodeOrNull<Control>("CameraSelectPanel");
+			// if (csPanel != null && csPanel.Visible)
+			// {
+			// 	foreach (var camRoom in new[] { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" })
+			// 	{
+			// 		var btn = csPanel.FindChild($"Btn_{camRoom}", true, false) as CheckButton;
+			// 		if (btn != null)
+			// 		{
+			// 			bool isActive = activeCameras.Contains(camRoom);
+			// 			btn.ButtonPressed = isActive; // Set check state
+			// 		}
+			// 	}
+			// 
+			// 	// Also update the visual overlay on the editorial asset (rooms greyed)
+			// 	if (_editorialContentNode != null)
+			// 	{
+			// 		foreach (var child in _editorialContentNode.GetChildren())
+			// 		{
+			// 			if (child is Node roomNode)
+			// 			{
+			// 				var nameProp = roomNode.Get("room_name");
+			// 				string roomName = nameProp.Obj != null ? nameProp.ToString().Replace(" ", "") : roomNode.Name.ToString().Replace(" ", "");
+			// 				bool shouldBeActive = activeCameras.Contains(roomName);
+			// 				if (roomNode.HasMethod("set_active"))
+			// 				{
+			// 					roomNode.Call("set_active", shouldBeActive);
+			// 				}
+			// 				else 
+			// 				{
+			// 					try
+			// 					{
+			// 						roomNode.Set("is_active", shouldBeActive);
+			// 						if (roomNode.HasMethod("update_visual")) roomNode.Call("update_visual");
+			// 					}
+			// 					catch (Exception) { /* catch */ }
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// }
 		}
 
 
@@ -3867,113 +2906,6 @@ public partial class GameWorld : Node2D
 			RefreshInteractionPanel();
 		}
 
-
-		// Persistent RPS Conversion UI
-		string myRoleStr = _myRole?.ToLower() ?? "";
-		var conversions = _localGameState?["active_conversions"] as JObject;
-		
-		var rpsOverlay = _uiLayer.GetNodeOrNull<CenterContainer>("RPSOverlay");
-		if (rpsOverlay == null)
-		{
-			rpsOverlay = new CenterContainer();
-			rpsOverlay.Name = "RPSOverlay";
-			rpsOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-			rpsOverlay.MouseFilter = Control.MouseFilterEnum.Ignore;
-			_uiLayer.AddChild(rpsOverlay);
-		}
-
-		var rpsRoot = rpsOverlay.GetNodeOrNull<PanelContainer>("RPSRootContainer");
-		if (rpsRoot == null)
-		{
-			rpsRoot = new PanelContainer();
-			rpsRoot.Name = "RPSRootContainer";
-			
-			// Styling: Dark semi-transparent background
-			var panelStyle = new StyleBoxFlat();
-			panelStyle.BgColor = new Color(0, 0, 0, 0.85f);
-			panelStyle.SetContentMarginAll(40); // More padding
-			panelStyle.SetCornerRadiusAll(15);
-			panelStyle.BorderWidthBottom = 4;
-			panelStyle.BorderColor = new Color(1, 1, 1, 0.2f);
-			rpsRoot.AddThemeStyleboxOverride("panel", panelStyle);
-
-			rpsOverlay.AddChild(rpsRoot);
-		}
-
-		string currentRPSKey = "";
-		if (conversions != null && conversions.ContainsKey(myRoleStr))
-		{
-			var ctx = conversions[myRoleStr];
-			string npcId = ctx["npcId"]?.Value<string>();
-			string baseActionId = ctx["baseActionId"]?.Value<string>();
-			var visibleOpts = ctx["visibleOptions"]?.ToObject<List<string>>();
-			
-			if (!string.IsNullOrEmpty(npcId) && !string.IsNullOrEmpty(baseActionId) && visibleOpts != null)
-			{
-				currentRPSKey = $"{myRoleStr}_{npcId}_{baseActionId}";
-				
-				// Track which NPC is in conversion for distance checking
-				_currentConversionNpcId = npcId;
-				
-				// ALWAYS ensure it's visible if we have a context
-				rpsOverlay.Visible = true;
-				rpsRoot.Visible = true;
-
-				if (_lastRPSKey != currentRPSKey)
-				{
-					// Clear existing
-					foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
-
-					rpsRoot.Visible = true;
-					
-					var mainVBox = new VBoxContainer();
-					mainVBox.AddThemeConstantOverride("separation", 30);
-					rpsRoot.AddChild(mainVBox);
-
-					// 1. Header (Centered)
-					var headerLabel = new Label();
-					headerLabel.Text = $"Convert {Capitalize(npcId)} through a game of rock, paper, scissors.";
-					headerLabel.AddThemeFontOverride("font", _customFont);
-					headerLabel.AddThemeFontSizeOverride("font_size", 26);
-					headerLabel.HorizontalAlignment = HorizontalAlignment.Center;
-					mainVBox.AddChild(headerLabel);
-
-					// 2. Buttons Container
-					var rpsContainer = new HBoxContainer();
-					rpsContainer.Name = "RPSContainer";
-					rpsContainer.Alignment = BoxContainer.AlignmentMode.Center;
-					rpsContainer.AddThemeConstantOverride("separation", 50);
-					mainVBox.AddChild(rpsContainer);
-					
-					foreach (var move in visibleOpts)
-					{
-						var btn = CreateRPSButton(move, npcId, baseActionId);
-						rpsContainer.AddChild(btn);
-					}
-					_lastRPSKey = currentRPSKey;
-				}
-			}
-			else
-			{
-				if (rpsOverlay.Visible)
-				{
-					foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
-					rpsOverlay.Visible = false;
-					_lastRPSKey = "";
-					_currentConversionNpcId = null;
-				}
-			}
-		}
-		else
-		{
-			if (rpsOverlay != null && rpsOverlay.Visible)
-			{
-				foreach (Node child in rpsRoot.GetChildren()) child.QueueFree();
-				rpsOverlay.Visible = false;
-				_lastRPSKey = "";
-				_currentConversionNpcId = null;
-			}
-		}
 
 		// Meters removed
 
@@ -3991,35 +2923,6 @@ public partial class GameWorld : Node2D
 				string msg = notifList[i];
 				_notificationText.AddText(msg + "\n");
 				
-				// Check for RPS result in notifications to show the overlay
-				if (_rpsResultOverlay != null && msg.Contains("played") && (msg.Contains("WON") || msg.Contains("LOST")))
-				{
-					// Parse the notification to extract the player's move and result
-					// Format: "Prophet played Rock vs Scissors... and WON!"
-					// Only show the animation if the LOCAL player is the Prophet
-					bool isLocalPlayerProphet = (_myRole?.ToLower() == "prophet");
-					
-					if (isLocalPlayerProphet)
-					{
-						bool playerWon = msg.Contains("WON");
-						string playerMove = "";
-						
-						// Extract the player's move (comes after "played " and before " vs")
-						int playedIndex = msg.IndexOf("played ");
-						int vsIndex = msg.IndexOf(" vs");
-						
-						if (playedIndex >= 0 && vsIndex > playedIndex)
-						{
-							string moveText = msg.Substring(playedIndex + 7, vsIndex - (playedIndex + 7)).Trim();
-							playerMove = moveText.ToLower();
-						}
-						
-						if (!string.IsNullOrEmpty(playerMove))
-						{
-							_rpsResultOverlay.Show(playerMove, playerWins: playerWon);
-						}
-					}
-				}
 			}
 			_lastNotificationCount = notifList.Count;
 			
@@ -4436,25 +3339,25 @@ public partial class GameWorld : Node2D
 		// Special Handling: Global Actions (e.g. Set Trap)
 		if (npcId == "global")
 		{
-			if (actionId == "set_trap" && roleEnum == Role.Prophet)
-			{
-				// TODO: Check cooldown or limits if needed
-				_gameEngine.CreateTrap(roleEnum);
-				_gameEngine.GameState.AddNotification("A trap has been placed by the Prophet.");
-				// Spawn a banana at the Prophet's current location (server authoritative), replicate to all clients
-				if (_playerControllers.TryGetValue(senderId, out var prophetController))
-				{
-					var pos = prophetController.Position;
-					string trapId = $"Trap_{Time.GetTicksMsec()}_{senderId}";
-					GD.Print($"[SubmitAction] Prophet {senderId} placed trap {trapId} at {pos}. Broadcasting to all.");
-					Rpc(MethodName.SpawnBananaVisual, pos, trapId, senderId);
-				}
-				else
-				{
-					GD.PrintErr($"[SubmitAction] Could not find controller for Prophet {senderId}");
-				}
-				BroadcastGameState();
-			}
+			// if (actionId == "set_trap" && roleEnum == Role.Prophet)
+			// {
+			// 	// TODO: Check cooldown or limits if needed
+			// 	_gameEngine.CreateTrap(roleEnum);
+			// 	_gameEngine.GameState.AddNotification("A trap has been placed by the Prophet.");
+			// 	// Spawn a banana at the Prophet's current location (server authoritative), replicate to all clients
+			// 	if (_playerControllers.TryGetValue(senderId, out var prophetController))
+			// 	{
+			// 		var pos = prophetController.Position;
+			// 		string trapId = $"Trap_{Time.GetTicksMsec()}_{senderId}";
+			// 		GD.Print($"[SubmitAction] Prophet {senderId} placed trap {trapId} at {pos}. Broadcasting to all.");
+			// 		Rpc(MethodName.SpawnBananaVisual, pos, trapId, senderId);
+			// 	}
+			// 	else
+			// 	{
+			// 		GD.PrintErr($"[SubmitAction] Could not find controller for Prophet {senderId}");
+			// 	}
+			// 	BroadcastGameState();
+			// }
 			return;
 		}
 
@@ -4644,56 +3547,6 @@ public partial class GameWorld : Node2D
 		}
 	}
 
-	private Control CreateRPSButton(string move, string npcId, string baseActionId)
-	{
-		var btn = new Button();
-		btn.CustomMinimumSize = new Vector2(100, 120);
-		btn.Flat = true; // No default background
-		
-		// Transparent styleboxes
-		var emptyStyle = new StyleBoxEmpty();
-		btn.AddThemeStyleboxOverride("normal", emptyStyle);
-		btn.AddThemeStyleboxOverride("hover", emptyStyle);
-		btn.AddThemeStyleboxOverride("pressed", emptyStyle);
-		btn.AddThemeStyleboxOverride("focus", emptyStyle);
-
-		var vbox = new VBoxContainer();
-		vbox.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-		vbox.MouseFilter = Control.MouseFilterEnum.Ignore; // CRITICAL: Container must ignore mouse to let button handle it
-		vbox.AddThemeConstantOverride("separation", 5);
-		btn.AddChild(vbox);
-
-		// Image
-		var tex = new TextureRect();
-		string texturePath = $"res://assets/{move.ToLower()}-btn.png";
-		if (ResourceLoader.Exists(texturePath))
-		{
-			tex.Texture = ResourceLoader.Load<Texture2D>(texturePath);
-		}
-		tex.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-		tex.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-		tex.MouseFilter = Control.MouseFilterEnum.Ignore; // CRITICAL: Don't block button click
-		vbox.AddChild(tex);
-
-		// Name at bottom
-		var lbl = new Label();
-		lbl.Text = Capitalize(move);
-		lbl.AddThemeFontOverride("font", _customFont);
-		lbl.AddThemeFontSizeOverride("font_size", 18);
-		lbl.AddThemeColorOverride("font_color", Colors.White);
-		lbl.HorizontalAlignment = HorizontalAlignment.Center;
-		lbl.MouseFilter = Control.MouseFilterEnum.Ignore; // CRITICAL: Don't block button click
-		vbox.AddChild(lbl);
-
-		// Hover effect: Darken asset
-		btn.MouseEntered += () => tex.Modulate = new Color(0.7f, 0.7f, 0.7f, 1.0f);
-		btn.MouseExited += () => tex.Modulate = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-
-		btn.Pressed += () => OnActionSelected(npcId, $"{baseActionId}_{move.ToLower()}");
-		
-		return btn;
-	}
-
 	private string Capitalize(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);
 
 	private void OnReturnToLobbyPressed()
@@ -4738,28 +3591,6 @@ public partial class GameWorld : Node2D
 		
 		// Change scene to lobby
 		GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
-	}
-
-	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
-	private void CancelConversionDueToDistance(string playerRole)
-	{
-		if (!Multiplayer.IsServer()) return;
-		
-		GD.Print($"[GameWorld] Cancelling conversion for {playerRole} due to distance");
-		
-		// Parse the role string to Role enum
-		if (Enum.TryParse<Role>(playerRole, ignoreCase: true, out var role))
-		{
-			// Remove the conversion from the game engine
-			if (_gameEngine.GameState.ActiveConversions.ContainsKey(role))
-			{
-				_gameEngine.GameState.ActiveConversions.Remove(role);
-				_gameEngine.GameState.AddNotification($"Conversion cancelled - {playerRole} moved too far away!");
-				
-				// Broadcast the updated state
-				BroadcastGameState();
-			}
-		}
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
