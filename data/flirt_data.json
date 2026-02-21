@@ -1,0 +1,648 @@
+{
+    "default": {
+        "intro_topics": [
+            {
+                "id": "flirt_eyes",
+                "text": "Your eyes are mesmerizing.",
+                "score": 1,
+                "response": "Oh wow... nobody's ever said it quite like that.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_smile",
+                "text": "You have the most beautiful smile.",
+                "score": 1,
+                "response": "You're sweet! You're making me smile right now.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_outfit",
+                "text": "That outfit looks great on you.",
+                "score": 1,
+                "response": "Thanks! I wasn't sure about it, glad you like it.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_laugh",
+                "text": "Your laugh is kind of addictive.",
+                "score": 1,
+                "response": "Addictive? That’s a new one.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_confidence",
+                "text": "I like how confident you are.",
+                "score": 1,
+                "response": "Confidence? I try.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_smart",
+                "text": "You’re ridiculously smart.",
+                "score": 1,
+                "response": "Flattery will get you somewhere.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_kind",
+                "text": "You’re really kind. It stands out.",
+                "score": 1,
+                "response": "Aw. That means a lot.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_presence",
+                "text": "When you walked in, the whole vibe changed.",
+                "score": 1,
+                "response": "That’s dramatic. I like it.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_gravity",
+                "text": "I swear you have your own gravitational pull.",
+                "score": 1,
+                "response": "Oh? Should I be concerned?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_distraction",
+                "text": "You’re distracting me. In a good way.",
+                "score": 1,
+                "response": "Am I now?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_partner",
+                "text": "If this were a survival game, I’d pick you as my partner.",
+                "score": 1,
+                "response": "Strategic choice.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_brain_wakeup",
+                "text": "Talking to you feels like my brain wakes up.",
+                "score": 1,
+                "response": "Okay, that’s actually a really good line.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_nervous",
+                "text": "I’m a little nervous talking to you.",
+                "score": 1,
+                "response": "That’s kind of adorable.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_direct",
+                "text": "I’m going to be honest. I’m into you.",
+                "score": 1,
+                "response": "Direct. I respect it.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_story",
+                "text": "You seem like someone with good stories.",
+                "score": 1,
+                "response": "Maybe. Earn them.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_safe",
+                "text": "You feel easy to talk to.",
+                "score": 1,
+                "response": "I’m glad.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_fun_trouble",
+                "text": "You seem like trouble. The fun kind.",
+                "score": 1,
+                "response": "Careful what you wish for.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_bet_smile",
+                "text": "Bet I can make you smile in under a minute.",
+                "score": 1,
+                "response": "Oh? Try.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_favorite",
+                "text": "I think you might be my favorite person here.",
+                "score": 1,
+                "response": "Bold claim.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_rare",
+                "text": "You’re rare. Like actually rare.",
+                "score": 1,
+                "response": "Rare, huh?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_soft",
+                "text": "I’m really glad I ran into you.",
+                "score": 1,
+                "response": "Me too… I think.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_time",
+                "text": "I lost track of time talking to you.",
+                "score": 1,
+                "response": "That’s either sweet or dangerous.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_dangerous_team",
+                "text": "We’d make a dangerous team.",
+                "score": 1,
+                "response": "Dangerous how?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_magician_funny",
+                "text": "Are you a magician? Because my brain just stopped working.",
+                "score": 1,
+                "response": "Wow. That was impressively bad.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_system_error",
+                "text": "Sorry, I’m experiencing a system error. You’re too attractive.",
+                "score": 1,
+                "response": "Reboot yourself.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_scientific",
+                "text": "Scientifically speaking, you’re causing elevated heart rates.",
+                "score": 1,
+                "response": "Cite your sources.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_quest",
+                "text": "Side quest unlocked: Get to know you.",
+                "score": 1,
+                "response": "Objective accepted.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_plot_twist",
+                "text": "Plot twist: I was hoping you’d talk to me.",
+                "score": 1,
+                "response": "Was that your master plan?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "flirt_glitch",
+                "text": "You just glitched my confidence settings.",
+                "score": 1,
+                "response": "Update your firmware.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_rating",
+                "text": "On a scale of 1-10, you’re like an 8.",
+                "score": -1,
+                "response": "Did you really just rate me?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_backhanded",
+                "text": "You’re actually cuter than I expected.",
+                "score": -1,
+                "response": "Than you expected?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_smile_more",
+                "text": "You should smile more.",
+                "score": -1,
+                "response": "No.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_compare",
+                "text": "You’re definitely the attractive one in your group.",
+                "score": -1,
+                "response": "Don’t compare me to my friends.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_arrogant",
+                "text": "Relax, I don’t usually talk to people like you.",
+                "score": -1,
+                "response": "What does that mean?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_ego",
+                "text": "You’re lucky I noticed you.",
+                "score": -1,
+                "response": "Oh, am I?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_assume",
+                "text": "I know I’m your type.",
+                "score": -1,
+                "response": "Bold assumption.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_cringe_pickup",
+                "text": "Did it hurt when you fell from heaven?",
+                "score": -1,
+                "response": "Please stop.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_wink",
+                "text": "*Wink aggressively*",
+                "score": -1,
+                "response": "That was uncomfortable.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_tryhard",
+                "text": "So… do you come here often?",
+                "score": -1,
+                "response": "Seriously?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_overconfident",
+                "text": "Try not to fall for me too fast.",
+                "score": -1,
+                "response": "That’s optimistic.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_weather",
+                "text": "Nice weather we’re having.",
+                "score": -1,
+                "response": "…Okay?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_job_interview",
+                "text": "So what do you bring to the table?",
+                "score": -1,
+                "response": "Is this an interview?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_resume",
+                "text": "What are your strengths and weaknesses?",
+                "score": -1,
+                "response": "Wow.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_schedule",
+                "text": "What’s your five-year plan?",
+                "score": -1,
+                "response": "Are we networking?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_stare",
+                "text": "*Maintain eye contact too long*",
+                "score": -1,
+                "response": "You can blink.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_nervous_ram",
+                "text": "Hi. Hi. Sorry. Hi again.",
+                "score": -1,
+                "response": "You okay?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_info_dump",
+                "text": "So anyway here’s my entire life story.",
+                "score": -1,
+                "response": "That escalated quickly.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_laugh_alone",
+                "text": "*Laugh at your own joke loudly*",
+                "score": -1,
+                "response": "…Right.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_negging_light",
+                "text": "You’re pretty cool… for someone who looks like that.",
+                "score": -1,
+                "response": "Excuse me?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_condescending",
+                "text": "Aw, that’s adorable you think that.",
+                "score": -1,
+                "response": "Wow.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_judge",
+                "text": "You don’t seem like someone I’d usually like.",
+                "score": -1,
+                "response": "That’s… not flattering.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_random_fact",
+                "text": "Did you know octopuses have three hearts?",
+                "score": -1,
+                "response": "What does that have to do with anything?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_weird_timing",
+                "text": "So anyway, taxes are wild.",
+                "score": -1,
+                "response": "…Okay?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_deadpan",
+                "text": "You are statistically acceptable.",
+                "score": -1,
+                "response": "Wow. Romance.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_robotic",
+                "text": "Hello. Initiating flirt protocol.",
+                "score": -1,
+                "response": "Abort mission.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_overanalysis",
+                "text": "I calculated our compatibility at 63%.",
+                "score": -1,
+                "response": "You calculated it?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_competition",
+                "text": "I bet I’m more interesting than you.",
+                "score": -1,
+                "response": "Is this a contest?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_oneup",
+                "text": "Oh, you like that? I liked it first.",
+                "score": -1,
+                "response": "That’s not how that works.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_humblebrag",
+                "text": "I don’t mean to brag, but I’m kind of a big deal.",
+                "score": -1,
+                "response": "Sure you are.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_blunt",
+                "text": "You’re attractive.",
+                "score": -1,
+                "response": "…Okay?",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_pause",
+                "text": "So… yeah.",
+                "score": -1,
+                "response": "Compelling.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_forget_name",
+                "text": "Remind me your name again?",
+                "score": -1,
+                "response": "We just met.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            },
+            {
+                "id": "bad_misread",
+                "text": "You look tired.",
+                "score": -1,
+                "response": "Wow. Thanks.",
+                "followups": [
+                    "followup_default_playful",
+                    "followup_default_invite"
+                ]
+            }
+        ],
+        "followups": {
+            "followup_default_playful": {
+                "text": "Okay, okay—what’s your vibe tonight?",
+                "score": 1,
+                "response": "Depends. Convince me you’re worth it."
+            },
+            "followup_default_invite": {
+                "text": "Want to keep talking somewhere quieter?",
+                "score": 1,
+                "response": "Maybe. Lead the way."
+            }
+        }
+    }
+}

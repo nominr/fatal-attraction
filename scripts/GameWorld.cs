@@ -75,7 +75,7 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
-	private MoneyGameOverlay _moneyGameOverlay;
+
 	private PanelContainer _notificationPanel;
 	private Button _collapseNotificationButton;
 	private bool _notificationCollapsed = false;
@@ -114,9 +114,11 @@ public partial class GameWorld : Node2D
 	private double _plusOneTimer = 0;
 	private Texture2D _plusOneTexture;
 
-	// Global Influence Counter
-	private PanelContainer _globalInfluencePanel;
-	private RichTextLabel _globalInfluenceLabel;
+	// Global Influence Counter (Triangle UI)
+	private TriangleScene _globalInfluenceTriangle;
+	private Label _globalAdmirerCountLabel;
+	private Label _globalProphetCountLabel;
+	private Label _globalProducerCountLabel;
 
 	// Bottom-Left Status Container (for role-specific stats)
 	private PanelContainer _bottomLeftStatusPanel;
@@ -542,35 +544,86 @@ public partial class GameWorld : Node2D
 
 		// _metersContainer removed
 
-		// Global Influence Counter
-		_globalInfluencePanel = new PanelContainer();
-		// Ensure panel shrinks to fit content exactly with no extra width
-		_globalInfluencePanel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin; 
-		_globalInfluencePanel.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-		
-		var globalCounterStyle = new StyleBoxFlat();
-		globalCounterStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.9f); // White background
-		globalCounterStyle.SetCornerRadiusAll(4);
-		// Minimal padding to fit tightly
-		globalCounterStyle.SetContentMarginAll(4);
-		_globalInfluencePanel.AddThemeStyleboxOverride("panel", globalCounterStyle);
-		
-		hudContainer.AddChild(_globalInfluencePanel);
+		// Global Influence Counter — Triangle UI card
+		// Uses SubViewportContainer so rendering is isolated: no layout/anchor fighting.
+		// Camera2D centres on the triangle and zooms so the full image fits the viewport.
+		var globalInfluenceCard = new PanelContainer();
+		globalInfluenceCard.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		var globalCardStyle = new StyleBoxFlat();
+		globalCardStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.55f);
+		globalCardStyle.SetCornerRadiusAll(8);
+		globalCardStyle.SetContentMarginAll(6);
+		globalInfluenceCard.AddThemeStyleboxOverride("panel", globalCardStyle);
+		hudContainer.AddChild(globalInfluenceCard);
 
-		_globalInfluenceLabel = new RichTextLabel();
-		_globalInfluenceLabel.BbcodeEnabled = true;
-		_globalInfluenceLabel.FitContent = true;
-		_globalInfluenceLabel.ScrollActive = false;
-		_globalInfluenceLabel.AutowrapMode = TextServer.AutowrapMode.Off; // Prevent wrapping adding width
-		// Remove custom min size to allow shrinking
-		_globalInfluenceLabel.CustomMinimumSize = Vector2.Zero;
-		_globalInfluenceLabel.AddThemeFontOverride("normal_font", _customFont);
-		_globalInfluenceLabel.AddThemeFontSizeOverride("normal_font_size", 24); 
-		
-		// Default color
-		_globalInfluenceLabel.AddThemeColorOverride("default_color", Colors.Black);
-		
-		_globalInfluencePanel.AddChild(_globalInfluenceLabel);
+		var globalInfluenceVBox = new VBoxContainer();
+		globalInfluenceVBox.AddThemeConstantOverride("separation", 6);
+		globalInfluenceVBox.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		globalInfluenceCard.AddChild(globalInfluenceVBox);
+
+		// SubViewportContainer — this is the visible window into the triangle render
+		var globalSvContainer = new SubViewportContainer();
+		globalSvContainer.CustomMinimumSize = new Vector2(215, 180);
+		globalSvContainer.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		globalSvContainer.Stretch = true;
+		// Nearest filtering keeps the viewport texture pixel-sharp; default Linear softens it.
+		globalSvContainer.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+		globalInfluenceVBox.AddChild(globalSvContainer);
+
+		var globalSv = new SubViewport();
+		globalSv.Size = new Vector2I(215, 180);
+		globalSv.Disable3D = true;
+		globalSv.TransparentBg = true;
+		globalSv.RenderTargetUpdateMode = SubViewport.UpdateMode.Always;
+		globalSvContainer.AddChild(globalSv);
+
+		// Camera centred at triangle image centre (77,82) in TriangleScene local space.
+		// Zoom=1.5: viewport shows 120×100 world units around centre, giving ~18px padding
+		// around the outermost vertices (±30 wide, ±28 tall from centre).
+		var globalTriangleCam = new Camera2D();
+		globalTriangleCam.Position = new Vector2(77, 82);
+		globalTriangleCam.Zoom = new Vector2(1.8f, 1.8f);
+		globalSv.AddChild(globalTriangleCam);
+
+		var globalTrianglePrefab = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
+		_globalInfluenceTriangle = globalTrianglePrefab.Instantiate<TriangleScene>();
+		_globalInfluenceTriangle.Visible = true;
+		globalSv.AddChild(_globalInfluenceTriangle);
+		_globalInfluenceTriangle.ShowAllPoints();
+
+		// Icon + count rows below triangle — mirrors the leaderboard CreateDetailRow style.
+		// GridContainer: 2 columns (icon | label), one row per role.
+		var globalCountsGrid = new GridContainer();
+		globalCountsGrid.Columns = 2;
+		globalCountsGrid.AddThemeConstantOverride("h_separation", 8);
+		globalCountsGrid.AddThemeConstantOverride("v_separation", 6);
+		globalCountsGrid.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		globalInfluenceVBox.AddChild(globalCountsGrid);
+
+		// Helper to add one icon+label row
+		void AddGlobalCountRow(string iconPath, out Label countLabel)
+		{
+			var iconRect = new TextureRect();
+			iconRect.Texture = ResourceLoader.Load<Texture2D>(iconPath);
+			iconRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+			iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			iconRect.CustomMinimumSize = new Vector2(38, 38);
+			globalCountsGrid.AddChild(iconRect);
+
+			countLabel = new Label();
+			countLabel.AddThemeFontOverride("font", _customFont);
+			countLabel.AddThemeFontSizeOverride("font_size", 24);
+			countLabel.AddThemeColorOverride("font_color", Colors.Black);
+			countLabel.VerticalAlignment = VerticalAlignment.Center;
+			globalCountsGrid.AddChild(countLabel);
+		}
+
+		AddGlobalCountRow("res://assets/prophet-btn.png",   out _globalProphetCountLabel);
+		_globalProphetCountLabel.Text  = "Prophet: 0";
+		AddGlobalCountRow("res://assets/producer-btn.png",  out _globalProducerCountLabel);
+		_globalProducerCountLabel.Text = "Producer: 0";
+		AddGlobalCountRow("res://assets/admirer-bttn.png",  out _globalAdmirerCountLabel);
+		_globalAdmirerCountLabel.Text  = "Admirer: 0";
 
 		// Producer Stats Container (Active Cameras / Police)
 
@@ -688,9 +741,7 @@ public partial class GameWorld : Node2D
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
 
-		_moneyGameOverlay = new MoneyGameOverlay();
-		_moneyGameOverlay.ActionSelected += OnMoneyGameAction;
-		_uiLayer.AddChild(_moneyGameOverlay);
+
 
 		// +1 Rating Visual Feedback Overlay
 		_plusOneTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_plusone-nobg.png");
@@ -1562,6 +1613,13 @@ public partial class GameWorld : Node2D
 	private void OnActionSelected(string npcId, string actionId)
 	{
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
+
+		// Close panel immediately when the player chooses to end flirting/interview
+		if (actionId == "stop_flirt" || actionId == "stop_producer_interview")
+		{
+			_npcDialogueUI?.Close();
+			OnInteractionPanelClosed();
+		}
 	}
 
 	private void OnTrapButtonPressed()
@@ -1589,19 +1647,7 @@ public partial class GameWorld : Node2D
 		// OnActionSelected("global", "set_trap");
 	}
 
-	private void OnMoneyGameAction(string actionId)
-	{
-		if (_localGameState == null) return;
-		var moneyGames = _localGameState["active_money_games"] as JObject;
-		if (moneyGames != null && moneyGames.ContainsKey(_myRole))
-		{
-			string npcId = moneyGames[_myRole]["npcId"]?.Value<string>();
-			if (!string.IsNullOrEmpty(npcId))
-			{
-				_networkManager.SendInteract(npcId, actionId);
-			}
-		}
-	}
+
 
 	private void OnNetworkPlayerInteraction(long senderId, string npcId, string actionId)
 	{
@@ -2337,21 +2383,6 @@ public partial class GameWorld : Node2D
 			cPanel.Visible = false;
 			var btn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 			if (btn != null) btn.SetPressedNoSignal(false);
-			// Check Money Game
-			var moneyGames = _localGameState["active_money_games"] as JObject;
-			if (moneyGames != null && moneyGames.ContainsKey(_myRole))
-			{
-				var ctx = moneyGames[_myRole];
-				int target = ctx["target"]?.Value<int>() ?? 0;
-				int current = ctx["current"]?.Value<int>() ?? 0;
-				
-				_moneyGameOverlay.UpdateState(target, current);
-				_moneyGameOverlay.ShowGame();
-			}
-			else
-			{
-				_moneyGameOverlay.HideGame();
-			}
 		}
 
 	}
@@ -2481,19 +2512,18 @@ public partial class GameWorld : Node2D
 		}
 		status["active_interviews"] = interviews;
 
-		// Active Money Games (for UI)
-		var moneyGames = new JObject();
-		foreach (var kvp in _gameEngine.GameState.ActiveMoneyGames)
+		// Active Producer Interview State (for UI)
+		var producerInterviews = new JObject();
+		foreach (var kvp in _gameEngine.GameState.ActiveProducerInterviews)
 		{
 			var ctx = kvp.Value;
-			moneyGames[kvp.Key.ToString()] = new JObject
+			producerInterviews[kvp.Key.ToString()] = new JObject
 			{
 				{ "npcId", ctx.NpcId },
-				{ "target", ctx.TargetSum },
-				{ "current", ctx.CurrentSum }
+				{ "lastResponse", ctx.LastResponse }
 			};
 		}
-		status["active_money_games"] = moneyGames;
+		status["active_producer_interviews"] = producerInterviews;
 
 		return status.ToString();
 	}
@@ -2567,17 +2597,19 @@ public partial class GameWorld : Node2D
 				}
 				_leaderboardTriangle.UpdateActiveStates(states);
 				
-				// Update Global Influence Counter
-				if (_globalInfluenceLabel != null)
+				// Update Global Influence Counter (Triangle UI)
+				if (_globalInfluenceTriangle != null)
 				{
-					int admirerCount = _leaderboardTriangle.AdmirerZoneCount;
-					int prophetCount = _leaderboardTriangle.ProphetZoneCount;
-					int producerCount = _leaderboardTriangle.ProducerZoneCount;
-					
-					// Counter: Black, Names: Colored
-					// "Counter:" in Black
-					string text = $"[color=black]Counter:[/color] [color=#cc0000]{admirerCount}[/color], [color=#0044cc]{prophetCount}[/color], [color=#00bb00]{producerCount}[/color]";
-					_globalInfluenceLabel.Text = text;
+					_globalInfluenceTriangle.UpdateActiveStates(states);
+					_globalInfluenceTriangle.ShowAllPoints();
+
+					int admirerCount  = _globalInfluenceTriangle.AdmirerZoneCount;
+					int prophetCount  = _globalInfluenceTriangle.ProphetZoneCount;
+					int producerCount = _globalInfluenceTriangle.ProducerZoneCount;
+
+					if (_globalAdmirerCountLabel  != null) _globalAdmirerCountLabel.Text  = $"Admirer: {admirerCount}";
+					if (_globalProphetCountLabel   != null) _globalProphetCountLabel.Text   = $"Prophet: {prophetCount}";
+					if (_globalProducerCountLabel  != null) _globalProducerCountLabel.Text  = $"Producer: {producerCount}";
 				}
 
 				ProcessInfluenceNotifications(states);
@@ -2680,16 +2712,14 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		// MONEY GAME UI OVERRIDE
-		var moneyGames = _localGameState?["active_money_games"] as JObject;
-		if (moneyGames != null && !string.IsNullOrEmpty(_myRole) && moneyGames.ContainsKey(_myRole))
+		// PRODUCER INTERVIEW UI OVERRIDE
+		var producerInterviews = _localGameState?["active_producer_interviews"] as JObject;
+		if (producerInterviews != null && !string.IsNullOrEmpty(_myRole) && producerInterviews.ContainsKey(Capitalize(_myRole)))
 		{
-			var ctx = moneyGames[_myRole];
-			string mNpcId = ctx["npcId"]?.Value<string>();
-			if (mNpcId == npcId)
+			var piInfo = producerInterviews[Capitalize(_myRole)];
+			if (piInfo["npcId"]?.Value<string>() == npcId)
 			{
-				int target = ctx["target"]?.Value<int>() ?? 0;
-				desc = $"{npcName} requests [b]{target} coins[/b].";
+				desc = piInfo["lastResponse"]?.Value<string>() ?? desc;
 			}
 		}
 

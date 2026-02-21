@@ -21,14 +21,7 @@ namespace FatalAttraction.Engine
 		public string CreatorRole { get; set; }
 	}
 
-	public class MoneyGameContext
-	{
-		public string NpcId { get; set; }
-		public int TargetSum { get; set; }
-		public int CurrentSum { get; set; } = 0;
-		public List<int> SelectedCoins { get; set; } = new();
-		public int Attempts { get; set; } = 0;
-	}
+
 
 	public class InterviewContext
 	{
@@ -146,9 +139,10 @@ namespace FatalAttraction.Engine
 		public bool AdmirerEliminated { get; set; } = false;
 		public bool MonitoringActive { get; set; } = false; // "Set Focus" essentially activates monitoring
 		public int InteractionSeed { get; set; } = 0;
-		public Dictionary<Role, MoneyGameContext> ActiveMoneyGames { get; private set; } = new();
 		public Dictionary<Role, InterviewContext> ActiveInterviews { get; private set; } = new();
-		public JObject InterviewData { get; private set; }
+		public Dictionary<Role, InterviewContext> ActiveProducerInterviews { get; private set; } = new();
+		public JObject InterviewData { get; private set; }  // flirt_data.json
+		public JObject ProducerInterviewData { get; private set; } // interview_data.json
 
 		public GameState(string configPath)
 		{
@@ -156,18 +150,28 @@ namespace FatalAttraction.Engine
 			Config = JObject.Parse(configText);
 			MaxTurns = Config["gameRules"]["turnsPerGame"].Value<int>();
 			
-			// Load Interview Data
+			// Load Flirt Data (Admirer)
 			try 
+			{
+				var flirtPath = configPath.Replace("game_configuration.json", "flirt_data.json");
+				if (File.Exists(flirtPath))
+					InterviewData = JObject.Parse(File.ReadAllText(flirtPath));
+				else
+					Console.WriteLine($"[GameState] Warning: Flirt data not found at {flirtPath}");
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[GameState] Error loading flirt data: {ex.Message}");
+			}
+
+			// Load Interview Data (Producer)
+			try
 			{
 				var interviewPath = configPath.Replace("game_configuration.json", "interview_data.json");
 				if (File.Exists(interviewPath))
-				{
-					InterviewData = JObject.Parse(File.ReadAllText(interviewPath));
-				}
+					ProducerInterviewData = JObject.Parse(File.ReadAllText(interviewPath));
 				else
-				{
 					Console.WriteLine($"[GameState] Warning: Interview data not found at {interviewPath}");
-				}
 			}
 			catch (Exception ex)
 			{
@@ -277,8 +281,27 @@ namespace FatalAttraction.Engine
 			// INTERVIEW LOGIC
 			if (_gameState.ActiveInterviews.TryGetValue(playerRole, out var interviewCtx) && interviewCtx.NpcId == npcId)
 			{
-				// Start/Continue Interview - Show Dynamic Questions
-				// Add "Stop Flirting" option
+				// Start/Continue Flirt - Show Dynamic Questions first, stop button last
+				var interviewData = _gameState.InterviewData;
+				foreach (var qId in interviewCtx.AvailableQuestionIds)
+				{
+					JToken qData = null;
+					if (interviewCtx.CurrentStage == "Intro")
+					{
+						var intros = interviewData?["default"]?["intro_topics"] as JArray;
+						qData = intros?.FirstOrDefault(x => x["id"]?.Value<string>() == qId);
+					}
+
+					if (qData != null)
+					{
+						var newOpt = new JObject();
+						newOpt["id"] = $"interview_option_{qId}";
+						newOpt["text"] = qData["text"];
+						availableOptions.Add(newOpt);
+					}
+				}
+
+				// Stop button goes last (at the bottom)
 				availableOptions.Add(new JObject
 				{
 					{ "id", "stop_flirt" },
@@ -286,32 +309,7 @@ namespace FatalAttraction.Engine
 					{ "requires", new JObject() }
 				});
 
-				var interviewData = _gameState.InterviewData;
-				foreach (var qId in interviewCtx.AvailableQuestionIds)
-				{
-					/// REMOVED: finish_interview button logic
-					
-					JToken qData = null;
-					if (interviewCtx.CurrentStage == "Intro")
-					{
-						var intros = interviewData?["default"]?["intro_topics"] as JArray;
-						qData = intros?.FirstOrDefault(x => x["id"]?.Value<string>() == qId);
-					}
-					else // Followup
-					{
-						qData = interviewData?["default"]?["followups"]?[qId];
-					}
-
-					if (qData != null)
-					{
-						var newOpt = new JObject();
-						newOpt["id"] = $"interview_option_{qId}"; // Prefix to identify it in Resolve
-						newOpt["text"] = qData["text"];
-						availableOptions.Add(newOpt);
-					}
-				}
-				
-				// Always return immediately if in interview mode (don't show other options)
+				// Always return immediately if in flirt mode (don't show other options)
 				return availableOptions;
 			}
 
@@ -343,37 +341,42 @@ namespace FatalAttraction.Engine
 				}
 			}
 			
-			// PRODUCER: Money Game Option
+			// PRODUCER: Interview Game Option
 			if (playerRole == Role.Producer && npc.Alive)
 			{
-				if (_gameState.ActiveMoneyGames.TryGetValue(playerRole, out var ctx) && ctx.NpcId == npcId)
+				if (_gameState.ActiveProducerInterviews.TryGetValue(playerRole, out var piCtx) && piCtx.NpcId == npcId)
 				{
-					// Game Active: Show Coin Options and Submit
-					int[] coins = { 1, 5, 10 };
-					foreach (var c in coins)
+					// Active interview: show question options first
+					var interviewData = _gameState.ProducerInterviewData;
+					var intros = interviewData?["default"]?["intro_topics"] as JArray;
+					foreach (var qId in piCtx.AvailableQuestionIds)
 					{
-						availableOptions.Add(new JObject
+						var qData = intros?.FirstOrDefault(x => x["id"]?.Value<string>() == qId);
+						if (qData != null)
 						{
-							{ "id", $"money_add_{c}" },
-							{ "text", $"Add {c} Coin" },
-							{ "requires", new JObject() }
-						});
+							var newOpt = new JObject();
+							newOpt["id"] = $"producer_interview_option_{qId}";
+							newOpt["text"] = qData["text"];
+							availableOptions.Add(newOpt);
+						}
 					}
-					
+
+					// End button goes last (at the bottom)
 					availableOptions.Add(new JObject
 					{
-						{ "id", "money_submit" },
-						{ "text", "Submit Offer" },
+						{ "id", "stop_producer_interview" },
+						{ "text", "End Interview" },
 						{ "requires", new JObject() }
 					});
+					return availableOptions; // Only show interview options
 				}
 				else
 				{
-					// Not Active: Start Option
+					// Not active: Start option
 					availableOptions.Add(new JObject
 					{
-						{ "id", "start_money_game" },
-						{ "text", "Play Money Game" },
+						{ "id", "start_producer_interview" },
+						{ "text", "Conduct Interview" },
 						{ "requires", new JObject() }
 					});
 				}
@@ -565,9 +568,10 @@ namespace FatalAttraction.Engine
 				
 				if (introTopics == null || introTopics.Count == 0) return (false, "No flirting topics found!");
 
-				// Pick 3 random intro questions
-				var randomQuestions = introTopics.OrderBy(x => _random.Next()).Take(3)
-					.Select(x => x["id"]?.Value<string>()).ToList();
+				// Pick 1 positive + 1 negative option
+				var positiveTopics = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) > 0).OrderBy(_ => _random.Next()).Take(1);
+				var negativeTopics = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) < 0).OrderBy(_ => _random.Next()).Take(1);
+				var randomQuestions = positiveTopics.Concat(negativeTopics).Select(x => x["id"]?.Value<string>()).ToList();
 
 				var ctx = new InterviewContext
 				{
@@ -627,35 +631,9 @@ namespace FatalAttraction.Engine
 				string response = qData["response"]?.Value<string>() ?? "...";
 				ctx.LastResponse = response;
 
-				// Flow Logic
-				if (ctx.CurrentStage == "Intro")
-				{
-					// Move to Followup
-					var followups = qData["followups"]?.ToObject<List<string>>() ?? new List<string>();
-					if (followups.Count > 0)
-					{
-						ctx.CurrentStage = "Followup";
-						// Take up to 3
-						ctx.AvailableQuestionIds = followups.OrderBy(x => _random.Next()).Take(3).ToList();
-						return (true, null);
-					}
-					else
-					{
-						// No followups? End interview early
-						ApplyInterviewResult(ctx, playerRole);
-						return (true, null);
-					}
-				}
-				else // Followup Done
-				{
-					// Apply Score IMMEDIATELY so it counts even if user walks away
-					ApplyInterviewResult(ctx, playerRole, clearAndFinish: false); // Don't clear active status yet
-					
-					// Set to Finished state so text persists but no buttons shown
-					ctx.CurrentStage = "Finished";
-					ctx.AvailableQuestionIds = new List<string>(); // Empty list = no buttons
-					return (true, null);
-				}
+				// End flirt immediately after picking an option (no follow-up stage)
+				ApplyInterviewResult(ctx, playerRole);
+				return (true, null);
 			}
 
 			// Check if NPC is dead first
@@ -739,66 +717,65 @@ namespace FatalAttraction.Engine
 			// 	}
 			// }
 
-			// 5. PRODUCER MONEY GAME
-			if (optionId == "start_money_game")
+			// 5. PRODUCER INTERVIEW GAME
+			if (optionId == "start_producer_interview")
 			{
-				if (playerRole != Role.Producer) return (false, "Only Producer can play Money Game.");
-				
-				// Initialize Context
-				// Target sum: Random 15-30?
-				int target = Random.Shared.Next(15, 31);
-				
-				var ctx = new MoneyGameContext
+				if (playerRole != Role.Producer) return (false, "Only Producer can conduct interviews.");
+				if (_gameState.ActiveProducerInterviews.ContainsKey(playerRole)) return (false, "You are already interviewing someone!");
+
+				var interviewData = _gameState.ProducerInterviewData;
+				var introTopics = interviewData?["default"]?["intro_topics"] as JArray;
+
+				if (introTopics == null || introTopics.Count == 0) return (false, "No interview questions found!");
+
+				// Pick 1 positive + 1 negative question
+				var positives = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) > 0).OrderBy(_ => _random.Next()).Take(1);
+				var negatives = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) < 0).OrderBy(_ => _random.Next()).Take(1);
+				var questions = positives.Concat(negatives).Select(x => x["id"]?.Value<string>()).ToList();
+
+				var ctx = new InterviewContext
 				{
 					NpcId = npcId,
-					TargetSum = target,
-					CurrentSum = 0,
-					SelectedCoins = new List<int>()
+					CurrentStage = "Intro",
+					CurrentScore = 0,
+					LastResponse = "Ready for your questions...",
+					AvailableQuestionIds = questions
 				};
-				
-				_gameState.ActiveMoneyGames[playerRole] = ctx;
-				_gameState.AddNotification($"Producer started Money Game with {npc.Name}. Target: {target}");
+
+				_gameState.ActiveProducerInterviews[playerRole] = ctx;
+				_gameState.AddNotification($"Interview started with {npc.Name}!");
 				return (true, null);
 			}
-			
-			if (optionId.StartsWith("money_add_"))
+
+			if (optionId == "stop_producer_interview")
 			{
-				if (!_gameState.ActiveMoneyGames.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
+				if (_gameState.ActiveProducerInterviews.ContainsKey(playerRole))
 				{
-					return (false, "No active money game.");
+					ApplyProducerInterviewResult(_gameState.ActiveProducerInterviews[playerRole], playerRole, earlyStop: true);
+					_gameState.AddNotification("Interview ended.");
+					return (true, null);
 				}
-				
-				int coinVal = int.Parse(optionId.Split('_')[2]);
-				ctx.SelectedCoins.Add(coinVal);
-				ctx.CurrentSum += coinVal;
-				
-				// _gameState.AddNotification($"Added {coinVal}. Current: {ctx.CurrentSum}/{ctx.TargetSum}");
-				return (true, null);
+				return (false, "No active interview.");
 			}
-			
-			if (optionId == "money_submit")
+
+			if (optionId.StartsWith("producer_interview_option_"))
 			{
-				if (!_gameState.ActiveMoneyGames.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
-				{
-					return (false, "No active money game.");
-				}
-				
-				int score = (ctx.CurrentSum == ctx.TargetSum) ? 1 : -1;
-				
-				var targetNpc = _gameState.GetNPC(ctx.NpcId); // Use local var to avoid closure issues if any
-				if (targetNpc != null)
-				{
-					Vector3 points = ScoringRules.GetMoneyGamePoints(score);
-					targetNpc.State += points;
-					Console.WriteLine($"[DEBUG] MoneyGame: {targetNpc.Name} State += {points} -> {targetNpc.State}");
-					
-					// Notify score change for feedback
-					Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {score}");
-					_gameState.TriggerScoreChange(playerRole, score);
-				}
-				
-				_gameState.AddNotification($"Money Game Result: {(score > 0 ? "SUCCESS" : "FAILURE")} (Sum: {ctx.CurrentSum}, Target: {ctx.TargetSum})");
-				_gameState.ActiveMoneyGames.Remove(playerRole);
+				if (!_gameState.ActiveProducerInterviews.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
+					return (false, "No active interview with this NPC.");
+
+				string qId = optionId.Replace("producer_interview_option_", "");
+				var interviewData = _gameState.ProducerInterviewData;
+				var intros = interviewData?["default"]?["intro_topics"] as JArray;
+				var qData = intros?.FirstOrDefault(x => x["id"]?.Value<string>() == qId);
+
+				if (qData == null) return (false, "Invalid interview question.");
+
+				int score = qData["score"]?.Value<int>() ?? 0;
+				ctx.CurrentScore += score;
+				ctx.LastResponse = qData["response"]?.Value<string>() ?? "...";
+
+				// End interview immediately after one pick (no follow-up)
+				ApplyProducerInterviewResult(ctx, playerRole);
 				return (true, null);
 			}
 
@@ -854,7 +831,10 @@ namespace FatalAttraction.Engine
 			if (_gameState.ActiveInterviews.ContainsKey(playerRole))
 			{
 				_gameState.ActiveInterviews.Remove(playerRole);
-				// _gameState.AddNotification("Interaction cleared.");
+			}
+			if (_gameState.ActiveProducerInterviews.ContainsKey(playerRole))
+			{
+				_gameState.ActiveProducerInterviews.Remove(playerRole);
 			}
 		}
 
@@ -882,6 +862,23 @@ namespace FatalAttraction.Engine
 			 {
 				_gameState.ActiveInterviews.Remove(playerRole);
 			 }
+		}
+
+		private void ApplyProducerInterviewResult(InterviewContext ctx, Role playerRole, bool earlyStop = false)
+		{
+			var npc = _gameState.NPCs.GetValueOrDefault(ctx.NpcId);
+			if (npc != null && !earlyStop)
+			{
+				Vector3 points = ScoringRules.GetMoneyGamePoints(ctx.CurrentScore);
+				npc.State += points;
+				Console.WriteLine($"[DEBUG] ProducerInterview: {npc.Name} State += {points} -> {npc.State}");
+				_gameState.TriggerScoreChange(playerRole, ctx.CurrentScore);
+			}
+
+			string resultMsg = earlyStop ? "Interview cut short." :
+				(ctx.CurrentScore > 0 ? "Great segment!" : (ctx.CurrentScore < 0 ? "That went poorly..." : "Neutral reaction."));
+			_gameState.AddNotification($"Interview finished. Result: {resultMsg}");
+			_gameState.ActiveProducerInterviews.Remove(playerRole);
 		}
 
 		private void ApplyActionEffects(JToken option, Role playerRole, string npcId, bool success)
