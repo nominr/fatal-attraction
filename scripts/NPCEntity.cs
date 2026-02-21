@@ -214,11 +214,11 @@ public partial class NPCEntity : CharacterBody2D
 			if (pushDir == Vector2.Zero)
 				pushDir = dirs[attempt % dirs.Length];
 
-			Position += pushDir * NUDGE;
-			GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
+			// Position += pushDir * NUDGE;
+			// GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
 		}
 
-		GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
+		// GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
 	}
 
 	public override void _Process(double delta)
@@ -370,20 +370,23 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void UpdateWandering(double delta)
 	{
-		// Debug: Always log frozen state for target NPCs
+		/* Debug: Always log frozen state for target NPCs
 		if ((NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus") && Multiplayer.IsServer())
 		{
 			GD.Print($"[NPCEntity] UpdateWandering for {NpcId}: _isFrozen={_isFrozen}, _isSlipping={_isSlipping}");
 		}
+		*/
 		
 		// If slipping or frozen (interview), don't move
 		if (_isSlipping || _isFrozen)
 		{
+			/*
 			if (_isFrozen && Multiplayer.IsServer())
 			{
 				// Debug: Log when frozen NPC tries to move
 				GD.Print($"[NPCEntity] {NpcId} is frozen, skipping movement");
 			}
+			*/
 			return;
 		}
 
@@ -550,7 +553,7 @@ public partial class NPCEntity : CharacterBody2D
 						_stuckBackoffDir   = backDir.Normalized();
 						_stuckBackoffTimer = BACKOFF_DURATION;
 						_stuckTimer        = 0;
-						GD.Print($"[NPCEntity] {NpcId} stuck — backing off in dir {_stuckBackoffDir}");
+						// GD.Print($"[NPCEntity] {NpcId} stuck — backing off in dir {_stuckBackoffDir}");
 					}
 				}
 				break;
@@ -1145,18 +1148,18 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	public void SetFrozen(bool frozen)
 	{
-		GD.Print($"[NPCEntity] SetFrozen called on {NpcId}: {frozen} (was {_isFrozen})");
+		// GD.Print($"[NPCEntity] SetFrozen called on {NpcId}: {frozen} (was {_isFrozen})");
 		if (!frozen && (NpcId == "john" || NpcId == "rebecca" || NpcId == "marcus"))
 		{
 			// Print where unfreeze is coming from
-			GD.Print($"[NPCEntity] WARNING: UNFREEZING target NPC {NpcId}");
+			// GD.Print($"[NPCEntity] WARNING: UNFREEZING target NPC {NpcId}");
 		}
 		_isFrozen = frozen;
 		if (frozen)
 		{
 			// Optional: Stop current velocity
 			Velocity = Vector2.Zero;
-			GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
+			// GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
 		}
 	}
 	public void UpdateNameTagColor(Color bgColor)

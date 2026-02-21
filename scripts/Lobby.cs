@@ -60,48 +60,31 @@ public partial class Lobby : Control
 		_background = GetNode<Sprite2D>("Background");
 		_backgroundTimer = GetNode<Timer>("BackgroundTimer");
 
-		// Load frames (191) exactly like InfoScene
+		// Load only the first frame immediately to show something
 		_bgFrames = new Texture2D[TotalFrames];
-		int loaded = 0;
-		for (int i = 0; i < TotalFrames; i++)
+		string firstFramePath = $"res://assets/Title_BG_Frames/bg_frame_1.png";
+		_bgFrames[0] = GD.Load<Texture2D>(firstFramePath);
+		
+		if (_bgFrames[0] != null)
 		{
-			// If your filenames are zero-padded (bg_frame_001.png), use this instead:
-			// string path = $"res://assets/Title_BG_Frames/bg_frame_{(i + 1).ToString("000")}.png";
-			string path = $"res://assets/Title_BG_Frames/bg_frame_{i + 1}.png";
-
-			var tex = GD.Load<Texture2D>(path);
-			if (tex == null)
-				GD.PushWarning($"[Lobby] Missing/failed to load frame: {path}");
-			else
-				loaded++;
-
-			_bgFrames[i] = tex;
-		}
-
-		if (loaded == 0)
-		{
-			GD.PushError("[Lobby] No background frames loaded. Check folder path / filenames / import settings.");
+			_background.Texture = _bgFrames[0];
+			_currentFrame = 0;
+			
+			// Connect timer and start
+			_backgroundTimer.Timeout += OnBackgroundTimerTimeout;
+			_backgroundTimer.WaitTime = 1.0f / 24.0f; // ~24 FPS
+			_backgroundTimer.Start();
 		}
 		else
 		{
-			// Set first non-null frame
-			_currentFrame = 0;
-			while (_currentFrame < TotalFrames && _bgFrames[_currentFrame] == null)
-				_currentFrame++;
+			GD.PushError("[Lobby] Failed to load the first background frame. Check paths.");
+		}
 
-			if (_currentFrame >= TotalFrames)
-			{
-				GD.PushError("[Lobby] All background frames are null. Check imports/paths.");
-			}
-			else
-			{
-				_background.Texture = _bgFrames[_currentFrame];
-
-				// Connect timer ONCE, then start
-				_backgroundTimer.Timeout += OnBackgroundTimerTimeout;
-				_backgroundTimer.WaitTime = 1.0f / 24.0f; // ~24 FPS
-				_backgroundTimer.Start();
-			}
+		// Request all other frames asynchronously
+		for (int i = 1; i < TotalFrames; i++)
+		{
+			string path = $"res://assets/Title_BG_Frames/bg_frame_{i + 1}.png";
+			ResourceLoader.LoadThreadedRequest(path);
 		}
 
 		// Make back label clickable and set up hover signals
@@ -169,6 +152,26 @@ public partial class Lobby : Control
 
 		// Process Command Line Arguments for Auto-Start
 		CallDeferred(MethodName.ProcessCommandLineArgs);
+		
+		// Pre-cache NPC and Player assets in the background
+		PrecacheGameAssets();
+	}
+
+	private void PrecacheGameAssets()
+	{
+		string basePath = "res://assets/new-character-assets/";
+		string[] characterCores = { "admirer2", "prophet", "producer2", "npc1", "npc2", "npc3", "npc4", "npc5", "npc6", "npc7", "npc8", "npc9", "npc10" };
+		string[] suffixes = { "-front-idle.png", "-front-walk.png", "-back-idle.png", "-back-walk.png" };
+
+		GD.Print("[Lobby] Starting background pre-cache of character assets...");
+		foreach (var core in characterCores)
+		{
+			foreach (var suffix in suffixes)
+			{
+				string path = $"{basePath}{core}{suffix}";
+				ResourceLoader.LoadThreadedRequest(path);
+			}
+		}
 	}
 
 	public override void _ExitTree()
@@ -448,18 +451,24 @@ public partial class Lobby : Control
 	// Same animation logic as InfoScene: advance frames, skip nulls so it never turns black
 	private void OnBackgroundTimerTimeout()
 	{
-		for (int tries = 0; tries < TotalFrames; tries++)
+		_currentFrame = (_currentFrame + 1) % TotalFrames;
+		
+		// If frame 1 already exists, use it
+		if (_bgFrames[_currentFrame] != null)
 		{
-			_currentFrame = (_currentFrame + 1) % TotalFrames;
-			var tex = _bgFrames[_currentFrame];
-			if (tex != null)
-			{
-				_background.Texture = tex;
-				return;
-			}
+			_background.Texture = _bgFrames[_currentFrame];
+			return;
 		}
 
-		GD.PushWarning("[Lobby] Background animation: all frames are null.");
+		// Otherwise check if it's finished loading
+		string path = $"res://assets/Title_BG_Frames/bg_frame_{_currentFrame + 1}.png";
+		if (ResourceLoader.LoadThreadedGetStatus(path) == ResourceLoader.ThreadLoadStatus.Loaded)
+		{
+			var tex = (Texture2D)ResourceLoader.LoadThreadedGet(path);
+			_bgFrames[_currentFrame] = tex;
+			_background.Texture = tex;
+		}
+		// If not loaded yet, the previous frame stays visible (animation "stalls" briefly but UI stays responsive)
 	}
 
 	private void OnBackLabelMouseEntered()
