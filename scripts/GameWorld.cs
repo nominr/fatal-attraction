@@ -1315,7 +1315,7 @@ public partial class GameWorld : Node2D
 		_gameEngine.GameState.OnScoreChange += HandleScoreChange;
 		
 		_gameActive = true;
-		_timeRemaining = 300.0;
+		_timeRemaining = 50.0;
 
 		SpawnNPCs();
 		SpawnAllPlayers();

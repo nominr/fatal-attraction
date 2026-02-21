@@ -51,6 +51,10 @@ public partial class PlayerController : CharacterBody2D
 	// Ghost mode state (for eliminated players)
 	private bool _isGhostMode = false;
 
+	// Client-side interpolation (for remote players)
+	private Vector2 _remoteTargetPosition = Vector2.Zero;
+	private bool _hasReceivedFirstSync = false;
+	
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
@@ -157,6 +161,20 @@ public partial class PlayerController : CharacterBody2D
 				{
 					_sprite.Modulate = new Color(0.8f, 0.8f, 0.8f, alpha);
 				}
+			}
+		}
+
+		// Client-side interpolation for remote players
+		if (!_isLocalPlayer && _hasReceivedFirstSync)
+		{
+			Vector2 oldPos = Position;
+			// Lerp towards target position for smooth movement
+			Position = Position.Lerp(_remoteTargetPosition, 10.0f * (float)delta);
+			
+			// Calculate velocity for animation logic
+			if (delta > 0)
+			{
+				Velocity = (Position - oldPos) / (float)delta;
 			}
 		}
 
@@ -538,7 +556,14 @@ public partial class PlayerController : CharacterBody2D
 	public void UpdateRemotePosition(Vector2 newPosition)
 	{
 		if (_isLocalPlayer) return; // Don't override local player position
-		Position = newPosition;
+		_remoteTargetPosition = newPosition;
+		
+		if (!_hasReceivedFirstSync)
+		{
+			// Snap strictly on first update to avoid flying in from (0,0)
+			Position = newPosition;
+			_hasReceivedFirstSync = true;
+		}
 	}
 
 	public override void _PhysicsProcess(double delta)

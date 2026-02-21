@@ -395,10 +395,17 @@ public partial class NPCEntity : CharacterBody2D
 		{
 			if (_hasReceivedFirstSync)
 			{
+				Vector2 oldPos = Position;
 				// Interpolate towards target
 				// Use a factor that depends on delta to be frame-rate independent
 				// A factor of 10.0f * delta gives quick but smooth catch-up
 				Position = Position.Lerp(_clientTargetPosition, 10.0f * (float)delta);
+				
+				// Calculate velocity for animation logic
+				if (delta > 0)
+				{
+					Velocity = (Position - oldPos) / (float)delta;
+				}
 			}
 			return; // Clients only interpolate, they don't run AI
 		}
