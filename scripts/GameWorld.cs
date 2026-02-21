@@ -75,7 +75,7 @@ public partial class GameWorld : Node2D
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
 	private RichTextLabel _notificationText;
-	private MoneyGameOverlay _moneyGameOverlay;
+
 	private PanelContainer _notificationPanel;
 	private Button _collapseNotificationButton;
 	private bool _notificationCollapsed = false;
@@ -688,9 +688,7 @@ public partial class GameWorld : Node2D
 		trapButton.Name = "TrapButton";
 		trapButton.Visible = false;
 
-		_moneyGameOverlay = new MoneyGameOverlay();
-		_moneyGameOverlay.ActionSelected += OnMoneyGameAction;
-		_uiLayer.AddChild(_moneyGameOverlay);
+
 
 		// +1 Rating Visual Feedback Overlay
 		_plusOneTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_plusone-nobg.png");
@@ -1523,6 +1521,13 @@ public partial class GameWorld : Node2D
 	private void OnActionSelected(string npcId, string actionId)
 	{
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
+
+		// Close panel immediately when the player chooses to end flirting/interview
+		if (actionId == "stop_flirt" || actionId == "stop_producer_interview")
+		{
+			_npcDialogueUI?.Close();
+			OnInteractionPanelClosed();
+		}
 	}
 
 	private void OnTrapButtonPressed()
@@ -1550,19 +1555,7 @@ public partial class GameWorld : Node2D
 		// OnActionSelected("global", "set_trap");
 	}
 
-	private void OnMoneyGameAction(string actionId)
-	{
-		if (_localGameState == null) return;
-		var moneyGames = _localGameState["active_money_games"] as JObject;
-		if (moneyGames != null && moneyGames.ContainsKey(_myRole))
-		{
-			string npcId = moneyGames[_myRole]["npcId"]?.Value<string>();
-			if (!string.IsNullOrEmpty(npcId))
-			{
-				_networkManager.SendInteract(npcId, actionId);
-			}
-		}
-	}
+
 
 	private void OnNetworkPlayerInteraction(long senderId, string npcId, string actionId)
 	{
@@ -2296,21 +2289,6 @@ public partial class GameWorld : Node2D
 			cPanel.Visible = false;
 			var btn = _uiLayer.GetNodeOrNull<Button>("ManageCamerasButton");
 			if (btn != null) btn.SetPressedNoSignal(false);
-			// Check Money Game
-			var moneyGames = _localGameState["active_money_games"] as JObject;
-			if (moneyGames != null && moneyGames.ContainsKey(_myRole))
-			{
-				var ctx = moneyGames[_myRole];
-				int target = ctx["target"]?.Value<int>() ?? 0;
-				int current = ctx["current"]?.Value<int>() ?? 0;
-				
-				_moneyGameOverlay.UpdateState(target, current);
-				_moneyGameOverlay.ShowGame();
-			}
-			else
-			{
-				_moneyGameOverlay.HideGame();
-			}
 		}
 
 	}
@@ -2440,19 +2418,18 @@ public partial class GameWorld : Node2D
 		}
 		status["active_interviews"] = interviews;
 
-		// Active Money Games (for UI)
-		var moneyGames = new JObject();
-		foreach (var kvp in _gameEngine.GameState.ActiveMoneyGames)
+		// Active Producer Interview State (for UI)
+		var producerInterviews = new JObject();
+		foreach (var kvp in _gameEngine.GameState.ActiveProducerInterviews)
 		{
 			var ctx = kvp.Value;
-			moneyGames[kvp.Key.ToString()] = new JObject
+			producerInterviews[kvp.Key.ToString()] = new JObject
 			{
 				{ "npcId", ctx.NpcId },
-				{ "target", ctx.TargetSum },
-				{ "current", ctx.CurrentSum }
+				{ "lastResponse", ctx.LastResponse }
 			};
 		}
-		status["active_money_games"] = moneyGames;
+		status["active_producer_interviews"] = producerInterviews;
 
 		return status.ToString();
 	}
@@ -2639,16 +2616,14 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		// MONEY GAME UI OVERRIDE
-		var moneyGames = _localGameState?["active_money_games"] as JObject;
-		if (moneyGames != null && !string.IsNullOrEmpty(_myRole) && moneyGames.ContainsKey(_myRole))
+		// PRODUCER INTERVIEW UI OVERRIDE
+		var producerInterviews = _localGameState?["active_producer_interviews"] as JObject;
+		if (producerInterviews != null && !string.IsNullOrEmpty(_myRole) && producerInterviews.ContainsKey(Capitalize(_myRole)))
 		{
-			var ctx = moneyGames[_myRole];
-			string mNpcId = ctx["npcId"]?.Value<string>();
-			if (mNpcId == npcId)
+			var piInfo = producerInterviews[Capitalize(_myRole)];
+			if (piInfo["npcId"]?.Value<string>() == npcId)
 			{
-				int target = ctx["target"]?.Value<int>() ?? 0;
-				desc = $"{npcName} requests [b]{target} coins[/b].";
+				desc = piInfo["lastResponse"]?.Value<string>() ?? desc;
 			}
 		}
 
