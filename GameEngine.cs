@@ -177,6 +177,7 @@ namespace FatalAttraction.Engine
 				else
 				{
 					Console.WriteLine($"[GameState] Warning: Interview data not found at {interviewPath}");
+				}
 			}
 			catch (Exception ex)
 			{
@@ -963,7 +964,7 @@ namespace FatalAttraction.Engine
 				_gameState.ActiveConversions.Remove(playerRole);
 			}
 		}
-		
+
 
 		private void ApplyConversionResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
 		{
@@ -995,37 +996,6 @@ namespace FatalAttraction.Engine
 				_gameState.ActiveConversions.Remove(playerRole);
 			}
 			if (_gameState.ActiveConversions.ContainsKey(playerRole))
-			{
-				_gameState.ActiveConversions.Remove(playerRole);
-			}
-		}
-
-		private void ApplyConversionResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
-		{
-			var npc = _gameState.NPCs[ctx.NpcId];
-			if (npc != null)
-			{
-				Vector3 points = ScoringRules.GetConversionPoints(ctx.CurrentScore);
-				npc.State += points;
-				Console.WriteLine($"[DEBUG] Conversion: {npc.Name} State += {points} -> {npc.State}");
-
-				// Mark as converted if prophet score component reaches threshold
-				const float ConvertThreshold = 4f;
-				if (npc.State.Y >= ConvertThreshold && !npc.Converted)
-				{
-					npc.Converted = true;
-					_gameState.AddNotification($"{npc.Name} has been converted by the Prophet!");
-				}
-
-				Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {ctx.CurrentScore}");
-				_gameState.TriggerScoreChange(playerRole, ctx.CurrentScore);
-			}
-
-			string resultMsg = ctx.CurrentScore > 0 ? "They seem receptive!" : (ctx.CurrentScore < 0 ? "They pushed back..." : "Hard to tell.");
-			_gameState.AddNotification($"Conversion finished. Result: {resultMsg}");
-			ctx.CurrentScore = 0;
-
-			if (clearAndFinish)
 			{
 				_gameState.ActiveConversions.Remove(playerRole);
 			}

@@ -2564,19 +2564,6 @@ public partial class GameWorld : Node2D
 		}
 		status["active_conversions"] = conversions;
 
-		// Active Conversion State (for UI - Prophet)
-		var conversions = new JObject();
-		foreach (var kvp in _gameEngine.GameState.ActiveConversions)
-		{
-			var ctx = kvp.Value;
-			conversions[kvp.Key.ToString()] = new JObject
-			{
-				{ "npcId", ctx.NpcId },
-				{ "lastResponse", ctx.LastResponse }
-			};
-		}
-		status["active_conversions"] = conversions;
-
 		// Active Producer Interview State (for UI)
 		var producerInterviews = new JObject();
 		foreach (var kvp in _gameEngine.GameState.ActiveProducerInterviews)
@@ -2805,17 +2792,6 @@ public partial class GameWorld : Node2D
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
-			}
-		}
-
-		// CONVERSION UI OVERRIDE (Prophet)
-		var activeConversions = _localGameState?["active_conversions"] as JObject;
-		if (activeConversions != null && activeConversions.ContainsKey(roleKey))
-		{
-			var convInfo = activeConversions[roleKey];
-			if (convInfo["npcId"]?.Value<string>() == npcId)
-			{
-				desc = convInfo["lastResponse"]?.Value<string>() ?? desc;
 			}
 		}
 
