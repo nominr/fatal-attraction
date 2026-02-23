@@ -325,14 +325,6 @@ namespace FatalAttraction.Engine
 					}
 				}
 
-				// Stop button goes last (at the bottom)
-				availableOptions.Add(new JObject
-				{
-					{ "id", "stop_flirt" },
-					{ "text", "Stop Flirting" },
-					{ "requires", new JObject() }
-				});
-
 				// Always return immediately if in flirt mode (don't show other options)
 				return availableOptions;
 			}
@@ -354,6 +346,9 @@ namespace FatalAttraction.Engine
 			foreach (var option in options)
 			{
 				string id = option["id"]?.Value<string>();
+				// Hide start_flirt — flirting auto-starts on NPC click
+				if (!string.IsNullOrEmpty(id) && id == "start_flirt")
+					continue;
 				// Admirer target kills are handled by punch mechanic, so hide kill actions.
 				if (playerRole == Role.Admirer && npc.IsTarget && !string.IsNullOrEmpty(id) && id.StartsWith("kill"))
 				{
@@ -370,7 +365,6 @@ namespace FatalAttraction.Engine
 				}
 			}
 			
-			// PRODUCER: Interview Game Option
 			if (playerRole == Role.Producer && npc.Alive)
 			{
 				if (_gameState.ActiveProducerInterviews.TryGetValue(playerRole, out var piCtx) && piCtx.NpcId == npcId)
@@ -390,25 +384,9 @@ namespace FatalAttraction.Engine
 						}
 					}
 
-					// End button goes last (at the bottom)
-					availableOptions.Add(new JObject
-					{
-						{ "id", "stop_producer_interview" },
-						{ "text", "End Interview" },
-						{ "requires", new JObject() }
-					});
 					return availableOptions; // Only show interview options
 				}
-				else
-				{
-					// Not active: Start option
-					availableOptions.Add(new JObject
-					{
-						{ "id", "start_producer_interview" },
-						{ "text", "Conduct Interview" },
-						{ "requires", new JObject() }
-					});
-				}
+				// No active interview: auto-starts on click, so show no start button
 			}
 
 
@@ -628,14 +606,16 @@ namespace FatalAttraction.Engine
 				var topic = topics.OrderBy(x => _random.Next()).First();
 				string topicNpcLine = topic["text"]?.Value<string>() ?? "...";
 				var followups = topic["followups"]?.ToObject<List<string>>() ?? new List<string>();
+				// Randomize order so +1 and -1 options aren't always in the same position
+				followups = followups.OrderBy(_ => _random.Next()).ToList();
 
 				var ctx = new InterviewContext
 				{
 					NpcId = npcId,
-					CurrentStage = "Followup",           // Skip Intro — go straight to responses
+					CurrentStage = "Followup",
 					CurrentScore = 0,
-					LastResponse = topicNpcLine,          // NPC speaks their topic line immediately
-					AvailableQuestionIds = followups       // These are what the Prophet can say back
+					LastResponse = topicNpcLine,
+					AvailableQuestionIds = followups
 				};
 
 				_gameState.ActiveConversions[playerRole] = ctx;
@@ -675,8 +655,11 @@ namespace FatalAttraction.Engine
 				string response = qData["response"]?.Value<string>() ?? "...";
 				ctx.LastResponse = response;
 
-				// Apply result and clear the context immediately (prevents self-healing UI from reopening this panel)
-				ApplyConversionResult(ctx, playerRole, clearAndFinish: true);
+				// Keep context alive so lastResponse is in the next broadcast during the preview window.
+				// Question IDs are cleared so no new options appear — just the NPC response.
+				// EndActiveInteraction() (called when panel closes) will remove it.
+				ApplyConversionResult(ctx, playerRole, clearAndFinish: false);
+				ctx.AvailableQuestionIds.Clear();
 				return (true, null);
 			}
 
@@ -691,17 +674,20 @@ namespace FatalAttraction.Engine
 				
 				if (introTopics == null || introTopics.Count == 0) return (false, "No flirting topics found!");
 
-				// Pick 1 positive + 1 negative option
+				// Pick 1 positive + 1 negative option, then shuffle so neither is always first
 				var positiveTopics = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) > 0).OrderBy(_ => _random.Next()).Take(1);
 				var negativeTopics = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) < 0).OrderBy(_ => _random.Next()).Take(1);
-				var randomQuestions = positiveTopics.Concat(negativeTopics).Select(x => x["id"]?.Value<string>()).ToList();
+				var randomQuestions = positiveTopics.Concat(negativeTopics)
+					.Select(x => x["id"]?.Value<string>())
+					.OrderBy(_ => _random.Next()) // Randomize left/right position
+					.ToList();
 
 				var ctx = new InterviewContext
 				{
 					NpcId = npcId,
 					CurrentStage = "Intro",
 					CurrentScore = 0,
-					LastResponse = "The vibes are good...", // Initial state
+					LastResponse = "The vibes are good...",
 					AvailableQuestionIds = randomQuestions
 				};
 				
@@ -754,8 +740,11 @@ namespace FatalAttraction.Engine
 				string response = qData["response"]?.Value<string>() ?? "...";
 				ctx.LastResponse = response;
 
-				// End flirt immediately after picking an option (no follow-up stage)
-				ApplyInterviewResult(ctx, playerRole);
+				// Keep context alive so lastResponse is included in the broadcast during the preview window.
+				// Question IDs are cleared so no new options are shown — just the NPC response text.
+				// EndActiveInteraction() (called when panel closes) will remove it.
+				ApplyInterviewResult(ctx, playerRole, clearAndFinish: false);
+				ctx.AvailableQuestionIds.Clear();
 				return (true, null);
 			}
 
@@ -897,8 +886,12 @@ namespace FatalAttraction.Engine
 				ctx.CurrentScore += score;
 				ctx.LastResponse = qData["response"]?.Value<string>() ?? "...";
 
-				// End interview immediately after one pick (no follow-up)
+				// Keep context alive so lastResponse appears in the next broadcast during the preview window.
+				// ApplyProducerInterviewResult removes it from ActiveProducerInterviews, so re-add it.
+				// EndActiveInteraction() (called when panel closes) will remove it permanently.
 				ApplyProducerInterviewResult(ctx, playerRole);
+				_gameState.ActiveProducerInterviews[playerRole] = ctx;
+				ctx.AvailableQuestionIds.Clear();
 				return (true, null);
 			}
 
@@ -995,11 +988,8 @@ namespace FatalAttraction.Engine
 			{
 				_gameState.ActiveConversions.Remove(playerRole);
 			}
-			if (_gameState.ActiveConversions.ContainsKey(playerRole))
-			{
-				_gameState.ActiveConversions.Remove(playerRole);
-			}
 		}
+
 
 		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
 		{
@@ -1106,9 +1096,11 @@ namespace FatalAttraction.Engine
 		public void EndActiveInteraction(Role role)
 		{
 			if (GameState.ActiveInterviews.ContainsKey(role))
-			{
 				GameState.ActiveInterviews.Remove(role);
-			}
+			if (GameState.ActiveProducerInterviews.ContainsKey(role))
+				GameState.ActiveProducerInterviews.Remove(role);
+			if (GameState.ActiveConversions.ContainsKey(role))
+				GameState.ActiveConversions.Remove(role);
 		}
 
 		public (string npcId, string prompt) GetCurrentNPCPrompt()

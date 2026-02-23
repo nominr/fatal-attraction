@@ -217,9 +217,9 @@ public partial class NPCDialogueUI : Control
 		_npcNameLabel.Text = npcName.ToUpper();
 		
 		// Dynamic Font Scaling for Dialogue
-		int dialogueFontSize = 22; // Reduced base size from 28
-		if (npcDescription.Length > 200) dialogueFontSize = 16;
-		else if (npcDescription.Length > 80) dialogueFontSize = 19;
+		int dialogueFontSize = 30;
+		if (npcDescription.Length > 200) dialogueFontSize = 20;
+		else if (npcDescription.Length > 80) dialogueFontSize = 24;
 		
 		_dialogueTextLabel.AddThemeFontSizeOverride("normal_font_size", dialogueFontSize);
 		_dialogueTextLabel.AddThemeFontSizeOverride("bold_font_size", dialogueFontSize);
@@ -293,9 +293,9 @@ public partial class NPCDialogueUI : Control
 		btn.AddThemeFontOverride("font", _customFont);
 		
 		// Font scaling
-		int fontSize = 24;
-		if (text.Length > 40) fontSize = 16;
-		else if (text.Length > 25) fontSize = 19;
+		int fontSize = 32;
+		if (text.Length > 40) fontSize = 22;
+		else if (text.Length > 25) fontSize = 26;
 		
 		btn.AddThemeFontSizeOverride("font_size", fontSize);
 		btn.AddThemeColorOverride("font_color", Colors.Black);

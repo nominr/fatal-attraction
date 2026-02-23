@@ -107,6 +107,13 @@ public partial class GameWorld : Node2D
 	
 	// Track where panels were opened to auto-close on distance
 	private Vector2 _cameraSelectPanelOpenPos;
+
+	// How many seconds to keep the panel open after a chat-game answer
+	private double _responsePreviewTimer = 0.0;
+	private const double RESPONSE_PREVIEW_DURATION = 3.0;
+
+	// Suppresses self-healing re-open between intentional Close() and server confirmation
+	private bool _suppressSelfHeal = false;
 	
 	// +1 Rating Visual Feedback
 	private double _previousProducerRating = 0;
@@ -1366,7 +1373,7 @@ public partial class GameWorld : Node2D
 		_gameEngine.GameState.OnScoreChange += HandleScoreChange;
 		
 		_gameActive = true;
-		_timeRemaining = 50.0;
+		_timeRemaining = 300.0;
 
 		SpawnNPCs();
 		SpawnAllPlayers();
@@ -1637,17 +1644,49 @@ public partial class GameWorld : Node2D
 				RpcId(1, MethodName.SubmitAction, npcId, "start_convert");
 			}
 		}
+
+		// ADMIRER AUTO-FLIRT: start flirt immediately on click (no button needed)
+		if (_myRole?.ToLower() == "admirer")
+		{
+			var npcStateData = _localGameState?["npc_states"]?[npcId];
+			bool isAlive = npcStateData?["alive"]?.Value<bool>() ?? true;
+
+			var activeInterviewsMap = _localGameState?["active_interviews"] as JObject;
+			string aKey = Capitalize(_myRole);
+			bool alreadyFlirting = activeInterviewsMap != null && activeInterviewsMap.ContainsKey(aKey);
+
+			if (isAlive && !alreadyFlirting)
+			{
+				RpcId(1, MethodName.SubmitAction, npcId, "start_flirt");
+			}
+		}
+
+		// PRODUCER AUTO-INTERVIEW: start interview immediately on click (no button needed)
+		if (_myRole?.ToLower() == "producer")
+		{
+			var npcStateData = _localGameState?["npc_states"]?[npcId];
+			bool isAlive = npcStateData?["alive"]?.Value<bool>() ?? true;
+
+			var activeProdInterviews = _localGameState?["active_producer_interviews"] as JObject;
+			string pKey = Capitalize(_myRole);
+			bool alreadyInterviewing = activeProdInterviews != null && activeProdInterviews.ContainsKey(pKey);
+
+			if (isAlive && !alreadyInterviewing)
+			{
+				RpcId(1, MethodName.SubmitAction, npcId, "start_producer_interview");
+			}
+		}
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
 	{
 		RpcId(1, MethodName.SubmitAction, npcId, actionId);
 
-		// Close panel immediately when the player chooses to end flirting/interview
-		if (actionId == "stop_flirt" || actionId == "stop_producer_interview")
+		// After picking a chat-game answer, keep the panel open for RESPONSE_PREVIEW_DURATION
+		// seconds so the player can read the NPC's response, then auto-close.
+		if (actionId.StartsWith("interview_option_") || actionId.StartsWith("producer_interview_option_") || actionId.StartsWith("convert_option_"))
 		{
-			_npcDialogueUI?.Close();
-			OnInteractionPanelClosed();
+			_responsePreviewTimer = RESPONSE_PREVIEW_DURATION;
 		}
 	}
 
@@ -2394,8 +2433,23 @@ public partial class GameWorld : Node2D
 				if (distance > 150)
 				{
 					GD.Print($"Player moved too far from NPC {_currentInteractingNpcId} (distance: {distance}), closing menu");
+					_responsePreviewTimer = 0.0;   // Cancel any pending preview timer
+					_suppressSelfHeal = true;       // Don't let self-healing re-open the panel
 					_npcDialogueUI.Close();
-					OnInteractionPanelClosed(); // Ensure we notify server to clear state
+					OnInteractionPanelClosed();     // Notify server to clear state
+				}
+			}
+
+			// Auto-close after response preview timer expires
+			if (_responsePreviewTimer > 0.0)
+			{
+				_responsePreviewTimer -= delta;
+				if (_responsePreviewTimer <= 0.0)
+				{
+					_responsePreviewTimer = 0.0;
+					_suppressSelfHeal = true;  // Don't let self-healing re-open the panel
+					_npcDialogueUI?.Close();
+					OnInteractionPanelClosed();
 				}
 			}
 		}
@@ -2634,6 +2688,15 @@ public partial class GameWorld : Node2D
 		UpdateNPCVisuals();
 		UpdateGhostMode();
 
+		// If the player is previewing a chat-game response, refresh the panel text immediately
+		// so the NPC's answer is visible for the duration of the timer.
+		if (_responsePreviewTimer > 0.0 && _npcDialogueUI != null && _npcDialogueUI.Visible
+			&& !string.IsNullOrEmpty(_currentInteractingNpcId))
+		{
+			RefreshInteractionPanel();
+		}
+
+
 		// Update Leaderboard Data
 		if (_leaderboardTriangle != null)
 		{
@@ -2691,72 +2754,80 @@ public partial class GameWorld : Node2D
 		// Refresh Interaction Panel logic with "Self-Healing" for Interviews
 		// If server says we are in an interview, we ensure the panel is open.
 		var activeInterviews = _localGameState?["active_interviews"] as JObject;
-		bool isInInterview = false;
-		string interviewNpcId = null;
-		
-		if (!string.IsNullOrEmpty(_myRole) && activeInterviews != null)
+		var activeConversions2 = _localGameState?["active_conversions"] as JObject;
+		var activeProdInterviews2 = _localGameState?["active_producer_interviews"] as JObject;
+		string myRoleKey = Capitalize(_myRole ?? "");
+
+		// Detect whether the server still has ANY active interaction for us
+		bool serverHasActive =
+			(!string.IsNullOrEmpty(_myRole)) &&
+			(
+				(activeInterviews != null && activeInterviews.ContainsKey(myRoleKey)) ||
+				(activeConversions2 != null && activeConversions2.ContainsKey(myRoleKey)) ||
+				(activeProdInterviews2 != null && activeProdInterviews2.ContainsKey(myRoleKey))
+			);
+
+		// Once the server confirms no active interaction, lift the suppress flag
+		if (_suppressSelfHeal && !serverHasActive)
 		{
-			string roleKey = Capitalize(_myRole); 
-			if (activeInterviews.ContainsKey(roleKey))
+			_suppressSelfHeal = false;
+		}
+
+		// --- Self-healing: only runs when we have NOT intentionally closed the panel ---
+		if (!_suppressSelfHeal)
+		{
+			bool isInInterview = false;
+			string interviewNpcId = null;
+
+			if (!string.IsNullOrEmpty(_myRole) && activeInterviews != null)
 			{
-				var interviewInfo = activeInterviews[roleKey];
-				string nId = interviewInfo["npcId"]?.Value<string>();
-				if (!string.IsNullOrEmpty(nId))
+				if (activeInterviews.ContainsKey(myRoleKey))
 				{
-					isInInterview = true;
-					interviewNpcId = nId;
+					var interviewInfo = activeInterviews[myRoleKey];
+					string nId = interviewInfo["npcId"]?.Value<string>();
+					if (!string.IsNullOrEmpty(nId)) { isInInterview = true; interviewNpcId = nId; }
 				}
 			}
-		}
 
-		if (isInInterview && interviewNpcId != null)
-		{
-			// If panel is closed or showing wrong NPC, force it open/correct
-			if (!_npcDialogueUI.Visible || _currentInteractingNpcId != interviewNpcId)
+			if (isInInterview && interviewNpcId != null)
 			{
-				_currentInteractingNpcId = interviewNpcId;
-				RefreshInteractionPanel(); 
-			}
-			// Don't refresh every frame - InteractionPanel now caches and checks if rebuild is needed
-		}
-		else
-		{
-			// Self-healing for Prophet active conversions
-			var activeConversions = _localGameState?["active_conversions"] as JObject;
-			bool isInConversion = false;
-			string conversionNpcId = null;
-
-			if (!string.IsNullOrEmpty(_myRole) && activeConversions != null)
-			{
-				string roleKey2 = Capitalize(_myRole);
-				if (activeConversions.ContainsKey(roleKey2))
+				if (!_npcDialogueUI.Visible || _currentInteractingNpcId != interviewNpcId)
 				{
-					var convInfo = activeConversions[roleKey2];
-					string nId = convInfo["npcId"]?.Value<string>();
-					if (!string.IsNullOrEmpty(nId))
+					_currentInteractingNpcId = interviewNpcId;
+					RefreshInteractionPanel();
+				}
+			}
+			else
+			{
+				bool isInConversion = false;
+				string conversionNpcId = null;
+
+				if (!string.IsNullOrEmpty(_myRole) && activeConversions2 != null)
+				{
+					if (activeConversions2.ContainsKey(myRoleKey))
 					{
-						isInConversion = true;
-						conversionNpcId = nId;
+						var convInfo = activeConversions2[myRoleKey];
+						string nId = convInfo["npcId"]?.Value<string>();
+						if (!string.IsNullOrEmpty(nId)) { isInConversion = true; conversionNpcId = nId; }
 					}
 				}
-			}
 
-			if (isInConversion && conversionNpcId != null)
-			{
-				if (!_npcDialogueUI.Visible || _currentInteractingNpcId != conversionNpcId)
+				if (isInConversion && conversionNpcId != null)
 				{
-					_currentInteractingNpcId = conversionNpcId;
-					RefreshInteractionPanel();
+					if (!_npcDialogueUI.Visible || _currentInteractingNpcId != conversionNpcId)
+					{
+						_currentInteractingNpcId = conversionNpcId;
+						RefreshInteractionPanel();
+					}
 				}
-			}
-			else if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
-			{
-				// Only refresh if game state actually changed
-				int currentHash = _localGameState?.GetHashCode() ?? 0;
-				if (currentHash != _lastGameStateHash)
+				else if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 				{
-					_lastGameStateHash = currentHash;
-					RefreshInteractionPanel();
+					int currentHash = _localGameState?.GetHashCode() ?? 0;
+					if (currentHash != _lastGameStateHash)
+					{
+						_lastGameStateHash = currentHash;
+						RefreshInteractionPanel();
+					}
 				}
 			}
 		}
@@ -3027,7 +3098,8 @@ public partial class GameWorld : Node2D
 
 
 		// Refresh Interaction Panel if open (for dynamic content like Interview)
-		if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		// Only refresh when we haven't intentionally closed the panel (suppress flag prevents re-opening)
+		if (!_suppressSelfHeal && _npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
 		{
 			RefreshInteractionPanel();
 		}
