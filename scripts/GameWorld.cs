@@ -3020,6 +3020,12 @@ public partial class GameWorld : Node2D
 			// 2. BLOCK UI CLICKS & SHOW OVERLAY
 			if (!HasNode("GameOverOverlay"))
 			{
+				// Close interaction panel so buttons don't bleed through on the win screen
+				if (_npcDialogueUI != null && _npcDialogueUI.Visible)
+				{
+					_npcDialogueUI.Close();
+				}
+				_currentInteractingNpcId = null;
 				// Full screen blocking rect with title background
 				var overlay = new TextureRect();
 				overlay.Name = "GameOverOverlay";
