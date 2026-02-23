@@ -143,6 +143,8 @@ namespace FatalAttraction.Engine
 		public Dictionary<Role, InterviewContext> ActiveProducerInterviews { get; private set; } = new();
 		public JObject InterviewData { get; private set; }  // flirt_data.json
 		public JObject ProducerInterviewData { get; private set; } // interview_data.json
+		public Dictionary<Role, InterviewContext> ActiveConversions { get; private set; } = new();
+		public JObject ConversionData { get; private set; }
 
 		public GameState(string configPath)
 		{
@@ -169,13 +171,34 @@ namespace FatalAttraction.Engine
 			{
 				var interviewPath = configPath.Replace("game_configuration.json", "interview_data.json");
 				if (File.Exists(interviewPath))
+				{
 					ProducerInterviewData = JObject.Parse(File.ReadAllText(interviewPath));
+				}
 				else
+				{
 					Console.WriteLine($"[GameState] Warning: Interview data not found at {interviewPath}");
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"[GameState] Error loading interview data: {ex.Message}");
+				Console.WriteLine($"[GameState] Error loading conversion data: {ex.Message}");
+			}
+
+			// Load Conversion Data
+			try
+			{
+				var conversionPath = configPath.Replace("game_configuration.json", "conversion_data.json");
+				if (File.Exists(conversionPath))
+				{
+					ConversionData = JObject.Parse(File.ReadAllText(conversionPath));
+				}
+				else
+				{
+					Console.WriteLine($"[GameState] Warning: Conversion data not found at {conversionPath}");
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[GameState] Error loading conversion data: {ex.Message}");
 			}
 
 			InitializeGame();
@@ -335,6 +358,11 @@ namespace FatalAttraction.Engine
 				{
 					continue;
 				}
+				// Prophet conversion is now handled by conversion_data.json dialogue — suppress old config buttons.
+				if (playerRole == Role.Prophet && !string.IsNullOrEmpty(id) && id.StartsWith("convert_"))
+				{
+					continue;
+				}
 				if (IsOptionAvailable(option, playerRole, npc, player))
 				{
 					availableOptions.Add(option);
@@ -393,6 +421,32 @@ namespace FatalAttraction.Engine
 					{ "text", "Attempt Resurrection (20% Chance)" },
 					{ "requires", new JObject() }
 				});
+			}
+
+			// PROPHET: Conversion Dialogue (Live, not yet converted)
+			if (playerRole == Role.Prophet && npc.Alive && !npc.Converted)
+			{
+				if (_gameState.ActiveConversions.TryGetValue(playerRole, out var convCtx) && convCtx.NpcId == npcId)
+				{
+					// In active conversion — show followup response buttons only
+					var convData = _gameState.ConversionData;
+					foreach (var qId in convCtx.AvailableQuestionIds)
+					{
+						var qData = convData?["cult_recruitment"]?["followups"]?[qId];
+						if (qData != null)
+						{
+							availableOptions.Add(new JObject
+							{
+								{ "id", $"convert_option_{qId}" },
+								{ "text", qData["text"] }
+							});
+						}
+					}
+
+					// Return immediately — don't mix with other options
+					return availableOptions;
+				}
+				// If no active conversion, return empty list — client will auto-submit start_convert
 			}
 
 			return availableOptions;
@@ -556,6 +610,74 @@ namespace FatalAttraction.Engine
 			var npc = _gameState.GetNPC(npcId);
 			if (npc == null)
 				return (false, "NPC not found");
+
+			// PROPHET CONVERSION START
+			if (optionId == "start_convert")
+			{
+				if (playerRole != Role.Prophet) return (false, "Only Prophet can convert.");
+				if (_gameState.ActiveConversions.ContainsKey(playerRole)) return (true, null); // Already running, idempotent
+				if (npc.Converted) return (false, $"{npc.Name} is already converted.");
+
+				var convData = _gameState.ConversionData;
+				var topics = convData?["cult_recruitment"]?["conversion_topics"] as JArray;
+
+				if (topics == null || topics.Count == 0) return (false, "No conversion topics found!");
+
+				// Pick ONE random topic — display its text as the NPC's opening line
+				var topic = topics.OrderBy(x => _random.Next()).First();
+				string topicNpcLine = topic["text"]?.Value<string>() ?? "...";
+				var followups = topic["followups"]?.ToObject<List<string>>() ?? new List<string>();
+
+				var ctx = new InterviewContext
+				{
+					NpcId = npcId,
+					CurrentStage = "Followup",           // Skip Intro — go straight to responses
+					CurrentScore = 0,
+					LastResponse = topicNpcLine,          // NPC speaks their topic line immediately
+					AvailableQuestionIds = followups       // These are what the Prophet can say back
+				};
+
+				_gameState.ActiveConversions[playerRole] = ctx;
+				return (true, null);
+			}
+
+			if (optionId == "stop_convert")
+			{
+				if (_gameState.ActiveConversions.ContainsKey(playerRole))
+				{
+					ApplyConversionResult(_gameState.ActiveConversions[playerRole], playerRole, clearAndFinish: true);
+					_gameState.AddNotification("You stopped converting.");
+					return (true, null);
+				}
+				return (false, "No active conversion.");
+			}
+
+			if (optionId.StartsWith("convert_option_"))
+			{
+				if (!_gameState.ActiveConversions.TryGetValue(playerRole, out var ctx) || ctx.NpcId != npcId)
+				{
+					return (false, "No active conversion with this NPC.");
+				}
+
+				string qId = optionId.Replace("convert_option_", "");
+				var convData = _gameState.ConversionData;
+
+				// Always look up in followups — no Intro stage anymore
+				var qData = convData?["cult_recruitment"]?["followups"]?[qId];
+				if (qData == null) return (false, "Invalid conversion option.");
+
+				// Apply score
+				int score = qData["score"]?.Value<int>() ?? 0;
+				ctx.CurrentScore += score;
+
+				// Show NPC's reaction
+				string response = qData["response"]?.Value<string>() ?? "...";
+				ctx.LastResponse = response;
+
+				// Apply result and clear the context immediately (prevents self-healing UI from reopening this panel)
+				ApplyConversionResult(ctx, playerRole, clearAndFinish: true);
+				return (true, null);
+			}
 
 			// FLIRT RESOLUTION (Formerly Interview)
 			if (optionId == "start_flirt")
@@ -835,6 +957,77 @@ namespace FatalAttraction.Engine
 			if (_gameState.ActiveProducerInterviews.ContainsKey(playerRole))
 			{
 				_gameState.ActiveProducerInterviews.Remove(playerRole);
+			}
+			if (_gameState.ActiveConversions.ContainsKey(playerRole))
+			{
+				_gameState.ActiveConversions.Remove(playerRole);
+			}
+		}
+		
+
+		private void ApplyConversionResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
+		{
+			var npc = _gameState.NPCs[ctx.NpcId];
+			if (npc != null)
+			{
+				Vector3 points = ScoringRules.GetConversionPoints(ctx.CurrentScore);
+				npc.State += points;
+				Console.WriteLine($"[DEBUG] Conversion: {npc.Name} State += {points} -> {npc.State}");
+
+				// Mark as converted if prophet score component reaches threshold
+				const float ConvertThreshold = 4f;
+				if (npc.State.Y >= ConvertThreshold && !npc.Converted)
+				{
+					npc.Converted = true;
+					_gameState.AddNotification($"{npc.Name} has been converted by the Prophet!");
+				}
+
+				Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {ctx.CurrentScore}");
+				_gameState.TriggerScoreChange(playerRole, ctx.CurrentScore);
+			}
+
+			string resultMsg = ctx.CurrentScore > 0 ? "They seem receptive!" : (ctx.CurrentScore < 0 ? "They pushed back..." : "Hard to tell.");
+			_gameState.AddNotification($"Conversion finished. Result: {resultMsg}");
+			ctx.CurrentScore = 0;
+
+			if (clearAndFinish)
+			{
+				_gameState.ActiveConversions.Remove(playerRole);
+			}
+			if (_gameState.ActiveConversions.ContainsKey(playerRole))
+			{
+				_gameState.ActiveConversions.Remove(playerRole);
+			}
+		}
+
+		private void ApplyConversionResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
+		{
+			var npc = _gameState.NPCs[ctx.NpcId];
+			if (npc != null)
+			{
+				Vector3 points = ScoringRules.GetConversionPoints(ctx.CurrentScore);
+				npc.State += points;
+				Console.WriteLine($"[DEBUG] Conversion: {npc.Name} State += {points} -> {npc.State}");
+
+				// Mark as converted if prophet score component reaches threshold
+				const float ConvertThreshold = 4f;
+				if (npc.State.Y >= ConvertThreshold && !npc.Converted)
+				{
+					npc.Converted = true;
+					_gameState.AddNotification($"{npc.Name} has been converted by the Prophet!");
+				}
+
+				Console.WriteLine($"[GameEngine] Invoking OnScoreChange for {playerRole} with score {ctx.CurrentScore}");
+				_gameState.TriggerScoreChange(playerRole, ctx.CurrentScore);
+			}
+
+			string resultMsg = ctx.CurrentScore > 0 ? "They seem receptive!" : (ctx.CurrentScore < 0 ? "They pushed back..." : "Hard to tell.");
+			_gameState.AddNotification($"Conversion finished. Result: {resultMsg}");
+			ctx.CurrentScore = 0;
+
+			if (clearAndFinish)
+			{
+				_gameState.ActiveConversions.Remove(playerRole);
 			}
 		}
 

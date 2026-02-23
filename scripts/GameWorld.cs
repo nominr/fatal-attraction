@@ -1566,6 +1566,17 @@ public partial class GameWorld : Node2D
 			}
 		}
 
+		// CONVERSION UI OVERRIDE (Prophet)
+		var activeConversionsClick = _localGameState?["active_conversions"] as JObject;
+		if (activeConversionsClick != null && activeConversionsClick.ContainsKey(roleKey))
+		{
+			var convInfo = activeConversionsClick[roleKey];
+			if (convInfo["npcId"]?.Value<string>() == npcId)
+			{
+				desc = convInfo["lastResponse"]?.Value<string>() ?? desc;
+			}
+		}
+
 		var actionsList = npcActions?.ToObject<List<JToken>>() ?? new List<JToken>();
 
 		if (!string.IsNullOrEmpty(_currentInteractingNpcId) && _currentInteractingNpcId != npcId)
@@ -1608,6 +1619,24 @@ public partial class GameWorld : Node2D
 		}
 
 		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState, npcPortrait);
+
+		// PROPHET AUTO-CONVERT: trigger start_convert immediately on click (no button needed)
+		if (_myRole?.ToLower() == "prophet")
+		{
+			var npcStateData = _localGameState?["npc_states"]?[npcId];
+			bool isAlive = npcStateData?["alive"]?.Value<bool>() ?? true;
+			bool isConverted = npcStateData?["converted"]?.Value<bool>() ?? false;
+
+			var activeConvs = _localGameState?["active_conversions"] as JObject;
+			string rKey = Capitalize(_myRole);
+			bool alreadyConverting = activeConvs != null && activeConvs.ContainsKey(rKey)
+				&& activeConvs[rKey]["npcId"]?.Value<string>() == npcId;
+
+			if (isAlive && !isConverted && !alreadyConverting)
+			{
+				RpcId(1, MethodName.SubmitAction, npcId, "start_convert");
+			}
+		}
 	}
 
 	private void OnActionSelected(string npcId, string actionId)
@@ -2297,9 +2326,19 @@ public partial class GameWorld : Node2D
 						foreach (var kvp in _gameEngine.GameState.ActiveInterviews)
 						{
 							if (!string.IsNullOrEmpty(kvp.Value.NpcId))
-								frozenNpcIds.Add(kvp.Value.NpcId);
+							frozenNpcIds.Add(kvp.Value.NpcId);
 						}
 					}
+
+					// Also freeze NPCs in active conversions (Prophet)
+					if (_gameEngine.GameState.ActiveConversions != null)
+					{
+						foreach (var kvp in _gameEngine.GameState.ActiveConversions)
+						{
+							if (!string.IsNullOrEmpty(kvp.Value.NpcId))
+								frozenNpcIds.Add(kvp.Value.NpcId);
+						}
+					}	
 			
 					// Also freeze the NPC we are currently interacting with locally
 					if (!string.IsNullOrEmpty(_currentInteractingNpcId))
@@ -2512,6 +2551,32 @@ public partial class GameWorld : Node2D
 		}
 		status["active_interviews"] = interviews;
 
+		// Active Conversion State (for UI - Prophet)
+		var conversions = new JObject();
+		foreach (var kvp in _gameEngine.GameState.ActiveConversions)
+		{
+			var ctx = kvp.Value;
+			conversions[kvp.Key.ToString()] = new JObject
+			{
+				{ "npcId", ctx.NpcId },
+				{ "lastResponse", ctx.LastResponse }
+			};
+		}
+		status["active_conversions"] = conversions;
+
+		// Active Conversion State (for UI - Prophet)
+		var conversions = new JObject();
+		foreach (var kvp in _gameEngine.GameState.ActiveConversions)
+		{
+			var ctx = kvp.Value;
+			conversions[kvp.Key.ToString()] = new JObject
+			{
+				{ "npcId", ctx.NpcId },
+				{ "lastResponse", ctx.LastResponse }
+			};
+		}
+		status["active_conversions"] = conversions;
+
 		// Active Producer Interview State (for UI)
 		var producerInterviews = new JObject();
 		foreach (var kvp in _gameEngine.GameState.ActiveProducerInterviews)
@@ -2667,14 +2732,45 @@ public partial class GameWorld : Node2D
 			}
 			// Don't refresh every frame - InteractionPanel now caches and checks if rebuild is needed
 		}
-		else if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+		else
 		{
-			// Only refresh if game state actually changed
-			int currentHash = _localGameState?.GetHashCode() ?? 0;
-			if (currentHash != _lastGameStateHash)
+			// Self-healing for Prophet active conversions
+			var activeConversions = _localGameState?["active_conversions"] as JObject;
+			bool isInConversion = false;
+			string conversionNpcId = null;
+
+			if (!string.IsNullOrEmpty(_myRole) && activeConversions != null)
 			{
-				_lastGameStateHash = currentHash;
-				RefreshInteractionPanel();
+				string roleKey2 = Capitalize(_myRole);
+				if (activeConversions.ContainsKey(roleKey2))
+				{
+					var convInfo = activeConversions[roleKey2];
+					string nId = convInfo["npcId"]?.Value<string>();
+					if (!string.IsNullOrEmpty(nId))
+					{
+						isInConversion = true;
+						conversionNpcId = nId;
+					}
+				}
+			}
+
+			if (isInConversion && conversionNpcId != null)
+			{
+				if (!_npcDialogueUI.Visible || _currentInteractingNpcId != conversionNpcId)
+				{
+					_currentInteractingNpcId = conversionNpcId;
+					RefreshInteractionPanel();
+				}
+			}
+			else if (_npcDialogueUI.Visible && !string.IsNullOrEmpty(_currentInteractingNpcId))
+			{
+				// Only refresh if game state actually changed
+				int currentHash = _localGameState?.GetHashCode() ?? 0;
+				if (currentHash != _lastGameStateHash)
+				{
+					_lastGameStateHash = currentHash;
+					RefreshInteractionPanel();
+				}
 			}
 		}
 	}
@@ -2709,6 +2805,28 @@ public partial class GameWorld : Node2D
 			if (interviewInfo["npcId"]?.Value<string>() == npcId)
 			{
 				desc = interviewInfo["lastResponse"]?.Value<string>() ?? desc;
+			}
+		}
+
+		// CONVERSION UI OVERRIDE (Prophet)
+		var activeConversions = _localGameState?["active_conversions"] as JObject;
+		if (activeConversions != null && activeConversions.ContainsKey(roleKey))
+		{
+			var convInfo = activeConversions[roleKey];
+			if (convInfo["npcId"]?.Value<string>() == npcId)
+			{
+				desc = convInfo["lastResponse"]?.Value<string>() ?? desc;
+			}
+		}
+
+		// CONVERSION UI OVERRIDE (Prophet)
+		var activeConversions = _localGameState?["active_conversions"] as JObject;
+		if (activeConversions != null && activeConversions.ContainsKey(roleKey))
+		{
+			var convInfo = activeConversions[roleKey];
+			if (convInfo["npcId"]?.Value<string>() == npcId)
+			{
+				desc = convInfo["lastResponse"]?.Value<string>() ?? desc;
 			}
 		}
 
