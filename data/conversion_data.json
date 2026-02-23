@@ -1,0 +1,288 @@
+{
+    "cult_recruitment": {
+        "conversion_topics": [
+            {
+                "id": "npc_lonely_pool",
+                "text": "Nobody picked me for the pool date.",
+                "score": 0,
+                "response": "I guess I'm forgettable.",
+                "followups": [
+                    "convert_belonging",
+                    "convert_isolate"
+                ]
+            },
+            {
+                "id": "npc_camera_anxiety",
+                "text": "I hate when cameras catch everything.",
+                "score": 0,
+                "response": "I feel exposed all the time.",
+                "followups": [
+                    "convert_safe_space",
+                    "convert_control"
+                ]
+            },
+            {
+                "id": "npc_jealous",
+                "text": "They're getting all the attention.",
+                "score": 0,
+                "response": "I feel overshadowed.",
+                "followups": [
+                    "convert_special",
+                    "convert_envy"
+                ]
+            },
+            {
+                "id": "npc_trust",
+                "text": "I don't trust anyone here.",
+                "score": -1,
+                "response": "Everyone feels fake.",
+                "followups": [
+                    "convert_loyalty",
+                    "convert_fear"
+                ]
+            },
+            {
+                "id": "npc_exhausted",
+                "text": "I'm tired of pretending.",
+                "score": 1,
+                "response": "It's draining.",
+                "followups": [
+                    "convert_authentic",
+                    "convert_erase"
+                ]
+            },
+            {
+                "id": "npc_back_home",
+                "text": "I miss who I was back home.",
+                "score": 0,
+                "response": "Everything feels distant now.",
+                "followups": [
+                    "convert_redefine",
+                    "convert_cutoff"
+                ]
+            },
+            {
+                "id": "npc_insecure",
+                "text": "Do you think I'm boring?",
+                "score": 0,
+                "response": "Be honest.",
+                "followups": [
+                    "convert_validation",
+                    "convert_dependency"
+                ]
+            },
+            {
+                "id": "npc_targeted",
+                "text": "I think I'm next to go.",
+                "score": -1,
+                "response": "I feel it.",
+                "followups": [
+                    "convert_protect",
+                    "convert_paranoia"
+                ]
+            },
+            {
+                "id": "npc_powerless",
+                "text": "I have no control here.",
+                "score": 1,
+                "response": "Everything feels decided already.",
+                "followups": [
+                    "convert_power",
+                    "convert_dominate"
+                ]
+            },
+            {
+                "id": "npc_confused",
+                "text": "I don't know what's real anymore.",
+                "score": 1,
+                "response": "It’s all blending together.",
+                "followups": [
+                    "convert_clarity",
+                    "convert_gaslight"
+                ]
+            },
+            {
+                "id": "npc_left_out",
+                "text": "They stopped inviting me to talks.",
+                "score": 0,
+                "response": "I'm on the outside.",
+                "followups": [
+                    "convert_circle",
+                    "convert_isolate"
+                ]
+            },
+            {
+                "id": "npc_love_doubt",
+                "text": "What if nobody chooses me?",
+                "score": 0,
+                "response": "Maybe I'm unlovable.",
+                "followups": [
+                    "convert_belonging",
+                    "convert_dependency"
+                ]
+            },
+            {
+                "id": "npc_angry",
+                "text": "I'm sick of their games.",
+                "score": 1,
+                "response": "I want to flip everything.",
+                "followups": [
+                    "convert_revolution",
+                    "convert_destroy"
+                ]
+            },
+            {
+                "id": "npc_overthinking",
+                "text": "I replay every conversation.",
+                "score": 0,
+                "response": "I can't stop analyzing.",
+                "followups": [
+                    "convert_grounded",
+                    "convert_fear"
+                ]
+            },
+            {
+                "id": "npc_detached",
+                "text": "I feel numb lately.",
+                "score": 1,
+                "response": "Like I'm floating.",
+                "followups": [
+                    "convert_purpose",
+                    "convert_void"
+                ]
+            }
+        ],
+        "followups": {
+            "convert_belonging": {
+                "text": "You're not alone with us.",
+                "score": 1,
+                "response": "With you?"
+            },
+            "convert_isolate": {
+                "text": "Stay alone. Or stand with me.",
+                "score": -1,
+                "response": "That's intense."
+            },
+            "convert_safe_space": {
+                "text": "We see you. Cameras don't matter.",
+                "score": 1,
+                "response": "That feels safer."
+            },
+            "convert_control": {
+                "text": "Cameras obey influence. I have influence.",
+                "score": -1,
+                "response": "What does that mean?"
+            },
+            "convert_special": {
+                "text": "You're different. That's power.",
+                "score": 1,
+                "response": "Different how?"
+            },
+            "convert_envy": {
+                "text": "Take what they have. With me.",
+                "score": -1,
+                "response": "Take it?"
+            },
+            "convert_loyalty": {
+                "text": "Trust few. Trust us.",
+                "score": 1,
+                "response": "Us?"
+            },
+            "convert_fear": {
+                "text": "You're right. They're against you.",
+                "score": -1,
+                "response": "That's terrifying."
+            },
+            "convert_authentic": {
+                "text": "Drop the act. Stay with us.",
+                "score": 1,
+                "response": "That sounds relieving."
+            },
+            "convert_erase": {
+                "text": "The old you doesn't matter anymore.",
+                "score": -1,
+                "response": "That's harsh."
+            },
+            "convert_redefine": {
+                "text": "Become someone stronger here.",
+                "score": 1,
+                "response": "Stronger?"
+            },
+            "convert_cutoff": {
+                "text": "Home weakens you. Let it go.",
+                "score": -1,
+                "response": "I don't know about that."
+            },
+            "convert_validation": {
+                "text": "You're compelling. They just can't see.",
+                "score": 1,
+                "response": "Really?"
+            },
+            "convert_dependency": {
+                "text": "Without me, you'd fade away.",
+                "score": -1,
+                "response": "That's unfair."
+            },
+            "convert_protect": {
+                "text": "Stand with us. You're safe.",
+                "score": 1,
+                "response": "Safe how?"
+            },
+            "convert_paranoia": {
+                "text": "They're planning something. I heard whispers.",
+                "score": -1,
+                "response": "Whispers?"
+            },
+            "convert_power": {
+                "text": "Together we decide outcomes.",
+                "score": 1,
+                "response": "Decide?"
+            },
+            "convert_dominate": {
+                "text": "Join me or get eliminated.",
+                "score": -1,
+                "response": "Wow."
+            },
+            "convert_clarity": {
+                "text": "We bring clarity. Follow us.",
+                "score": 1,
+                "response": "Clarity sounds nice."
+            },
+            "convert_gaslight": {
+                "text": "Reality bends. Trust me instead.",
+                "score": -1,
+                "response": "That's unsettling."
+            },
+            "convert_circle": {
+                "text": "Join our circle tonight.",
+                "score": 1,
+                "response": "Tonight?"
+            },
+            "convert_revolution": {
+                "text": "Flip the house with us.",
+                "score": 1,
+                "response": "Tempting."
+            },
+            "convert_destroy": {
+                "text": "Burn it down.",
+                "score": -1,
+                "response": "That's extreme."
+            },
+            "convert_grounded": {
+                "text": "Stop spiraling. Stand with us.",
+                "score": 1,
+                "response": "Maybe."
+            },
+            "convert_purpose": {
+                "text": "We give you purpose here.",
+                "score": 1,
+                "response": "Purpose?"
+            },
+            "convert_void": {
+                "text": "Nothing matters. Only us.",
+                "score": -1,
+                "response": "That's dark."
+            }
+        }
+    }
+}
