@@ -1736,6 +1736,26 @@ public partial class GameWorld : Node2D
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestPunchAnimation(string facing, bool flipH)
+	{
+		if (!Multiplayer.IsServer()) return;
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
+		
+		// Broadcast animation to all clients
+		Rpc(MethodName.SyncPunchAnimation, senderId, facing, flipH);
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void SyncPunchAnimation(long playerId, string facing, bool flipH)
+	{
+		if (_playerControllers.TryGetValue(playerId, out var playerCtrl))
+		{
+			playerCtrl.TriggerPunchAnimation(facing, flipH);
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void PunchTargetNPC(string targetNpcId)
 	{
 		if (!Multiplayer.IsServer()) return;
@@ -2028,19 +2048,20 @@ public partial class GameWorld : Node2D
 
 	private void HandlePunchInput()
 	{
-		bool pressed = Input.IsKeyPressed(Key.P);
+		bool pPressed = Input.IsKeyPressed(Key.P);
+		bool spacePressed = Input.IsActionJustPressed("ui_select");
 		
 		// All roles can punch now
 		if (string.IsNullOrEmpty(_myRole))
 		{
-			_wasPunchPressed = pressed;
+			_wasPunchPressed = pPressed;
 			return;
 		}
 
 		// Don't allow dead players to punch
 		if (IsLocalPlayerDead())
 		{
-			_wasPunchPressed = pressed;
+			_wasPunchPressed = pPressed;
 			return;
 		}
 
@@ -2055,12 +2076,16 @@ public partial class GameWorld : Node2D
 
 		if (_localPlayer == null)
 		{
-			_wasPunchPressed = pressed;
+			_wasPunchPressed = pPressed;
 			return;
 		}
 
-		if (pressed && !_wasPunchPressed)
+		// Punch input: P key (just pressed via pPressed && !_wasPunchPressed) OR Space bar (just pressed via spacePressed)
+		if ((pPressed && !_wasPunchPressed) || spacePressed)
 		{
+			// Request punch animation for all screens, sending current facing/flip
+			RpcId(1, MethodName.RequestPunchAnimation, _localPlayer.FacingDirection, _localPlayer.FlipH);
+
 			string closestNpcId = null;
 			long closestPlayerId = -1;
 			float closestDistance = float.MaxValue;
@@ -2161,7 +2186,7 @@ public partial class GameWorld : Node2D
 			}
 		}
 
-		_wasPunchPressed = pressed;
+		_wasPunchPressed = pPressed;
 	}
 
 	private void OnCollapseNotificationPressed()
@@ -3453,73 +3478,51 @@ public partial class GameWorld : Node2D
 
 	private void OnPlayerPositionChanged(long playerId, Vector2 position)
 	{
+		if (!_playerControllers.TryGetValue(playerId, out var controller)) return;
+
+		string facing = controller.FacingDirection;
+		bool flipH = controller.FlipH;
+		bool isMoving = controller.IsMoving;
+
 		// This is called when the LOCAL player moves on this machine
-		GD.Print($"[GameWorld] OnPlayerPositionChanged: Player {playerId} at {position}, IsServer={Multiplayer.IsServer()}");
+		GD.Print($"[GameWorld] OnPlayerPositionChanged: Player {playerId} at {position}, facing={facing}, flip={flipH}, isMoving={isMoving}");
 		
 		// Send the position update to all other peers
 		if (Multiplayer.IsServer())
 		{
-			// Server: Update own position locally and broadcast to all clients
-			if (_playerControllers.TryGetValue(playerId, out var controller))
-			{
-				controller.Position = position; // Update server's own position
-				GD.Print($"[GameWorld] Server updated own position for player {playerId}");
-			}
-			// Broadcast to all clients
-			GD.Print($"[GameWorld] Server broadcasting position to all clients");
-			Rpc(MethodName.SyncPlayerPosition, playerId, position);
+			controller.Position = position; // Update server's own position
+			Rpc(MethodName.SyncPlayerPosition, playerId, position, facing, flipH, isMoving);
 		}
 		else
 		{
-			// Client: Send position to server, server will broadcast to everyone
-			GD.Print($"[GameWorld] Client sending position to server");
-			RpcId(1, MethodName.SendPlayerPosition, playerId, position);
+			RpcId(1, MethodName.SendPlayerPosition, playerId, position, facing, flipH, isMoving);
 		}
 	}
 
 	// Called by clients to send their position to the server
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
-	private void SendPlayerPosition(long playerId, Vector2 position)
+	private void SendPlayerPosition(long playerId, Vector2 position, string facing, bool flipH, bool isMoving)
 	{
 		if (!Multiplayer.IsServer()) return;
 		
-		GD.Print($"[GameWorld] Server received position from client: Player {playerId} at {position}");
-		
-		// Server received position from a client
-		// Update the position on the server
 		if (_playerControllers.TryGetValue(playerId, out var controller))
 		{
-			controller.Position = position; // Directly set position (not UpdateRemotePosition)
-			GD.Print($"[GameWorld] Server updated remote player {playerId} position");
-		}
-		else
-		{
-			GD.PrintErr($"[GameWorld] Server couldn't find controller for player {playerId}");
+			controller.Position = position;
+			// Also update server's view of the remote player's animation state
+			controller.UpdateRemotePosition(position, facing, flipH, isMoving);
 		}
 		
 		// Broadcast to ALL clients
-		GD.Print($"[GameWorld] Server broadcasting to all clients");
-		Rpc(MethodName.SyncPlayerPosition, playerId, position);
+		Rpc(MethodName.SyncPlayerPosition, playerId, position, facing, flipH, isMoving);
 	}
 
 	// Called by the server to sync player position to all clients
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
-	private void SyncPlayerPosition(long playerId, Vector2 position)
+	private void SyncPlayerPosition(long playerId, Vector2 position, string facing, bool flipH, bool isMoving)
 	{
-		// This is received by all clients (not the server)
-		GD.Print($"[GameWorld] SyncPlayerPosition RPC received on peer {Multiplayer.GetUniqueId()}: Player {playerId} at {position}");
-		GD.Print($"[GameWorld] Current player controllers: {_playerControllers.Count}, Keys: [{string.Join(", ", _playerControllers.Keys)}]");
-		
-		// Update the player controller's position for remote players
 		if (_playerControllers.TryGetValue(playerId, out var controller))
 		{
-			GD.Print($"[GameWorld] Client updating remote player {playerId}, isLocal={controller.Name}");
-			controller.UpdateRemotePosition(position);
-		}
-		else
-		{
-			GD.PrintErr($"[GameWorld] Client couldn't find controller for player {playerId}");
-			GD.Print($"[GameWorld] Available players: {string.Join(", ", _playerControllers.Keys)}");
+			controller.UpdateRemotePosition(position, facing, flipH, isMoving);
 		}
 	}
 
