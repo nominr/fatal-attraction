@@ -16,11 +16,12 @@ public partial class NPCDialogueUI : Control
 	private TextureRect _mainBackground;
 	private VBoxContainer _centralContainer;
 	
-	private TextureRect _dialogueBackground;
+
 	private Label _npcNameLabel;
 	private RichTextLabel _dialogueTextLabel;
 	
 	private GridContainer _optionsGrid;
+	private VBoxContainer _contentGroup; // dialogue + options wrapper
 	private Label _stateLabel; // Global screen label available to debug
 	private Control _triangleScene; // Influence triangle component (right side)
 	private TextureRect _npcFaceRect; // NPC Face Display
@@ -28,7 +29,7 @@ public partial class NPCDialogueUI : Control
 	// Resources
 	private Font _customFont;
 	private Texture2D _panelTexture;
-	private Texture2D _dialogueTexture;
+
 	private Texture2D _buttonTexture;
 
 	// State
@@ -46,7 +47,7 @@ public partial class NPCDialogueUI : Control
 
 		_customFont = ResourceLoader.Load<Font>("res://assets/Pixer-Regular.otf");
 		_panelTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_interaction_panel.png");
-		_dialogueTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_npcinteraction_dialogue.png");
+
 		_buttonTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_npcinteraction_option.png");
 
 		// 2. Clear existing children
@@ -83,17 +84,17 @@ public partial class NPCDialogueUI : Control
 		// --- CENTRAL CONTAINER (Version 2 successful layout) ---
 		_centralContainer = new VBoxContainer();
 		_centralContainer.SetAnchorsPreset(LayoutPreset.FullRect);
-		_centralContainer.Alignment = BoxContainer.AlignmentMode.Center;
-		_centralContainer.AddThemeConstantOverride("separation", 15);
+		_centralContainer.Alignment = BoxContainer.AlignmentMode.End; // push content toward bottom
+		_centralContainer.AddThemeConstantOverride("separation", 8);
 		_centralContainer.GrowHorizontal = GrowDirection.Both;
 		_centralContainer.GrowVertical = GrowDirection.Both;
 
 		var margin = new MarginContainer();
 		margin.SetAnchorsPreset(LayoutPreset.FullRect);
-		margin.AddThemeConstantOverride("margin_left", 300);
-		margin.AddThemeConstantOverride("margin_right", 300);
-		margin.AddThemeConstantOverride("margin_top", 60);
-		margin.AddThemeConstantOverride("margin_bottom", 10);
+		margin.AddThemeConstantOverride("margin_left", 450);  // narrower box
+		margin.AddThemeConstantOverride("margin_right", 450); // narrower box
+		margin.AddThemeConstantOverride("margin_top", 40);
+		margin.AddThemeConstantOverride("margin_bottom", 160); // reserve space for option buttons
 		AddChild(margin);
 		margin.AddChild(_centralContainer);
 
@@ -107,47 +108,72 @@ public partial class NPCDialogueUI : Control
 		_npcFaceRect.ZIndex = 11;
 		AddChild(_npcFaceRect);
 
-		// --- DIALOGUE SECTION ---
-		var dialogueContainer = new Control();
-		dialogueContainer.CustomMinimumSize = new Vector2(0, 380); // Reduced height from 450
-		dialogueContainer.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		_centralContainer.AddChild(dialogueContainer);
-		
-		_dialogueBackground = new TextureRect();
-		_dialogueBackground.Texture = _dialogueTexture;
-		_dialogueBackground.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-		_dialogueBackground.StretchMode = TextureRect.StretchModeEnum.Scale;
-		_dialogueBackground.SetAnchorsPreset(LayoutPreset.FullRect);
-		_dialogueBackground.MouseFilter = MouseFilterEnum.Ignore;
-		dialogueContainer.AddChild(_dialogueBackground);
-
-		var dialogueContent = new VBoxContainer();
-		dialogueContent.SetAnchorsPreset(LayoutPreset.FullRect);
-		dialogueContent.Alignment = BoxContainer.AlignmentMode.Center;
-		dialogueContent.AddThemeConstantOverride("separation", 20); // Reduced from 50
-		
-		var dialogueMargin = new MarginContainer();
-		dialogueMargin.SetAnchorsPreset(LayoutPreset.FullRect);
-		dialogueMargin.AddThemeConstantOverride("margin_left", 100);
-		dialogueMargin.AddThemeConstantOverride("margin_right", 100);
-		dialogueMargin.AddThemeConstantOverride("margin_top", 10);
-		dialogueMargin.AddThemeConstantOverride("margin_bottom", 10);
-		dialogueContainer.AddChild(dialogueMargin);
-		dialogueMargin.AddChild(dialogueContent);
-
+		// --- NPC NAME (fixed, independent position) ---
 		_npcNameLabel = new Label();
 		_npcNameLabel.HorizontalAlignment = HorizontalAlignment.Left;
 		_npcNameLabel.AddThemeFontOverride("font", _customFont);
-		_npcNameLabel.AddThemeFontSizeOverride("font_size", 30); // Reduced from 35
+		_npcNameLabel.AddThemeFontSizeOverride("font_size", 30);
 		_npcNameLabel.AddThemeColorOverride("font_color", Colors.White);
 		_npcNameLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
 		_npcNameLabel.AddThemeConstantOverride("outline_size", 2);
-		dialogueContent.AddChild(_npcNameLabel);
-		
+		_npcNameLabel.ZIndex = 15;
+		_npcNameLabel.AnchorLeft   = 0.5f;
+		_npcNameLabel.AnchorRight  = 0.5f;
+		_npcNameLabel.AnchorTop    = 1.0f;
+		_npcNameLabel.AnchorBottom = 1.0f;
+		_npcNameLabel.GrowHorizontal = GrowDirection.Both;
+		_npcNameLabel.GrowVertical   = GrowDirection.Begin;
+		_npcNameLabel.OffsetLeft   = -319;
+		_npcNameLabel.OffsetRight  =  319;
+		_npcNameLabel.OffsetBottom = -235; // fixed — never tied to dialogue or options
+		AddChild(_npcNameLabel);
+
+		// contentGroup spans the fixed zone from y=280 (guide line) to y=480 (near panel bottom).
+		// This guarantees the dialogue box NEVER goes above the magenta boundary.
+		_contentGroup = new VBoxContainer();
+		_contentGroup.AddThemeConstantOverride("separation", 12);
+		_contentGroup.ZIndex = 11;
+		_contentGroup.ClipContents = true; // hard boundary — nothing leaks above y=280
+		_contentGroup.MouseFilter = MouseFilterEnum.Ignore;
+		_contentGroup.Alignment = BoxContainer.AlignmentMode.End; // content stacks from bottom
+		_contentGroup.AnchorLeft   = 0.5f;
+		_contentGroup.AnchorRight  = 0.5f;
+		_contentGroup.AnchorTop    = 0f;   // relative to root top
+		_contentGroup.AnchorBottom = 1f;   // relative to root bottom
+		_contentGroup.GrowHorizontal = GrowDirection.Both;
+		_contentGroup.OffsetLeft   = -319;
+		_contentGroup.OffsetRight  =  319;
+		_contentGroup.OffsetTop    = 280;  // hard top = guide line
+		_contentGroup.OffsetBottom = -20;  // near panel bottom
+		AddChild(_contentGroup);
+
+		// Visual guide line — marks the top boundary the dialogue box must not cross.
+		// Bright so you can see it and tell us if it needs to move.
+		var guideLine = new ColorRect();
+		guideLine.Color = new Color(1f, 0f, 1f, 0f); // magenta @ y=280, kept for reference, invisible
+		guideLine.CustomMinimumSize = new Vector2(0, 2);
+		guideLine.SetAnchorsPreset(LayoutPreset.TopWide);
+		guideLine.OffsetTop  = 280;
+		guideLine.OffsetBottom = 282;
+		guideLine.MouseFilter = MouseFilterEnum.Ignore;
+		guideLine.ZIndex = 20;
+		AddChild(guideLine);
+
+		var contentGroup = _contentGroup;
+
+		// Dialogue panel — true pixel cube corners via NinePatch StyleBoxTexture
+		var dialoguePanel = new PanelContainer();
+		dialoguePanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		dialoguePanel.MouseFilter = MouseFilterEnum.Ignore;
+		dialoguePanel.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+		dialoguePanel.AddThemeStyleboxOverride("panel",
+			CreatePixelBorderStyle(new Color("#25273e"), new Color("#3a3d5c"), 24, 24, 8, 8));
+		contentGroup.AddChild(dialoguePanel);
+
 		var boldFont = new FontVariation();
 		boldFont.BaseFont = _customFont;
 		boldFont.VariationEmbolden = 1.1f;
-		
+
 		_dialogueTextLabel = new RichTextLabel();
 		_dialogueTextLabel.BbcodeEnabled = true;
 		_dialogueTextLabel.FitContent = true;
@@ -158,27 +184,16 @@ public partial class NPCDialogueUI : Control
 		_dialogueTextLabel.AddThemeFontSizeOverride("bold_font_size", 28);
 		_dialogueTextLabel.AddThemeColorOverride("default_color", Colors.White);
 		_dialogueTextLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		dialogueContent.AddChild(_dialogueTextLabel);
+		_dialogueTextLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		dialoguePanel.AddChild(_dialogueTextLabel);
 
-		// --- OPTIONS SECTION ---
+		// Options grid (bottom sibling — always below dialogue, 3px gap enforced by VBox)
 		_optionsGrid = new GridContainer();
 		_optionsGrid.Columns = 2;
 		_optionsGrid.AddThemeConstantOverride("h_separation", 9);
 		_optionsGrid.AddThemeConstantOverride("v_separation", 4);
-		
-		AddChild(_optionsGrid);
-		_optionsGrid.ZIndex = 12; // Above background
-		
-		_optionsGrid.AnchorLeft = 0.5f;
-		_optionsGrid.AnchorRight = 0.5f;
-		_optionsGrid.AnchorTop = 1.0f;
-		_optionsGrid.AnchorBottom = 1.0f;
-		_optionsGrid.GrowHorizontal = GrowDirection.Both;
-		_optionsGrid.GrowVertical = GrowDirection.Begin;
-		
-		_optionsGrid.OffsetLeft = 0; 
-		_optionsGrid.OffsetRight = 0; 
-		_optionsGrid.OffsetBottom = -30;  // Moved down 5px from -35
+		_optionsGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		contentGroup.AddChild(_optionsGrid);
 
 		// Debug Label
 		_stateLabel = new Label();
@@ -224,6 +239,23 @@ public partial class NPCDialogueUI : Control
 		_dialogueTextLabel.AddThemeFontSizeOverride("normal_font_size", dialogueFontSize);
 		_dialogueTextLabel.AddThemeFontSizeOverride("bold_font_size", dialogueFontSize);
 		_dialogueTextLabel.Text = npcDescription;
+
+		// Switch layout: centered when no options (post-game response), bottom-aligned otherwise
+		bool hasActions = actions != null && actions.Count > 0;
+		if (!hasActions)
+		{
+			// Extend to full bottom and center — places box midway between guide line and screen bottom
+			_contentGroup.OffsetBottom = 0;
+			_contentGroup.Alignment = BoxContainer.AlignmentMode.Center;
+			_npcNameLabel.Visible = false;
+		}
+		else
+		{
+			// Restore normal bottom margin and stack content from the bottom up
+			_contentGroup.OffsetBottom = -20;
+			_contentGroup.Alignment = BoxContainer.AlignmentMode.End;
+			_npcNameLabel.Visible = true;
+		}
 		
 		if (_stateLabel != null)
 		{
@@ -274,18 +306,12 @@ public partial class NPCDialogueUI : Control
 		quadrant.SizeFlagsVertical = SizeFlags.ExpandFill;
 		quadrant.CustomMinimumSize = new Vector2(315, 50); // Scaled down 10% from 350x55
 		
-		var pixelStyle = new StyleBoxFlat();
-		pixelStyle.BgColor = new Color(0.88f, 0.87f, 0.84f, 0.95f);
-		pixelStyle.BorderColor = new Color(0.12f, 0.1f, 0.18f, 1.0f);
-		pixelStyle.SetBorderWidthAll(3);
-		pixelStyle.SetCornerRadiusAll(0);
-		pixelStyle.ShadowColor = new Color(0.35f, 0.33f, 0.4f, 0.8f);
-		pixelStyle.ShadowSize = 2;
-		pixelStyle.ShadowOffset = Vector2.Zero;
-		pixelStyle.ContentMarginLeft = 8;
-		pixelStyle.ContentMarginRight = 8;
-		pixelStyle.ContentMarginTop = 4;
-		pixelStyle.ContentMarginBottom = 4;
+		// Pixel cube corner style via NinePatch texture
+		var pixelStyle = CreatePixelBorderStyle(
+			new Color(0.88f, 0.87f, 0.84f, 0.95f),
+			new Color("#3a3d5c"), // match dialogue box border
+			8, 8, 4, 4);
+		quadrant.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
 		quadrant.AddThemeStyleboxOverride("panel", pixelStyle);
 
 		var btn = new Button();
@@ -347,5 +373,39 @@ public partial class NPCDialogueUI : Control
 			hashParts.Add($"{actionId}:{actionText}");
 		}
 		return string.Join("|", hashParts);
+	}
+
+	/// <summary>
+	/// Builds a StyleBoxTexture using a 9×9 NinePatch where the 3×3 corner regions are
+	/// fully transparent — this produces hard square pixel notches at every corner.
+	/// </summary>
+	private StyleBoxTexture CreatePixelBorderStyle(
+		Color fill, Color border,
+		int contentL, int contentR, int contentT, int contentB)
+	{
+		const int b = 3; // border + corner size in pixels
+		const int s = 9; // total image size (3 * 3)
+
+		var img = Image.CreateEmpty(s, s, false, Image.Format.Rgba8);
+		for (int y = 0; y < s; y++)
+		for (int x = 0; x < s; x++)
+		{
+			bool isCorner = (x < b || x >= s - b) && (y < b || y >= s - b);
+			bool isFill   = x >= b && x < s - b && y >= b && y < s - b;
+			img.SetPixel(x, y, isCorner ? Colors.Transparent : isFill ? fill : border);
+		}
+
+		var tex   = ImageTexture.CreateFromImage(img);
+		var style = new StyleBoxTexture();
+		style.Texture = tex;
+		style.SetTextureMargin(Side.Left,   b);
+		style.SetTextureMargin(Side.Right,  b);
+		style.SetTextureMargin(Side.Top,    b);
+		style.SetTextureMargin(Side.Bottom, b);
+		style.ContentMarginLeft   = contentL;
+		style.ContentMarginRight  = contentR;
+		style.ContentMarginTop    = contentT;
+		style.ContentMarginBottom = contentB;
+		return style;
 	}
 }
