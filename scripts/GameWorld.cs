@@ -1762,17 +1762,19 @@ public partial class GameWorld : Node2D
 		if (_gameEngine == null) return;
 
 		var npc = _gameEngine.GameState.GetNPC(targetNpcId);
-		if (npc == null || !npc.IsTarget || !npc.Alive) return;
+		if (npc == null || !npc.Alive) return;
 
 		long senderId = Multiplayer.GetRemoteSenderId();
 		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
 
 		if (!_networkManager.Players.TryGetValue(senderId, out var playerInfo)) return;
-		if (!string.Equals(playerInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
 
-		// Check if Admirer is dead (server-side verification)
-		var admirerState = _gameEngine.GameState.GetPlayerState(Role.Admirer);
-		if (admirerState != null && !admirerState.Alive) return;
+		// Check if sender is dead (server-side verification)
+		if (Enum.TryParse<Role>(playerInfo.Role, ignoreCase: true, out var senderRole))
+		{
+			var senderState = _gameEngine.GameState.GetPlayerState(senderRole);
+			if (senderState != null && !senderState.Alive) return;
+		}
 
 		if (!_playerControllers.TryGetValue(senderId, out var playerCtrl)) return;
 		if (!_npcEntities.TryGetValue(targetNpcId, out var npcEntity)) return;
@@ -1780,7 +1782,54 @@ public partial class GameWorld : Node2D
 		float distance = playerCtrl.Position.DistanceTo(npcEntity.Position);
 		if (distance > PUNCH_RANGE) return;
 
-		Rpc(MethodName.RpcFlashNpcDamage, targetNpcId);
+		// Stun the NPC for 5 seconds (greyed out, idle)
+		Rpc(MethodName.RpcStunNpc, targetNpcId, 5.0f);
+
+		// --- Interaction Vector Penalty ---
+		// Helper: map role to its penalty vector dimension
+		System.Numerics.Vector3 RolePenalty(Role r) => r switch
+		{
+			Role.Admirer  => new System.Numerics.Vector3(-1, 0, 0),
+			Role.Prophet  => new System.Numerics.Vector3(0, -1, 0),
+			Role.Producer => new System.Numerics.Vector3(0, 0, -1),
+			_             => System.Numerics.Vector3.Zero
+		};
+
+		// Apply -1 to the punching player's dimension
+		npc.State += RolePenalty(senderRole);
+		_gameEngine.GameState.TriggerScoreChange(senderRole, -1);
+		GD.Print($"[PunchNPC] {senderRole} punched {npc.Name}, State += {RolePenalty(senderRole)} -> {npc.State}");
+
+		// Check if any OTHER player is actively conversing with this NPC
+		foreach (var (role, ctx) in _gameEngine.GameState.ActiveInterviews)
+		{
+			if (ctx.NpcId == targetNpcId && role != senderRole)
+			{
+				npc.State += RolePenalty(role);
+				_gameEngine.GameState.TriggerScoreChange(role, -1);
+				GD.Print($"[PunchNPC] {role} was conversing (flirt) with {npc.Name} during punch, State += {RolePenalty(role)} -> {npc.State}");
+			}
+		}
+		foreach (var (role, ctx) in _gameEngine.GameState.ActiveConversions)
+		{
+			if (ctx.NpcId == targetNpcId && role != senderRole)
+			{
+				npc.State += RolePenalty(role);
+				_gameEngine.GameState.TriggerScoreChange(role, -1);
+				GD.Print($"[PunchNPC] {role} was conversing (convert) with {npc.Name} during punch, State += {RolePenalty(role)} -> {npc.State}");
+			}
+		}
+		foreach (var (role, ctx) in _gameEngine.GameState.ActiveProducerInterviews)
+		{
+			if (ctx.NpcId == targetNpcId && role != senderRole)
+			{
+				npc.State += RolePenalty(role);
+				_gameEngine.GameState.TriggerScoreChange(role, -1);
+				GD.Print($"[PunchNPC] {role} was conversing (interview) with {npc.Name} during punch, State += {RolePenalty(role)} -> {npc.State}");
+			}
+		}
+
+		BroadcastGameState();
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
@@ -1789,6 +1838,15 @@ public partial class GameWorld : Node2D
 		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
 		{
 			npcEntity.FlashDamage(0.5);
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void RpcStunNpc(string npcId, float duration)
+	{
+		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
+		{
+			npcEntity.ApplyStun(duration);
 		}
 	}
 
@@ -2011,39 +2069,25 @@ public partial class GameWorld : Node2D
 			return;
 		}
 
-		string myRoleLower = _myRole.ToLower();
-
-		// ADMIRER: Update NPC punch hints
-		if (myRoleLower == "admirer")
+		// All roles: show punch hint for any alive NPC in range
+		foreach (var kvp in _npcEntities)
 		{
-			foreach (var kvp in _npcEntities)
-			{
-				if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive))
-				{
-					kvp.Value.SetPunchHintVisible(false);
-					continue;
-				}
-
-				if (!isTarget || !alive)
-				{
-					kvp.Value.SetPunchHintVisible(false);
-					continue;
-				}
-
-				float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
-				bool inRange = distance <= PUNCH_RANGE;
-				kvp.Value.SetPunchHintVisible(inRange);
-			}
-		}
-		else
-		{
-			// Non-Adimirer: hide all NPC punch hints
-			foreach (var kvp in _npcEntities)
+			if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive))
 			{
 				kvp.Value.SetPunchHintVisible(false);
+				continue;
 			}
-		}
 
+			if (!alive)
+			{
+				kvp.Value.SetPunchHintVisible(false);
+				continue;
+			}
+
+			float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+			bool inRange = distance <= PUNCH_RANGE;
+			kvp.Value.SetPunchHintVisible(inRange);
+		}
 	}
 
 	private void HandlePunchInput()
@@ -2087,100 +2131,24 @@ public partial class GameWorld : Node2D
 			RpcId(1, MethodName.RequestPunchAnimation, _localPlayer.FacingDirection, _localPlayer.FlipH);
 
 			string closestNpcId = null;
-			long closestPlayerId = -1;
 			float closestDistance = float.MaxValue;
 
-			// ADMIRER: Can punch target NPCs and Prophet/Producer
-			if (_myRole.ToLower() == "admirer")
+			// All roles: can only punch NPCs (no player-vs-player punching)
+			foreach (var kvp in _npcEntities)
 			{
-				// Check NPCs
-				foreach (var kvp in _npcEntities)
+				if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive)) continue;
+				if (!alive) continue;
+
+				float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+				if (distance <= PUNCH_RANGE && distance < closestDistance)
 				{
-					if (!TryGetNpcTargetState(kvp.Key, out bool isTarget, out bool alive)) continue;
-					if (!isTarget || !alive) continue;
-
-					float distance = _localPlayer.Position.DistanceTo(kvp.Value.Position);
-					if (distance <= PUNCH_RANGE && distance < closestDistance)
-					{
-						closestDistance = distance;
-						closestNpcId = kvp.Key;
-						closestPlayerId = -1; // Reset player target
-					}
-				}
-
-				// Check Players (Prophet and Producer only)
-				foreach (var kvp in _playerControllers)
-				{
-					long playerId = kvp.Key;
-					var playerCtrl = kvp.Value;
-
-					// Skip self
-					if (playerId == Multiplayer.GetUniqueId()) continue;
-
-					// Check if target is Prophet or Producer
-					if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
-					string role = playerInfo.Role;
-					if (!string.Equals(role, "Prophet", StringComparison.OrdinalIgnoreCase) && 
-						!string.Equals(role, "Producer", StringComparison.OrdinalIgnoreCase)) continue;
-
-					// Skip dead players (check cached player states)
-					var playerStates = _localGameState?["player_states"] as JObject;
-					if (playerStates != null)
-					{
-						var targetState = playerStates[role];
-						bool targetAlive = targetState?["alive"]?.Value<bool>() ?? true;
-						if (!targetAlive) continue;
-					}
-
-					float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
-					if (distance <= PUNCH_RANGE && distance < closestDistance)
-					{
-						closestDistance = distance;
-						closestPlayerId = playerId;
-						closestNpcId = null; // Reset NPC target
-					}
-				}
-			}
-			// PROPHET/PRODUCER: Can punch other players
-			else if (_myRole.ToLower() == "prophet" || _myRole.ToLower() == "producer")
-			{
-				// Check Players (any other role)
-				foreach (var kvp in _playerControllers)
-				{
-					long playerId = kvp.Key;
-					var playerCtrl = kvp.Value;
-
-					// Skip self
-					if (playerId == Multiplayer.GetUniqueId()) continue;
-
-					// Get target role
-					if (!_networkManager.Players.TryGetValue(playerId, out var playerInfo)) continue;
-					string role = playerInfo.Role;
-
-					// Skip dead players (check cached player states)
-					var playerStates = _localGameState?["player_states"] as JObject;
-					if (playerStates != null)
-					{
-						var targetState = playerStates[role];
-						bool targetAlive = targetState?["alive"]?.Value<bool>() ?? true;
-						if (!targetAlive) continue;
-					}
-
-					float distance = _localPlayer.Position.DistanceTo(playerCtrl.Position);
-					if (distance <= PUNCH_RANGE && distance < closestDistance)
-					{
-						closestDistance = distance;
-						closestPlayerId = playerId;
-					}
+					closestDistance = distance;
+					closestNpcId = kvp.Key;
 				}
 			}
 
-			// Punch the closest target (player or NPC)
-			if (closestPlayerId != -1)
-			{
-				RpcId(1, MethodName.PunchPlayer, closestPlayerId);
-			}
-			else if (!string.IsNullOrEmpty(closestNpcId))
+			// Punch the closest NPC
+			if (!string.IsNullOrEmpty(closestNpcId))
 			{
 				RpcId(1, MethodName.PunchTargetNPC, closestNpcId);
 			}
@@ -2483,7 +2451,7 @@ public partial class GameWorld : Node2D
 		// Check Producer Panels Auto-Close on Move
 		CheckProducerPanelsOnMove();
 
-		// Admirer punch hints and input handling
+		// Punch hints and input handling
 		UpdatePunchHints();
 		HandlePunchInput();
 	}

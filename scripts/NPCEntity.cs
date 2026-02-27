@@ -114,6 +114,10 @@ public partial class NPCEntity : CharacterBody2D
 	// Interview immobilization
 	private bool _isFrozen = false;
 
+	// Punch stun
+	private bool _isStunned = false;
+	private double _stunTimer = 0.0;
+
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
@@ -245,7 +249,7 @@ public partial class NPCEntity : CharacterBody2D
 	private void UpdateAnimation()
 	{
 		if (_sprite == null) return;
-		if (_isSlipping || !_isAlive) 
+		if (_isSlipping || !_isAlive || _isStunned) 
 		{
 			_sprite.Pause();
 			return;
@@ -376,9 +380,24 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		*/
 		
-		// If slipping or frozen (interview), don't move
-		if (_isSlipping || _isFrozen)
+		// If slipping, frozen (interview), or stunned, don't move
+		if (_isSlipping || _isFrozen || _isStunned)
 		{
+			// Handle stun timer countdown
+			if (_isStunned)
+			{
+				_stunTimer -= delta;
+				if (_stunTimer <= 0)
+				{
+					_isStunned = false;
+					_stunTimer = 0.0;
+					// Restore normal color if still alive
+					if (_sprite != null)
+					{
+						_sprite.Modulate = _isAlive ? Colors.White : Colors.DarkGray;
+					}
+				}
+			}
 			/*
 			if (_isFrozen && Multiplayer.IsServer())
 			{
@@ -1062,13 +1081,33 @@ public partial class NPCEntity : CharacterBody2D
 	public void FlashDamage(double seconds = 0.5)
 	{
 		if (_sprite == null) return;
+		// Don't override stun visuals with flash
+		if (_isStunned) return;
 		_sprite.Modulate = Colors.Red;
 		var timer = GetTree().CreateTimer(Math.Max(0.1, seconds));
 		timer.Timeout += () =>
 		{
 			if (!IsInstanceValid(this) || _sprite == null) return;
+			// Don't restore color if currently stunned
+			if (_isStunned) return;
 			_sprite.Modulate = _isAlive ? Colors.White : Colors.DarkGray;
 		};
+	}
+
+	/// <summary>
+	/// Stun the NPC for a given duration. Greys out the sprite and forces idle.
+	/// </summary>
+	public void ApplyStun(double seconds)
+	{
+		_isStunned = true;
+		_stunTimer = seconds;
+		Velocity = Vector2.Zero;
+
+		// Grey out during stun
+		if (_sprite != null)
+		{
+			_sprite.Modulate = Colors.DarkGray;
+		}
 	}
 
 	/// <summary>
@@ -1132,7 +1171,7 @@ public partial class NPCEntity : CharacterBody2D
 		if (_punchHint != null)
 		{
 			var labelWidth = _punchHint.Size.X;
-			_punchHint.Position = new Vector2(-labelWidth / 2, -330);
+			_punchHint.Position = new Vector2(-labelWidth / 2, -270);
 		}
 	}
 
