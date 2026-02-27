@@ -181,7 +181,6 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	private void ResolveInitialOverlap()
 	{
-		const float NUDGE = 40f;      // pixels per nudge attempt
 		const int   MAX_TRIES = 16;   // limit so we don't loop forever
 
 		// Eight cardinal + diagonal directions to try

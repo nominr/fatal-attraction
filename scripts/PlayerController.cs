@@ -58,6 +58,11 @@ public partial class PlayerController : CharacterBody2D
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
+	public string FacingDirection => _lastFacingDirection;
+	public bool FlipH => _sprite?.FlipH ?? false;
+	private bool _isMovingSync = false;
+	public bool IsMoving => _isLocalPlayer ? Velocity.Length() > 0.1f : _isMovingSync;
+	private bool _isPunching = false;
 
 	public override void _Ready()
 	{
@@ -99,6 +104,9 @@ public partial class PlayerController : CharacterBody2D
 		
 		// Load sprite based on role (will be called again when role is set)
 		LoadSpriteForRole(PlayerRole);
+
+		// Connect animation finished signal for punching
+		_sprite.AnimationFinished += OnAnimationFinished;
 
 		// Add camera for local player
 		_camera = new Camera2D();
@@ -181,17 +189,73 @@ public partial class PlayerController : CharacterBody2D
 		UpdateAnimation();
 	}
 
+	private void OnAnimationFinished()
+	{
+		if (_sprite.Animation == "punch_front" || _sprite.Animation == "punch_back")
+		{
+			_isPunching = false;
+		}
+	}
+
 	private void UpdateAnimation()
 	{
 		if (_sprite == null) return;
+		
+		// Priority for punching
+		if (_isPunching) 
+		{
+			// Animation is already playing or handled in TriggerPunchAnimation
+			return;
+		}
+
 		if (_isSlipping) 
 		{
 			_sprite.Pause();
 			return;
 		}
 
-		Vector2 velocity = Velocity;
 		string animToPlay = _sprite.Animation;
+		
+		// For remote players, use sync'd state directly
+		if (!_isLocalPlayer)
+		{
+			if (_isMovingSync)
+			{
+				// Pick walk animation based on sync'd direction
+				if (_lastFacingDirection == "up") animToPlay = "walk_up";
+				else if (_lastFacingDirection == "up_right") animToPlay = "walk_up_right";
+				else if (_lastFacingDirection == "up_left") animToPlay = "walk_up_left";
+				else if (_lastFacingDirection == "down") animToPlay = "walk_down";
+				else if (_lastFacingDirection == "right") animToPlay = "walk_right";
+				else if (_lastFacingDirection == "left") animToPlay = "walk_left";
+				
+				// Apply flip state (already sync'd in UpdateRemotePosition)
+			}
+			else
+			{
+				// Pick idle animation based on sync'd direction
+				if (_lastFacingDirection == "up") animToPlay = "idle_up";
+				else if (_lastFacingDirection == "up_right") animToPlay = "idle_up_right";
+				else if (_lastFacingDirection == "up_left") animToPlay = "idle_up_left";
+				else if (_lastFacingDirection == "down") animToPlay = "idle_down";
+				else if (_lastFacingDirection == "right") animToPlay = "idle_right";
+				else if (_lastFacingDirection == "left") animToPlay = "idle_left";
+			}
+
+			if (_sprite.Animation != animToPlay)
+			{
+				_sprite.Play(animToPlay);
+			}
+
+			if (_animationScales.TryGetValue(animToPlay, out float s))
+			{
+				_sprite.Scale = new Vector2(s, s);
+			}
+			return;
+		}
+
+		// Local player logic follows
+		Vector2 velocity = Velocity;
 		
 		if (velocity.Length() > 0.1f)
 		{
@@ -199,7 +263,6 @@ public partial class PlayerController : CharacterBody2D
 			float absY = Mathf.Abs(velocity.Y);
 			bool movingUp = velocity.Y < -0.1f;
 			bool movingDown = velocity.Y > 0.1f;
-			bool movingHorizontal = absX > 0.1f;
 
 			if (movingUp)
 			{
@@ -346,7 +409,7 @@ public partial class PlayerController : CharacterBody2D
 		var generatedScales = new Dictionary<string, float>();
 		
 		// Helper to load frames from a split texture (6x6 grid, but we limit to 35 frames)
-		void AddAnimationFrames(string animName, string texturePath, bool cropShadow = false, bool skipFirstFrame = false, float scaleMultiplier = 1.0f)
+		void AddAnimationFrames(string animName, string texturePath, bool cropShadow = false, bool skipFirstFrame = false, float scaleMultiplier = 1.0f, int skipSpecificFrameIndex = -1, int startIndex = 0, int frameLimit = 35, float forcedFrameWidth = 0, float forcedFrameHeight = 0)
 		{
 			var texture = GD.Load<Texture2D>(texturePath);
 			if (texture == null)
@@ -368,27 +431,39 @@ public partial class PlayerController : CharacterBody2D
 			float frameHeight = height / (float)gridRows;
 
 			int totalAdded = 0;
+			int processedFrames = 0;
 			for (int y = 0; y < gridRows; y++)
 			{
 				for (int x = 0; x < gridCols; x++)
 				{
-					if (skipFirstFrame && x == 0 && y == 0) continue;
-					if (totalAdded >= 35) break;
+					int currentFrameIndex = processedFrames;
+					processedFrames++;
+
+					if (currentFrameIndex < startIndex) continue;
+					if (skipFirstFrame && currentFrameIndex == 0) continue;
+					if (currentFrameIndex == skipSpecificFrameIndex) continue;
+					if (totalAdded >= frameLimit) break;
 
 					var atlasKey = new AtlasTexture();
 					atlasKey.Atlas = texture;
 					
-					// If cropping shadow, we take 90% of height from top
-					float h = cropShadow ? frameHeight * 0.9f : frameHeight;
-					atlasKey.Region = new Rect2(x * frameWidth, y * frameHeight, frameWidth, h);
+					float fw = forcedFrameWidth > 0 ? forcedFrameWidth : frameWidth;
+					float fh = forcedFrameHeight > 0 ? forcedFrameHeight : frameHeight;
+					
+					// Center-justify the frame within the grid cell
+					float rx = (x * frameWidth) + (frameWidth - fw) / 2.0f;
+					float ry = (y * frameHeight) + (frameHeight - fh) / 2.0f;
+					
+					atlasKey.Region = new Rect2(rx, ry, fw, cropShadow ? fh * 0.9f : fh);
 					frames.AddFrame(animName, atlasKey);
 					totalAdded++;
 				}
-				if (totalAdded >= 35) break;
+				if (totalAdded >= frameLimit) break;
 			}
 			
 			frames.SetAnimationLoop(animName, true);
-			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f);
+			float speed = animName.Contains("idle") ? 10.0f : (animName.Contains("punch") ? 20.0f : 15.0f);
+			frames.SetAnimationSpeed(animName, speed);
 
 			// Standardized height units
 			float targetWorldHeight = 243.0f; // Standard size for all isometric characters
@@ -429,6 +504,32 @@ public partial class PlayerController : CharacterBody2D
 		AddAnimationFrames("idle_up_left", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f);
 
 		AddAnimationFrames("idle_down", frontIdle);
+
+		// Punch animations
+		string punchFront = $"{basePath}{roleName.Replace("2", "")}-punch-front.png";
+		if (roleName == "producer2")
+		{
+			punchFront = $"{basePath}producer-punch-front-new.png";
+		}
+		string punchBack = $"{basePath}{roleName.Replace("2", "")}-punch-back.png";
+		
+		isAdmirer = (roleName == "admirer2");
+		bool isProducer = (roleName == "producer2");
+		// Use specific frame range for Producer punch to skip idle frames (Row 1)
+		if (isProducer)
+		{
+			AddAnimationFrames("punch_front", punchFront, false, false, 1.0f, -1, 6);
+		}
+		else
+		{
+			AddAnimationFrames("punch_front", punchFront, false, false, 1.0f, -1, 0);
+		}
+		// Skip 7th frame (index 6) for Admirer back punch
+		AddAnimationFrames("punch_back", punchBack, false, false, isAdmirer ? 1.3f : 1.0f, isAdmirer ? 6 : -1);
+		
+		// Set punch animations to NOT loop
+		frames.SetAnimationLoop("punch_front", false);
+		frames.SetAnimationLoop("punch_back", false);
 
 		_animationScales = generatedScales;
 		_spriteFramesCache[roleName] = frames;
@@ -553,7 +654,7 @@ public partial class PlayerController : CharacterBody2D
 	/// <summary>
 	/// Update position from network sync (for remote players)
 	/// </summary>
-	public void UpdateRemotePosition(Vector2 newPosition)
+	public void UpdateRemotePosition(Vector2 newPosition, string facing = null, bool? flipH = null, bool? isMoving = null)
 	{
 		if (_isLocalPlayer) return; // Don't override local player position
 		_remoteTargetPosition = newPosition;
@@ -564,23 +665,38 @@ public partial class PlayerController : CharacterBody2D
 			Position = newPosition;
 			_hasReceivedFirstSync = true;
 		}
+
+		if (facing != null) _lastFacingDirection = facing;
+		if (flipH.HasValue && _sprite != null) _sprite.FlipH = flipH.Value;
+		if (isMoving.HasValue) _isMovingSync = isMoving.Value;
+	}
+
+	/// <summary>
+	/// Centrally trigger the punching animation for this player (local or remote).
+	/// </summary>
+	public void TriggerPunchAnimation(string facing = null, bool? flipH = null)
+	{
+		if (_sprite == null) return;
+		
+		if (facing != null) _lastFacingDirection = facing;
+		if (flipH.HasValue) _sprite.FlipH = flipH.Value;
+
+		_isPunching = true;
+		string punchAnim = _lastFacingDirection.Contains("up") ? "punch_back" : "punch_front";
+		_sprite.Play(punchAnim);
+		if (_animationScales.TryGetValue(punchAnim, out float s)) 
+		{
+			_sprite.Scale = new Vector2(s, s);
+		}
 	}
 
 	public override void _PhysicsProcess(double delta)
 	{
 		// Only process input for the local player
 		if (!_isLocalPlayer || !InputEnabled) return;
-		
-		// If slipping, disable movement
-		if (_isSlipping)
-		{
-			Velocity = Vector2.Zero;
-			return;
-		}
 
+		// Get movement input
 		var velocity = Vector2.Zero;
-
-		// Handle input
 		if (Input.IsActionPressed("ui_right") || Input.IsKeyPressed(Key.D))
 			velocity.X += 1;
 		if (Input.IsActionPressed("ui_left") || Input.IsKeyPressed(Key.A))
@@ -590,6 +706,17 @@ public partial class PlayerController : CharacterBody2D
 		if (Input.IsActionPressed("ui_up") || Input.IsKeyPressed(Key.W))
 			velocity.Y -= 1;
 
+		// If slipping or punching, disable movement
+		if (_isSlipping || _isPunching)
+		{
+			Velocity = Vector2.Zero;
+			MoveAndSlide(); // Ensure we halt immediately
+			return;
+		}
+
+		// Handle input
+		// (Already checked above for interruption)
+
 		if (velocity.Length() > 0)
 		{
 			velocity = velocity.Normalized() * Speed;
@@ -597,6 +724,7 @@ public partial class PlayerController : CharacterBody2D
 
 		Velocity = velocity;
 		MoveAndSlide();
+
 
 		// Emit position change if moved significantly
 		if (Position.DistanceTo(_lastSentPosition) > PositionSyncThreshold)
