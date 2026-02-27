@@ -706,11 +706,25 @@ public partial class PlayerController : CharacterBody2D
 		if (Input.IsActionPressed("ui_up") || Input.IsKeyPressed(Key.W))
 			velocity.Y -= 1;
 
-		// If slipping or punching, disable movement
-		if (_isSlipping || _isPunching)
+		// If slipping, disable movement entirely
+		if (_isSlipping)
 		{
 			Velocity = Vector2.Zero;
-			MoveAndSlide(); // Ensure we halt immediately
+			MoveAndSlide();
+			return;
+		}
+
+		// If punching but a movement key was pressed, cancel the punch and let the player walk
+		if (_isPunching && velocity.Length() > 0)
+		{
+			_isPunching = false;
+			// Fall through to normal movement below
+		}
+		else if (_isPunching)
+		{
+			// Still punching and no movement input — keep player frozen
+			Velocity = Vector2.Zero;
+			MoveAndSlide();
 			return;
 		}
 
