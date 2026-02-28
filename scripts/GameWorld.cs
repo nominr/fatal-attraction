@@ -117,9 +117,6 @@ public partial class GameWorld : Node2D
 	
 	// +1 Rating Visual Feedback
 	private double _previousProducerRating = 0;
-	private CenterContainer _plusOneOverlay;
-	private double _plusOneTimer = 0;
-	private Texture2D _plusOneTexture;
 
 	// Global Influence Counter (Triangle UI)
 	private TriangleScene _globalInfluenceTriangle;
@@ -750,28 +747,6 @@ public partial class GameWorld : Node2D
 
 
 
-		// +1 Rating Visual Feedback Overlay
-		_plusOneTexture = ResourceLoader.Load<Texture2D>("res://assets/ai_plusone-nobg.png");
-		if (_plusOneTexture == null)
-		{
-			GD.PrintErr("[GameWorld] Failed to load ai_plusone-nobg.png texture");
-		}
-		
-		_plusOneOverlay = new CenterContainer();
-		_plusOneOverlay.Name = "PlusOneOverlay";
-		_plusOneOverlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		_plusOneOverlay.MouseFilter = Control.MouseFilterEnum.Stop; // Block clicks during display
-		_plusOneOverlay.Visible = false;
-		_plusOneOverlay.ZIndex = 100; // Above everything
-		
-		var plusOneTexRect = new TextureRect();
-		plusOneTexRect.Name = "PlusOneImage";
-		plusOneTexRect.Texture = _plusOneTexture;
-		plusOneTexRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
-		plusOneTexRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-		_plusOneOverlay.AddChild(plusOneTexRect);
-		
-		_uiLayer.AddChild(_plusOneOverlay);
 
 		// Producer UI Elements
 		SetupProducerUI();
@@ -2186,48 +2161,26 @@ public partial class GameWorld : Node2D
 	{
 		GD.Print($"[GameWorld] HandleScoreChange called for {role} with score {score}");
 		// Called on Server (or wherever GameEngine is running)
-		// We need to find the player ID associated with this role
-		long targetPlayerId = -1;
 		
-		foreach (var kvp in _networkManager.Players)
-		{
-			GD.Print($"[GameWorldDebug] Checking player {kvp.Key} with role {kvp.Value.Role} against {role}");
-			if (string.Equals(kvp.Value.Role, role.ToString(), StringComparison.OrdinalIgnoreCase))
-			{
-				targetPlayerId = kvp.Key;
-				break;
-			}
-		}
-		
-		if (targetPlayerId != -1)
-		{
-			// Send RPC to the specific client
-			GD.Print($"[GameWorld] Sending ClientShowScoreFeedback RPC to {targetPlayerId}");
-			RpcId(targetPlayerId, MethodName.ClientShowScoreFeedback, score);
-		}
-		else
-		{
-			GD.Print($"[GameWorld] ERROR: Could not find player for role {role}");
-		}
+		// Broadcast RPC to all clients to show the score feedback
+		Rpc(MethodName.ClientShowScoreFeedback, role.ToString(), score);
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
-	private void ClientShowScoreFeedback(int score)
+	private void ClientShowScoreFeedback(string roleStr, int score)
 	{
 		// Called on Client
-		GD.Print($"[GameWorld] Received Score Feedback RPC: {score} on peer {Multiplayer.GetUniqueId()}");
+		GD.Print($"[GameWorld] Received Score Feedback RPC: {score} for role {roleStr} on peer {Multiplayer.GetUniqueId()}");
 		
 		string assetName = null;
+		string roleLower = roleStr.ToLower();
 		
-		if (score >= 2) assetName = "ai_plustwo.png";
-		else if (score == 1) assetName = "ai_plusone-nobg.png";
-		else if (score == 0) assetName = "ai_pluszero.png"; // Assuming this exists or needed
-		else if (score == -1) assetName = "ai_minusone.png";
-		else if (score <= -2) assetName = "ai_minustwo.png";
+		if (score >= 1) assetName = $"ai_{roleLower}_plusone.png";
+		else if (score <= -1) assetName = $"ai_{roleLower}_minusone.png";
 		
 		if (assetName != null)
 		{
-			ShowScoreFeedback(assetName);
+			ShowScoreFeedback(roleLower, assetName);
 		}
 		else
 		{
@@ -2235,38 +2188,47 @@ public partial class GameWorld : Node2D
 		}
 	}
 	
-	private void ShowScoreFeedback(string assetName)
+	private void ShowScoreFeedback(string roleLower, string assetName)
 	{
-		if (_plusOneOverlay == null)
-		{
-			GD.PrintErr("[GameWorld] _plusOneOverlay is null!");
-			return;
-		}
-		
 		string path = $"res://assets/{assetName}";
 		GD.Print($"[GameWorld] Loading score asset: {path}");
 		var texture = ResourceLoader.Load<Texture2D>(path);
 		
 		if (texture != null)
 		{
-			var texRect = _plusOneOverlay.GetNodeOrNull<TextureRect>("PlusOneImage");
-			if (texRect != null)
-			{
-				texRect.Texture = texture;
-				GD.Print($"[GameWorld] Set texture on PlusOneImage. Making visible.");
-			}
-			else
-			{
-				GD.PrintErr("[GameWorld] PlusOneImage TextureRect not found in overlay!");
-			}
-
-			_plusOneOverlay.Visible = true;
-			_plusOneTimer = 2.0f; // Show for 2 seconds
+			var floatingRect = new TextureRect();
+			floatingRect.Texture = texture;
+			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			floatingRect.ZIndex = 100;
 			
-			// Optional: Add a tween or animation for pop effect
+			// Make points appear MUCH smaller (8% of original size)
+			floatingRect.Scale = new Vector2(0.08f, 0.08f);
+			
+			// Initial center screen position, accounting for scale
+			var vpSize = GetViewportRect().Size;
+			Vector2 texSize = texture.GetSize() * floatingRect.Scale;
+			
+			// Separate horizontal positions so points don't overlap when they spawn simultaneously
+			float xOffset = 0;
+			if (roleLower == "prophet") xOffset = -100f;
+			else if (roleLower == "producer") xOffset = 0f;
+			else if (roleLower == "admirer") xOffset = 100f;
+			
+			// Start higher up on the screen by subtracting an additional Y offset (e.g., 200 pixels)
+			floatingRect.Position = new Vector2(((vpSize.X - texSize.X) / 2) + xOffset, ((vpSize.Y - texSize.Y) / 2) - 200f);
+			
+			_uiLayer.AddChild(floatingRect);
+			
+			// Tween upwards and fade out
 			var tween = CreateTween();
-			_plusOneOverlay.Scale = Vector2.Zero;
-			tween.TweenProperty(_plusOneOverlay, "scale", Vector2.One, 0.3f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+			tween.SetParallel(true);
+			Vector2 targetPos = floatingRect.Position - new Vector2(0, 150);
+			tween.TweenProperty(floatingRect, "position", targetPos, 2.0f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+			tween.TweenProperty(floatingRect, "modulate", new Color(1, 1, 1, 0), 2.0f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+			
+			// Chain callback to remove after
+			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
 		}
 		else
 		{
@@ -2276,16 +2238,7 @@ public partial class GameWorld : Node2D
 
 	public override void _Process(double delta)
 	{
-		// Handle +1 Rating Visual Feedback Timer
-		if (_plusOneTimer > 0)
-		{
-			_plusOneTimer -= delta;
-			if (_plusOneTimer <= 0 && _plusOneOverlay != null)
-			{
-				_plusOneOverlay.Visible = false;
-				// GD.Print("[GameWorld] Hiding +1 rating visual feedback");
-			}
-		}
+
 		// Handle Admirer Eliminated timer for non-Admirer players
 		if (_admirerEliminatedTimer > 0)
 		{
@@ -3141,18 +3094,8 @@ public partial class GameWorld : Node2D
 							GD.Print($"[+1 Debug] Rating increased by +{diff}! Showing visual feedback...");
 							
 							// Show +1 visual regardless of source (Interview, MiniGame, etc)
-							if (_plusOneTimer <= 0)
-							{
-								if (_plusOneOverlay != null)
-								{
-									_plusOneOverlay.Visible = true;
-									_plusOneTimer = 1.0; // Display for 1 second
-									
-									// If distinct +2 asset existed, we would select it here. 
-									// For now, reuse +1 or just show the feedback.
-									GD.Print("[GameWorld] ✅ Showing rating increase visual feedback!");
-								}
-							}
+							ShowScoreFeedback("producer", "ai_producer_plusone.png");
+							GD.Print("[GameWorld] ✅ Showing rating increase visual feedback!");
 						}
 						
 						// Update previous rating for next check
