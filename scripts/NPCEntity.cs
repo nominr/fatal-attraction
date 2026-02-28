@@ -249,10 +249,29 @@ public partial class NPCEntity : CharacterBody2D
 	private void UpdateAnimation()
 	{
 		if (_sprite == null) return;
-		if (_isSlipping || !_isAlive || _isStunned) 
+		
+		if (_isSlipping || !_isAlive) 
 		{
 			_sprite.Pause();
 			return;
+		}
+
+		if (_isStunned)
+		{
+			string stunAnim = _lastFacingDirection.Contains("up") ? "stun_back" : "stun_front";
+			if (_sprite.SpriteFrames.HasAnimation(stunAnim))
+			{
+				if (_sprite.Animation != stunAnim)
+				{
+					_sprite.Play(stunAnim);
+				}
+				return;
+			}
+			else
+			{
+				_sprite.Pause();
+				return;
+			}
 		}
 
 		Vector2 velocity = Velocity;
@@ -793,7 +812,7 @@ public partial class NPCEntity : CharacterBody2D
 		string basePath = "res://assets/new-character-assets/";
 		
 		// Helper to load frames from a split texture (6x6 grid, limit to 35)
-		void AddAnimationFrames(string animName, string path, bool skipFirstFrame = false, float scaleMultiplier = 1.0f)
+		void AddAnimationFrames(string animName, string path, bool skipFirstFrame = false, float scaleMultiplier = 1.0f, bool loop = true)
 		{
 			var tex = GD.Load<Texture2D>(path);
 			if (tex == null) return;
@@ -829,7 +848,7 @@ public partial class NPCEntity : CharacterBody2D
 				if (totalAdded >= 35) break;
 			}
 			
-			frames.SetAnimationLoop(animName, true);
+			frames.SetAnimationLoop(animName, loop);
 			frames.SetAnimationSpeed(animName, animName.Contains("idle") ? 10.0f : 15.0f); // 36 frames need higher speed
 
 			// Calculate and store scale for this specific animation to ensure 243 world unit height
@@ -861,6 +880,13 @@ public partial class NPCEntity : CharacterBody2D
 		AddAnimationFrames("idle_up_left", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
 
 		AddAnimationFrames("idle_down", $"{basePath}{npcAsset}-front-idle.png");
+
+		// Add collapse/stun animations for NPC1 and NPC2
+		if (npcAsset == "npc1" || npcAsset == "npc2")
+		{
+			AddAnimationFrames("stun_front", $"{basePath}{npcAsset}-collapse-front.png", false, 1.0f, false);
+			AddAnimationFrames("stun_back", $"{basePath}{npcAsset}-collapse-back.png", false, 1.0f, false);
+		}
 
 		_animationScales = generatedScales;
 		_spriteFramesCache[npcAsset] = frames;
@@ -1103,10 +1129,20 @@ public partial class NPCEntity : CharacterBody2D
 		_stunTimer = seconds;
 		Velocity = Vector2.Zero;
 
-		// Grey out during stun
+		// Grey out during stun if no collapse animation exists
+		string stunAnim = _lastFacingDirection.Contains("up") ? "stun_back" : "stun_front";
 		if (_sprite != null)
 		{
-			_sprite.Modulate = Colors.DarkGray;
+			if (_sprite.SpriteFrames.HasAnimation(stunAnim))
+			{
+				_sprite.Play(stunAnim);
+				_sprite.Modulate = Colors.White; // Ensure no grey out if we have animation
+			}
+			else
+			{
+				_sprite.Modulate = Colors.DarkGray;
+				_sprite.Pause();
+			}
 		}
 	}
 
