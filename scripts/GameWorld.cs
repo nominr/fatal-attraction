@@ -626,15 +626,14 @@ public partial class GameWorld : Node2D
 
 		// Each icon is a Control stack: shader glow (behind) + TextureRect (front)
 		// Stack is 90×90 so the radial glow can visually bleed beyond the icon bounds.
-		void MakeRoleIcon(string iconPath, out TextureRect iconOut, out ColorRect glowOut)
+		void MakeRoleIcon(string iconPath, Color glowColor, out TextureRect iconOut, out ColorRect glowOut)
 		{
 			var stack = new Control();
-			stack.CustomMinimumSize = new Vector2(82, 82); // slightly larger
+			stack.CustomMinimumSize = new Vector2(82, 82);
 			globalIconsHBox.AddChild(stack);
 
-			// Shader-based radial glow — fills the entire stack so it spreads outward
 			var glowRect = new ColorRect();
-			glowRect.Color = Colors.White; // colour is driven by the shader uniform
+			glowRect.Color = Colors.White;
 			glowRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
 			glowRect.MouseFilter = Control.MouseFilterEnum.Ignore;
 			glowRect.Visible = false;
@@ -644,6 +643,7 @@ public partial class GameWorld : Node2D
 			{
 				var mat = new ShaderMaterial();
 				mat.Shader = glowShader;
+				mat.SetShaderParameter("glow_color", glowColor);
 				glowRect.Material = mat;
 			}
 			stack.AddChild(glowRect);
@@ -665,9 +665,15 @@ public partial class GameWorld : Node2D
 			glowOut = glowRect;
 		}
 
-		MakeRoleIcon("res://scenes/prophet-btn.png",   out _globalProphetIcon,  out _globalProphetGlow);
-		MakeRoleIcon("res://scenes/admirer-bttn.png",  out _globalAdmirerIcon,  out _globalAdmirerGlow);
-		MakeRoleIcon("res://scenes/producer-btn.png",  out _globalProducerIcon, out _globalProducerGlow);
+		MakeRoleIcon("res://scenes/prophet-btn.png",
+			new Color(1.0f, 0.92f, 0.15f, 1f),  // yellow
+			out _globalProphetIcon,  out _globalProphetGlow);
+		MakeRoleIcon("res://scenes/admirer-bttn.png",
+			new Color(1.0f, 0.92f, 0.15f, 1f),  // yellow
+			out _globalAdmirerIcon,  out _globalAdmirerGlow);
+		MakeRoleIcon("res://scenes/producer-btn.png",
+			new Color(1.0f, 0.92f, 0.15f, 1f),  // yellow
+			out _globalProducerIcon, out _globalProducerGlow);
 
 		// Producer Stats Container (Active Cameras / Police)
 
@@ -3014,21 +3020,35 @@ public partial class GameWorld : Node2D
 		TimeSpan ts = TimeSpan.FromSeconds(time);
 		_timerLabel.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}";
 
-		// Color: 180-120 green | 120-60 green→yellow | 60-0 yellow→red
-		Color timerColor;
-		if (time >= 120)
+		// Timer color = leading role's color (matches glow icons), white if no NPCs placed yet
+		Color timerColor = Colors.White;
+		if (_globalInfluenceTriangle != null)
 		{
-			timerColor = new Color(0.1f, 0.95f, 0.2f, 1f); // green
-		}
-		else if (time >= 60)
-		{
-			float t = (float)(time - 60) / 60f;
-			timerColor = new Color(0.1f, 0.95f, 0.2f).Lerp(new Color(1f, 0.92f, 0.05f), 1f - t);
-		}
-		else
-		{
-			float t = (float)time / 60f;
-			timerColor = new Color(1f, 0.92f, 0.05f).Lerp(new Color(1f, 0.08f, 0.08f), 1f - t);
+			int prophetN  = _globalInfluenceTriangle.ProphetZoneCount;
+			int producerN = _globalInfluenceTriangle.ProducerZoneCount;
+			int admirerN  = _globalInfluenceTriangle.AdmirerZoneCount;
+			int maxN = Math.Max(prophetN, Math.Max(producerN, admirerN));
+
+			if (maxN > 0)
+			{
+				bool pLead = prophetN  == maxN;
+				bool rLead = producerN == maxN;
+				bool aLead = admirerN  == maxN;
+
+				// Role colours (match glow shader uniforms)
+				var cProphet  = new Color(0.1f,  0.5f,  1.0f,  1f); // vivid blue
+				var cAdmirer  = new Color(1.0f,  0.08f, 0.08f, 1f); // red
+				var cProducer = new Color(0.05f, 1.0f,  0.25f, 1f); // lime-green
+
+				if (pLead && !rLead && !aLead)       timerColor = cProphet;
+				else if (rLead && !pLead && !aLead)  timerColor = cProducer;
+				else if (aLead && !pLead && !rLead)  timerColor = cAdmirer;
+				// Tie blends
+				else if (pLead && rLead && !aLead)   timerColor = new Color(0.0f,  0.85f, 0.80f, 1f); // teal
+				else if (pLead && aLead && !rLead)   timerColor = new Color(0.55f, 0.1f,  0.85f, 1f); // purple
+				else if (rLead && aLead && !pLead)   timerColor = new Color(1.0f,  0.65f, 0.0f,  1f); // orange-yellow
+				// All three tied — stay white
+			}
 		}
 		_timerLabel.AddThemeColorOverride("font_color", timerColor);
 
