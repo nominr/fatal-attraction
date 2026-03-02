@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 NetworkManager="*res://scripts/NetworkManager.cs"
+MusicManager="*res://scripts/MusicManager.cs"
 
 [display]
 

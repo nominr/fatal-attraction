@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dn1bu5nt6m8hq"
+path="res://.godot/imported/Pixel Palms Lobby.mp3-5e647b451035f07f1f04d81346b23e0c.mp3str"
+
+[deps]
+
+source_file="res://assets/sounds/Pixel Palms Lobby.mp3"
+dest_files=["res://.godot/imported/Pixel Palms Lobby.mp3-5e647b451035f07f1f04d81346b23e0c.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
