@@ -847,7 +847,7 @@ namespace FatalAttraction.Engine
 				// Pick 1 positive + 1 negative question
 				var positives = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) > 0).OrderBy(_ => _random.Next()).Take(1);
 				var negatives = introTopics.Where(x => (x["score"]?.Value<int>() ?? 0) < 0).OrderBy(_ => _random.Next()).Take(1);
-				var questions = positives.Concat(negatives).Select(x => x["id"]?.Value<string>()).ToList();
+				var questions = positives.Concat(negatives).OrderBy(_ => _random.Next()).Select(x => x["id"]?.Value<string>()).ToList();
 
 				var ctx = new InterviewContext
 				{

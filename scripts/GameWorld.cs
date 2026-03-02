@@ -115,6 +115,7 @@ public partial class GameWorld : Node2D
 
 	// Suppresses self-healing re-open between intentional Close() and server confirmation
 	private bool _suppressSelfHeal = false;
+	private bool _isGameOver = false; // Set permanently once game ends — prevents panel re-open
 	
 	// +1 Rating Visual Feedback
 	private double _previousProducerRating = 0;
@@ -2215,6 +2216,8 @@ public partial class GameWorld : Node2D
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
 	private void ClientShowScoreFeedback(string roleStr, int score)
 	{
+		if (_isGameOver) return; // Don't show score popups on end screen
+
 		// Called on Client
 		GD.Print($"[GameWorld] Received Score Feedback RPC: {score} for role {roleStr} on peer {Multiplayer.GetUniqueId()}");
 		
@@ -2244,6 +2247,9 @@ public partial class GameWorld : Node2D
 	
 	private void ShowScoreFeedback(string roleLower, string assetName)
 	{
+		// Bail out if game is already over (covers race conditions where _isGameOver isn't set yet)
+		if (_isGameOver || HasNode("GameOverOverlay")) return;
+
 		string path = $"res://assets/{assetName}";
 		GD.Print($"[GameWorld] Loading score asset: {path}");
 		var texture = ResourceLoader.Load<Texture2D>(path);
@@ -2255,6 +2261,7 @@ public partial class GameWorld : Node2D
 			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
 			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
 			floatingRect.ZIndex = 100;
+			floatingRect.AddToGroup("ScoreFeedback"); // tagged so we can purge on game over
 			
 			// Make points appear MUCH smaller (8% of original size)
 			floatingRect.Scale = new Vector2(0.08f, 0.08f);
@@ -2800,7 +2807,8 @@ public partial class GameWorld : Node2D
 			);
 
 		// Once the server confirms no active interaction, lift the suppress flag
-		if (_suppressSelfHeal && !serverHasActive)
+		// Do NOT lift _suppressSelfHeal once the game is over
+		if (_suppressSelfHeal && !serverHasActive && !_isGameOver)
 		{
 			_suppressSelfHeal = false;
 		}
@@ -3212,7 +3220,8 @@ public partial class GameWorld : Node2D
 							GD.Print($"[+1 Debug] Rating increased by +{diff}! Showing visual feedback...");
 							
 							// Show +1 visual regardless of source (Interview, MiniGame, etc)
-							ShowScoreFeedback("producer", "ai_producer_plusone.png");
+							if (!_isGameOver)
+								ShowScoreFeedback("producer", "ai_producer_plusone.png");
 							GD.Print("[GameWorld] ✅ Showing rating increase visual feedback!");
 						}
 						
@@ -3234,18 +3243,31 @@ public partial class GameWorld : Node2D
 				_localPlayer.Velocity = Vector2.Zero; // Stop moving immediately
 			}
 
+			// Permanently suppress interaction panel for the rest of the session
+			_isGameOver = true;
+			_suppressSelfHeal = true;
+			_currentInteractingNpcId = null;
+
+			// Always force-hide the dialogue panel on game over (in case it got re-opened)
+			if (_npcDialogueUI != null && _npcDialogueUI.Visible)
+			{
+				_npcDialogueUI.Close();
+			}
+
 			string winner = _localGameState["winner"]?.Value<string>();
 			string winText = !string.IsNullOrEmpty(winner) ? $"{winner.ToUpper()} WINS!" : "GAME OVER";
 			
 			// 2. BLOCK UI CLICKS & SHOW OVERLAY
 			if (!HasNode("GameOverOverlay"))
 			{
-				// Close interaction panel so buttons don't bleed through on the win screen
-				if (_npcDialogueUI != null && _npcDialogueUI.Visible)
-				{
-					_npcDialogueUI.Close();
-				}
 				_currentInteractingNpcId = null;
+
+				// Purge any floating score-feedback nodes that are already in the scene
+				foreach (Node node in GetTree().GetNodesInGroup("ScoreFeedback"))
+				{
+					node.QueueFree();
+				}
+
 				// Full screen blocking rect with title background
 				var overlay = new TextureRect();
 				overlay.Name = "GameOverOverlay";
@@ -3254,7 +3276,7 @@ public partial class GameWorld : Node2D
 				overlay.StretchMode = TextureRect.StretchModeEnum.Scale;
 				overlay.Size = _worldSize * 1.2f; // Cover entire world (20% bigger)
 				overlay.MouseFilter = Control.MouseFilterEnum.Stop; // BLOCK ALL CLICKS
-				overlay.ZIndex = 99; // Above everything else
+				overlay.ZIndex = 200; // Well above score floats (ZIndex 100) and everything else
 				_uiLayer.AddChild(overlay);
 
 				// Centered Label
@@ -3268,7 +3290,7 @@ public partial class GameWorld : Node2D
 				label.AnchorsPreset = (int)Control.LayoutPreset.Center;
 				// Center in overlay
 				label.Position = _worldSize / 2 - new Vector2(200, 150);
-				label.ZIndex = 100;
+				label.ZIndex = 201; // Above overlay
 				_uiLayer.AddChild(label);
 
 				// Return to Lobby Button
@@ -3286,7 +3308,7 @@ public partial class GameWorld : Node2D
 				lobbyButton.AddThemeStyleboxOverride("focus", emptyStyle);
 				// Position below the label
 				lobbyButton.Position = _worldSize / 2 - new Vector2(100, 50);
-				lobbyButton.ZIndex = 100;
+				lobbyButton.ZIndex = 201; // Above overlay
 				lobbyButton.Pressed += OnReturnToLobbyPressed;
 				
 				// Add hover effect
