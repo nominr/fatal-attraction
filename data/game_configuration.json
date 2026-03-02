@@ -14,26 +14,6 @@
           },
           "uiHint": "Kill button"
         },
-        "unconvert_target": {
-          "displayName": "Unconvert targets",
-          "resolution": {
-            "type": "chance",
-            "baseChance": 0.55
-          },
-          "constraints": {
-            "mustBeTarget": true
-          }
-        },
-        "unconvert_love_interest": {
-          "displayName": "Unconvert love interest",
-          "resolution": {
-            "type": "chance",
-            "baseChance": 0.55
-          },
-          "constraints": {
-            "mustBeLoveInterest": true
-          }
-        },
         "throw_knife": {
           "displayName": "Throw Knife",
           "resolution": {
@@ -101,13 +81,6 @@
     "producer": {
       "displayName": "Producer",
       "powers": {
-        "unconvert_npc": {
-          "displayName": "Unconvert NPCs",
-          "resolution": {
-            "type": "chance",
-            "baseChance": 0.75
-          }
-        },
         "report_admirer": {
           "displayName": "Report Admirer",
           "notes": "Admirer becomes observer"
@@ -158,60 +131,6 @@
         "root": {
           "text": "Katy walks up to you, smiling warmly.",
           "options": [
-            {
-              "id": "unconvert_katy_admirer",
-              "text": "Unconvert Katy",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "Success! Katy is unconverted."
-                },
-                {
-                  "npc": "katy",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Katy."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_katy_producer",
-              "text": "Unconvert Katy",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "Success! Katy is unconverted."
-                },
-                {
-                  "npc": "katy",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Katy."
-                }
-              ]
-            },
             {
               "id": "start_flirt",
               "text": "Flirt with Katy",
@@ -468,60 +387,6 @@
               ]
             },
             {
-              "id": "unconvert_marcus_admirer",
-              "text": "Unconvert Marcus",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Marcus!"
-                },
-                {
-                  "npc": "marcus",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Marcus."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_marcus",
-              "text": "Unconvert Marcus",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Marcus!"
-                },
-                {
-                  "npc": "marcus",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Marcus."
-                }
-              ]
-            },
-            {
               "id": "start_flirt",
               "text": "Start Flirt",
               "requires": {
@@ -572,60 +437,6 @@
               "effects_on_failure": [
                 {
                   "notification": "Sofia is resistant to your ideas."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_sofia_admirer",
-              "text": "Unconvert Sofia",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Sofia!"
-                },
-                {
-                  "npc": "sofia",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Sofia."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_sofia",
-              "text": "Unconvert Sofia",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Sofia!"
-                },
-                {
-                  "npc": "sofia",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Sofia."
                 }
               ]
             },
@@ -684,60 +495,6 @@
               ]
             },
             {
-              "id": "unconvert_amir_admirer",
-              "text": "Unconvert Amir",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Amir!"
-                },
-                {
-                  "npc": "amir",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Amir."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_amir",
-              "text": "Unconvert Amir",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Amir!"
-                },
-                {
-                  "npc": "amir",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Amir."
-                }
-              ]
-            },
-            {
               "id": "start_flirt",
               "text": "Flirt with Amir",
               "requires": {
@@ -788,60 +545,6 @@
               "effects_on_failure": [
                 {
                   "notification": "Bella resisted your conversion."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_bella_admirer",
-              "text": "Unconvert Bella",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Bella!"
-                },
-                {
-                  "npc": "bella",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Bella."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_bella",
-              "text": "Unconvert Bella",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Bella!"
-                },
-                {
-                  "npc": "bella",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Bella."
                 }
               ]
             },
@@ -900,60 +603,6 @@
               ]
             },
             {
-              "id": "unconvert_chris_admirer",
-              "text": "Unconvert Chris",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Chris!"
-                },
-                {
-                  "npc": "chris",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Chris."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_chris",
-              "text": "Unconvert Chris",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Chris!"
-                },
-                {
-                  "npc": "chris",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Chris."
-                }
-              ]
-            },
-            {
               "id": "start_flirt",
               "text": "Flirt with Chris",
               "requires": {
@@ -1008,60 +657,6 @@
               ]
             },
             {
-              "id": "unconvert_diana_admirer",
-              "text": "Unconvert Diana",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Diana!"
-                },
-                {
-                  "npc": "diana",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Diana."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_diana",
-              "text": "Unconvert Diana",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Diana!"
-                },
-                {
-                  "npc": "diana",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Diana."
-                }
-              ]
-            },
-            {
               "id": "start_flirt",
               "text": "Flirt with Diana",
               "requires": {
@@ -1112,60 +707,6 @@
               "effects_on_failure": [
                 {
                   "notification": "Eli resisted your conversion."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_eli_admirer",
-              "text": "Unconvert Eli",
-              "requires": {
-                "role": "admirer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.30
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Eli!"
-                },
-                {
-                  "npc": "eli",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Eli."
-                }
-              ]
-            },
-            {
-              "id": "unconvert_eli",
-              "text": "Unconvert Eli",
-              "requires": {
-                "role": "producer",
-                "npcStatus": "converted"
-              },
-              "resolution": {
-                "type": "chance",
-                "successChance": 0.75
-              },
-              "effects_on_success": [
-                {
-                  "notification": "You unconverted Eli!"
-                },
-                {
-                  "npc": "eli",
-                  "field": "convertedStatus",
-                  "value": false
-                }
-              ],
-              "effects_on_failure": [
-                {
-                  "notification": "Failed to unconvert Eli."
                 }
               ]
             },
