@@ -565,13 +565,14 @@ public partial class GameWorld : Node2D
 		_bottomLeftStatusContainer = new VBoxContainer();
 		_bottomLeftStatusPanel.AddChild(_bottomLeftStatusContainer);
 
-		_convertedLabel = new Label();
-		_convertedLabel.Text = "Converted: 0";
-		_convertedLabel.AddThemeFontOverride("font", _customFont);
-		_convertedLabel.AddThemeFontSizeOverride("font_size", 26);
-		_convertedLabel.AddThemeColorOverride("font_color", Colors.White);
-		_convertedLabel.Visible = false; // Only relevant for Prophet
-		_bottomLeftStatusContainer.AddChild(_convertedLabel);
+		// _convertedLabel — commented out per request
+		// _convertedLabel = new Label();
+		// _convertedLabel.Text = "Converted: 0";
+		// _convertedLabel.AddThemeFontOverride("font", _customFont);
+		// _convertedLabel.AddThemeFontSizeOverride("font_size", 26);
+		// _convertedLabel.AddThemeColorOverride("font_color", Colors.White);
+		// _convertedLabel.Visible = false;
+		// _bottomLeftStatusContainer.AddChild(_convertedLabel);
 
 		// _metersContainer removed
 
@@ -3066,24 +3067,22 @@ public partial class GameWorld : Node2D
 			trapBtn.Visible = false;
 		}
 
-		// Update bottom-left status panel visibility
+		// Update bottom-left status panel visibility — hidden since converted label removed
 		if (_bottomLeftStatusPanel != null)
 		{
-			// Show panel if any of the role labels inside are visible
-			_bottomLeftStatusPanel.Visible = _convertedLabel.Visible;
+			_bottomLeftStatusPanel.Visible = false;
 		}
 
-		// Prophet conversion progress
-		if (_convertedLabel != null)
-		{
-			var npcStates = _localGameState?["npc_states"] as JObject;
-			int convertedCount = npcStates?.Properties()
-				.Where(p => p.Value["converted"]?.Value<bool>() == true)
-				.Count() ?? 0;
-
-			_convertedLabel.Text = $"Converted: {convertedCount}";
-			_convertedLabel.Visible = isProphet;
-		}
+		// Prophet conversion progress — commented out per request
+		// if (_convertedLabel != null)
+		// {
+		// 	var npcStates = _localGameState?["npc_states"] as JObject;
+		// 	int convertedCount = npcStates?.Properties()
+		// 		.Where(p => p.Value["converted"]?.Value<bool>() == true)
+		// 		.Count() ?? 0;
+		// 	_convertedLabel.Text = $"Converted: {convertedCount}";
+		// 	_convertedLabel.Visible = isProphet;
+		// }
 
 
 		bool isProducer = (_myRole?.ToLower() == "producer");

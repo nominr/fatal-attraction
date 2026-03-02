@@ -725,9 +725,11 @@ public partial class NPCEntity : CharacterBody2D
 		AddChild(_punchHint);
 		CallDeferred(MethodName.CenterPunchHint);
 
-		// Status indicators (hidden by default)
-		// Converted (Halo) - Above head (approx -110)
-		_convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -110));
+		// Converted (Halo) — commented out per request
+		// _convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -110));
+		_convertedIndicator = new Sprite2D(); // dummy to avoid null refs
+		_convertedIndicator.Visible = false;
+		AddChild(_convertedIndicator);
 		
 		// Married (Heart) - Above head (approx -110)
 		_marriedIndicator = CreateStatusIndicator("res://assets/marry-heart.png", new Vector2(0, -110));
@@ -1065,7 +1067,8 @@ public partial class NPCEntity : CharacterBody2D
 	{
 		_isAlive = alive;
 		_deadOverlay.Visible = !alive;
-		_convertedIndicator.Visible = converted;
+		// _convertedIndicator.Visible = converted; // halo commented out per request
+		_convertedIndicator.Visible = false;
 		_marriedIndicator.Visible = false; // Marriage removed from game
 		_targetIndicator.Visible = isTarget;
 		if (!alive && _punchHint != null)
