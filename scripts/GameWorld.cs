@@ -1602,6 +1602,9 @@ public partial class GameWorld : Node2D
 
 		_npcDialogueUI.ShowForNPC(npcId, npcName, desc, actionsList, npcState, npcPortrait);
 
+		// Play chat-begin sound effect
+		GetNode<SfxManager>("/root/SfxManager").PlayChatBegin();
+
 		// PROPHET AUTO-CONVERT: trigger start_convert immediately on click (no button needed)
 		if (_myRole?.ToLower() == "prophet")
 		{
@@ -2106,6 +2109,9 @@ public partial class GameWorld : Node2D
 			// Request punch animation for all screens, sending current facing/flip
 			RpcId(1, MethodName.RequestPunchAnimation, _localPlayer.FacingDirection, _localPlayer.FlipH);
 
+			// Play punch sound effect
+			GetNode<SfxManager>("/root/SfxManager").PlayPunch();
+
 			string closestNpcId = null;
 			float closestDistance = float.MaxValue;
 
@@ -2178,6 +2184,14 @@ public partial class GameWorld : Node2D
 		
 		if (score >= 1) assetName = $"ai_{roleLower}_plusone.png";
 		else if (score <= -1) assetName = $"ai_{roleLower}_minusone.png";
+
+		// Play success/failure SFX when score feedback is for the local player's role
+		if (!string.IsNullOrEmpty(_myRole) && roleLower == _myRole.ToLower())
+		{
+			var sfx = GetNode<SfxManager>("/root/SfxManager");
+			if (score >= 1) sfx.PlayChatSuccess();
+			else if (score <= -1) sfx.PlayChatFailure();
+		}
 		
 		if (assetName != null)
 		{
