@@ -3000,10 +3000,11 @@ public partial class GameWorld : Node2D
 	{
 		if (_localGameState == null) return;
 
-		// Timer — seconds only, color gradient, per-second bounce in last 20s
+		// Timer — MM:SS, color gradient, per-second bounce in last 20s
 		double time = _localGameState["time_remaining"]?.Value<double>() ?? 0;
 		int secs = Mathf.CeilToInt((float)time);
-		_timerLabel.Text = $"{secs}";
+		TimeSpan ts = TimeSpan.FromSeconds(time);
+		_timerLabel.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}";
 
 		// Color: 180-120 green | 120-60 green→yellow | 60-0 yellow→red
 		Color timerColor;
