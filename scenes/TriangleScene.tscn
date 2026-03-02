@@ -14,6 +14,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture_filter = 1
 script = ExtResource("1_script")
 
 [node name="Polygon2D" type="Polygon2D" parent="."]
@@ -23,21 +24,25 @@ polygon = PackedVector2Array(-30, 24, 30, 24, 0, -28)
 uv = PackedVector2Array(-30, 24, 30, 24, 0, -25)
 
 [node name="TriangleUi" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(77, 81)
 scale = Vector2(1.1, 1.1)
 texture = ExtResource("1_ly5c7")
 
 [node name="ProducerBtn" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(121, 110)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("2_yejs0")
 
 [node name="ProphetBtn" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(33, 109)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("3_slhhc")
 
 [node name="AdmirerBttn" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(76, 48)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("4_nasqx")

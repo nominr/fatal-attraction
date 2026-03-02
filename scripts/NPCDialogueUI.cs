@@ -22,7 +22,6 @@ public partial class NPCDialogueUI : Control
 	
 	private GridContainer _optionsGrid;
 	private VBoxContainer _contentGroup; // dialogue + options wrapper
-	private Label _stateLabel; // Global screen label available to debug
 	private Control _triangleScene; // Influence triangle component (right side)
 	private TextureRect _npcFaceRect; // NPC Face Display
 	
@@ -195,16 +194,6 @@ public partial class NPCDialogueUI : Control
 		_optionsGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		contentGroup.AddChild(_optionsGrid);
 
-		// Debug Label
-		_stateLabel = new Label();
-		_stateLabel.TopLevel = true;
-		_stateLabel.SetAnchorsPreset(LayoutPreset.TopLeft);
-		_stateLabel.Position = new Vector2(20, 20);
-		_stateLabel.AddThemeColorOverride("font_color", Colors.White);
-		_stateLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
-		_stateLabel.AddThemeConstantOverride("outline_size", 4);
-		_stateLabel.Visible = false;
-		AddChild(_stateLabel);
 	}
 
 	public void ShowForNPC(string npcId, string npcName, string npcDescription, List<JToken> actions, Vector3 state, Texture2D npcFace = null)
@@ -257,11 +246,6 @@ public partial class NPCDialogueUI : Control
 			_npcNameLabel.Visible = true;
 		}
 		
-		if (_stateLabel != null)
-		{
-			_stateLabel.Text = $"NPC STATE: [A: {state.X:F1}, P: {state.Y:F1}, Pr: {state.Z:F1}]";
-			_stateLabel.Visible = true;
-		}
 
 		string currentHash = npcId + "|" + npcDescription + "|" + GenerateActionsHash(actions);
 		if (currentHash == _lastActionsHash) { return; }
@@ -358,7 +342,6 @@ public partial class NPCDialogueUI : Control
 	{
 		Visible = false;
 		_currentNpcId = null;
-		if (_stateLabel != null) _stateLabel.Visible = false;
 		EmitSignal(SignalName.PanelClosed);
 	}
 

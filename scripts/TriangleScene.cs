@@ -211,12 +211,28 @@ public partial class TriangleScene : Control
 
 		var heartTexture = GD.Load<Texture2D>("res://assets/black-heart-ui.png");
 
+		// Group NPCs by position (round to 0.5 so near-identical coords merge)
+		var positionCounts = new Dictionary<Vector2, int>();
 		foreach (var kvp in ActiveNpcStates)
 		{
+			// Snap to 0.5-unit grid so positions within 0.25 units collapse together
+			var snapped = new Vector2(
+				Mathf.Round(kvp.Value.X * 2f) / 2f,
+				Mathf.Round(kvp.Value.Y * 2f) / 2f);
+			positionCounts[snapped] = positionCounts.GetValueOrDefault(snapped, 0) + 1;
+		}
+
+		const float baseScale = 0.58f;
+
+		foreach (var kvp in positionCounts)
+		{
+			int count = kvp.Value;
 			var dot = new Sprite2D();
 			dot.Texture = heartTexture;
-			dot.Scale = new Vector2(0.45f, 0.45f); // Small dots for multi-point view
-			dot.Position = _centerOffset + kvp.Value;
+			// Scale: 1 NPC = 0.45, each extra NPC adds 0.5× (2→×1.5, 3→×2.0, 4→×2.5 …)
+			float s = baseScale * (1f + (count - 1) * 0.5f);
+			dot.Scale = new Vector2(s, s);
+			dot.Position = _centerOffset + kvp.Key;
 			dot.ZIndex = 1;
 			AddChild(dot);
 			_allPointsDots.Add(dot);
@@ -246,22 +262,7 @@ public partial class TriangleScene : Control
 	// ── Overlay Drawing ────────────────────────────────────────────
 	private void OnDrawOverlay()
 	{
-		// All positions are in screen space (offset by _centerOffset) relative to parent
-		// Since overlay is full rect/anchored, its local 0,0 matches parent 0,0 
-		// (or rather, we want to draw relative to the same _centerOffset)
-
-		Vector2 p_prophet_prod = _centerOffset + _p_prophet_producer;
-		Vector2 p_prophet_adm  = _centerOffset + _p_prophet_admirer;
-		Vector2 p_prod_proph   = _centerOffset + _p_producer_prophet;
-		Vector2 p_prod_adm     = _centerOffset + _p_producer_admirer;
-		Vector2 p_adm_proph    = _centerOffset + _p_admirer_prophet;
-		Vector2 p_adm_prod     = _centerOffset + _p_admirer_producer;
-
-		// Draw threshold cutoff lines
-		float lineWidth = 1.0f; // Thin line as requested
-		_linesOverlay.DrawLine(p_prophet_prod, p_prophet_adm, Colors.Black, lineWidth);
-		_linesOverlay.DrawLine(p_prod_proph, p_prod_adm, Colors.Black, lineWidth);
-		_linesOverlay.DrawLine(p_adm_proph, p_adm_prod, Colors.Black, lineWidth);
+		// Zone boundary lines removed
 	}
 
 	// ── Zone of Influence Drawing ──────────────────────────────────

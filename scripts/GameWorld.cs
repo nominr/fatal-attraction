@@ -71,6 +71,7 @@ public partial class GameWorld : Node2D
 	private bool _goalsShownAtStart = false;
 	
 	private Label _timerLabel;
+	private int _lastDisplayedSecond = -1; // for per-second pulse detection
 	private Label _roleLabel;
 	private Label _convertedLabel;
 	private VBoxContainer _metersContainer;
@@ -120,9 +121,15 @@ public partial class GameWorld : Node2D
 
 	// Global Influence Counter (Triangle UI)
 	private TriangleScene _globalInfluenceTriangle;
-	private Label _globalAdmirerCountLabel;
-	private Label _globalProphetCountLabel;
-	private Label _globalProducerCountLabel;
+	private TextureRect _globalAdmirerIcon;
+	private TextureRect _globalProphetIcon;
+	private TextureRect _globalProducerIcon;
+	private ColorRect _globalAdmirerGlow;
+	private ColorRect _globalProphetGlow;
+	private ColorRect _globalProducerGlow;
+	private Tween _prophetIconPulse;
+	private Tween _producerIconPulse;
+	private Tween _admirerIconPulse;
 
 	// Bottom-Left Status Container (for role-specific stats)
 	private PanelContainer _bottomLeftStatusPanel;
@@ -438,37 +445,57 @@ public partial class GameWorld : Node2D
 		// var coordinateDisplay = new CoordinateDisplay();
 		// AddChild(coordinateDisplay);
 
-		// HUD Container
-		var hudContainer = new VBoxContainer();
-		hudContainer.Position = new Vector2(20, 20);
-		hudContainer.AddThemeConstantOverride("separation", 5);
-		// Add transparent grey background to HUD
-		var hudPanel = new PanelContainer();
-		hudPanel.Position = new Vector2(20, 20);
-		// Ensure HUD doesn't block clicks in empty areas, but let buttons inside work
-		hudPanel.MouseFilter = Control.MouseFilterEnum.Pass;
-		
-		var hudBgStyle = new StyleBoxEmpty();
-		hudPanel.AddThemeStyleboxOverride("panel", hudBgStyle);
-		hudPanel.AddChild(hudContainer);
-		_uiLayer.AddChild(hudPanel);
+		// ── Outer VBox: stacks timer box directly on top of triangle box, same width ──
+		var hudOuterVBox = new VBoxContainer();
+		hudOuterVBox.Position = new Vector2(8, 0);
+		hudOuterVBox.AddThemeConstantOverride("separation", 6);
+		hudOuterVBox.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
+		_uiLayer.AddChild(hudOuterVBox);
+
+		// Timer Panel — dark bg, same 2px black border as triangle box
+		var timerPanel = new PanelContainer();
+		timerPanel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill; // match width of VBox
+		timerPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+		var timerBgStyle = new StyleBoxFlat();
+		timerBgStyle.BgColor = new Color(0.05f, 0.05f, 0.05f, 0.72f);
+		timerBgStyle.BorderColor = new Color(0f, 0f, 0f, 0.85f);
+		timerBgStyle.SetBorderWidthAll(2); // match triangle box
+		timerBgStyle.SetCornerRadiusAll(6);
+		timerBgStyle.SetContentMarginAll(8);
+		timerPanel.AddThemeStyleboxOverride("panel", timerBgStyle);
+		hudOuterVBox.AddChild(timerPanel);
 
 		_timerLabel = new Label();
-		_timerLabel.Text = "05:00";
+		_timerLabel.Text = "180";
 		_timerLabel.AddThemeFontOverride("font", _customFont);
 		_timerLabel.AddThemeFontSizeOverride("font_size", 48);
 		_timerLabel.AddThemeColorOverride("font_color", Colors.White);
-		// Black outline around the text
 		_timerLabel.AddThemeConstantOverride("outline_size", 6);
 		_timerLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
 		_timerLabel.HorizontalAlignment = HorizontalAlignment.Center;
-		// Center the timer at the top of the screen
-		_timerLabel.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
-		_timerLabel.GrowHorizontal = Control.GrowDirection.Both;
-		_timerLabel.OffsetLeft = -150;
-		_timerLabel.OffsetRight = 150;
-		_timerLabel.OffsetTop = 15;
-		_uiLayer.AddChild(_timerLabel);
+		timerPanel.AddChild(_timerLabel);
+
+		// Triangle+Icons Panel — white semi-transparent, same border
+		var hudPanel = new PanelContainer();
+		hudPanel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		hudPanel.MouseFilter = Control.MouseFilterEnum.Pass;
+
+		var hudBgStyle = new StyleBoxFlat();
+		hudBgStyle.BgColor = new Color(1f, 1f, 1f, 0.55f);
+		hudBgStyle.BorderColor = new Color(0f, 0f, 0f, 0.85f);
+		hudBgStyle.SetBorderWidthAll(2);
+		hudBgStyle.SetCornerRadiusAll(6);
+		hudBgStyle.SetContentMarginAll(6);
+		hudPanel.AddThemeStyleboxOverride("panel", hudBgStyle);
+		hudOuterVBox.AddChild(hudPanel);
+
+		// VBox inside white panel: center-aligned
+		var hudContainer = new VBoxContainer();
+		hudContainer.AddThemeConstantOverride("separation", 6);
+		hudContainer.Alignment = BoxContainer.AlignmentMode.Center;
+		hudContainer.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		hudPanel.AddChild(hudContainer);
 		
 		_roleLabel = new Label();
 		_roleLabel.Text = "";
@@ -548,26 +575,20 @@ public partial class GameWorld : Node2D
 
 		// _metersContainer removed
 
-		// Global Influence Counter — Triangle UI card
-		// Uses SubViewportContainer so rendering is isolated: no layout/anchor fighting.
-		// Camera2D centres on the triangle and zooms so the full image fits the viewport.
+		// Global Influence Counter — Triangle UI card (no background)
 		var globalInfluenceCard = new PanelContainer();
 		globalInfluenceCard.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-		var globalCardStyle = new StyleBoxFlat();
-		globalCardStyle.BgColor = new Color(1.0f, 1.0f, 1.0f, 0.55f);
-		globalCardStyle.SetCornerRadiusAll(8);
-		globalCardStyle.SetContentMarginAll(6);
-		globalInfluenceCard.AddThemeStyleboxOverride("panel", globalCardStyle);
+		globalInfluenceCard.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
 		hudContainer.AddChild(globalInfluenceCard);
 
 		var globalInfluenceVBox = new VBoxContainer();
-		globalInfluenceVBox.AddThemeConstantOverride("separation", 6);
+		globalInfluenceVBox.AddThemeConstantOverride("separation", 0); // icons flush with triangle
 		globalInfluenceVBox.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
 		globalInfluenceCard.AddChild(globalInfluenceVBox);
 
 		// SubViewportContainer — this is the visible window into the triangle render
 		var globalSvContainer = new SubViewportContainer();
-		globalSvContainer.CustomMinimumSize = new Vector2(215, 180);
+		globalSvContainer.CustomMinimumSize = new Vector2(270, 225);
 		globalSvContainer.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
 		globalSvContainer.Stretch = true;
 		// Nearest filtering keeps the viewport texture pixel-sharp; default Linear softens it.
@@ -575,7 +596,7 @@ public partial class GameWorld : Node2D
 		globalInfluenceVBox.AddChild(globalSvContainer);
 
 		var globalSv = new SubViewport();
-		globalSv.Size = new Vector2I(215, 180);
+		globalSv.Size = new Vector2I(270, 225);
 		globalSv.Disable3D = true;
 		globalSv.TransparentBg = true;
 		globalSv.RenderTargetUpdateMode = SubViewport.UpdateMode.Always;
@@ -595,39 +616,56 @@ public partial class GameWorld : Node2D
 		globalSv.AddChild(_globalInfluenceTriangle);
 		_globalInfluenceTriangle.ShowAllPoints();
 
-		// Icon + count rows below triangle — mirrors the leaderboard CreateDetailRow style.
-		// GridContainer: 2 columns (icon | label), one row per role.
-		var globalCountsGrid = new GridContainer();
-		globalCountsGrid.Columns = 2;
-		globalCountsGrid.AddThemeConstantOverride("h_separation", 8);
-		globalCountsGrid.AddThemeConstantOverride("v_separation", 6);
-		globalCountsGrid.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
-		globalInfluenceVBox.AddChild(globalCountsGrid);
+		// Icon-only row below triangle — one icon per role, glows when winning.
+		var globalIconsHBox = new HBoxContainer();
+		globalIconsHBox.AddThemeConstantOverride("separation", 10); // tight between icons
+		globalIconsHBox.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		globalInfluenceVBox.AddChild(globalIconsHBox);
 
-		// Helper to add one icon+label row
-		void AddGlobalCountRow(string iconPath, out Label countLabel)
+		// Each icon is a Control stack: shader glow (behind) + TextureRect (front)
+		// Stack is 90×90 so the radial glow can visually bleed beyond the icon bounds.
+		void MakeRoleIcon(string iconPath, out TextureRect iconOut, out ColorRect glowOut)
 		{
-			var iconRect = new TextureRect();
-			iconRect.Texture = ResourceLoader.Load<Texture2D>(iconPath);
-			iconRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-			iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-			iconRect.CustomMinimumSize = new Vector2(38, 38);
-			globalCountsGrid.AddChild(iconRect);
+			var stack = new Control();
+			stack.CustomMinimumSize = new Vector2(82, 82); // slightly larger
+			globalIconsHBox.AddChild(stack);
 
-			countLabel = new Label();
-			countLabel.AddThemeFontOverride("font", _customFont);
-			countLabel.AddThemeFontSizeOverride("font_size", 24);
-			countLabel.AddThemeColorOverride("font_color", Colors.Black);
-			countLabel.VerticalAlignment = VerticalAlignment.Center;
-			globalCountsGrid.AddChild(countLabel);
+			// Shader-based radial glow — fills the entire stack so it spreads outward
+			var glowRect = new ColorRect();
+			glowRect.Color = Colors.White; // colour is driven by the shader uniform
+			glowRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+			glowRect.MouseFilter = Control.MouseFilterEnum.Ignore;
+			glowRect.Visible = false;
+
+			var glowShader = ResourceLoader.Load<Shader>("res://assets/glow_circle.gdshader");
+			if (glowShader != null)
+			{
+				var mat = new ShaderMaterial();
+				mat.Shader = glowShader;
+				glowRect.Material = mat;
+			}
+			stack.AddChild(glowRect);
+
+			// Icon on top — slightly inset so the glow spreads around it
+			var icon = new TextureRect();
+			icon.Texture = ResourceLoader.Load<Texture2D>(iconPath);
+			icon.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+			icon.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			icon.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+			icon.OffsetLeft   =  16;
+			icon.OffsetRight  = -16;
+			icon.OffsetTop    =  16;
+			icon.OffsetBottom = -16;
+			icon.MouseFilter = Control.MouseFilterEnum.Ignore;
+			stack.AddChild(icon);
+
+			iconOut = icon;
+			glowOut = glowRect;
 		}
 
-		AddGlobalCountRow("res://assets/prophet-btn.png",   out _globalProphetCountLabel);
-		_globalProphetCountLabel.Text  = "Prophet: 0";
-		AddGlobalCountRow("res://assets/producer-btn.png",  out _globalProducerCountLabel);
-		_globalProducerCountLabel.Text = "Producer: 0";
-		AddGlobalCountRow("res://assets/admirer-bttn.png",  out _globalAdmirerCountLabel);
-		_globalAdmirerCountLabel.Text  = "Admirer: 0";
+		MakeRoleIcon("res://scenes/prophet-btn.png",   out _globalProphetIcon,  out _globalProphetGlow);
+		MakeRoleIcon("res://scenes/admirer-bttn.png",  out _globalAdmirerIcon,  out _globalAdmirerGlow);
+		MakeRoleIcon("res://scenes/producer-btn.png",  out _globalProducerIcon, out _globalProducerGlow);
 
 		// Producer Stats Container (Active Cameras / Police)
 
@@ -1348,7 +1386,7 @@ public partial class GameWorld : Node2D
 		_gameEngine.GameState.OnScoreChange += HandleScoreChange;
 		
 		_gameActive = true;
-		_timeRemaining = 300.0;
+		_timeRemaining = 180.0;
 
 		SpawnNPCs();
 		SpawnAllPlayers();
@@ -2683,9 +2721,41 @@ public partial class GameWorld : Node2D
 					int prophetCount  = _globalInfluenceTriangle.ProphetZoneCount;
 					int producerCount = _globalInfluenceTriangle.ProducerZoneCount;
 
-					if (_globalAdmirerCountLabel  != null) _globalAdmirerCountLabel.Text  = $"Admirer: {admirerCount}";
-					if (_globalProphetCountLabel   != null) _globalProphetCountLabel.Text   = $"Prophet: {prophetCount}";
-					if (_globalProducerCountLabel  != null) _globalProducerCountLabel.Text  = $"Producer: {producerCount}";
+					// Show glow under icon(s) of whoever leads. If tied, multiple glow.
+					int maxCount = Math.Max(prophetCount, Math.Max(producerCount, admirerCount));
+					bool prophetLeads  = maxCount > 0 && prophetCount  == maxCount;
+					bool producerLeads = maxCount > 0 && producerCount == maxCount;
+					bool admirerLeads  = maxCount > 0 && admirerCount  == maxCount;
+
+					if (_globalProphetGlow  != null) _globalProphetGlow.Visible  = prophetLeads;
+					if (_globalProducerGlow != null) _globalProducerGlow.Visible = producerLeads;
+					if (_globalAdmirerGlow  != null) _globalAdmirerGlow.Visible  = admirerLeads;
+
+					// Icon scale-pulse: loop when glowing, stop+reset when not
+					void SetIconPulse(ref Tween tw, TextureRect icon, bool leading)
+					{
+						if (icon == null) return;
+						if (leading)
+						{
+							if (tw != null && tw.IsRunning()) return; // already pulsing
+							tw?.Kill();
+							tw = CreateTween().SetLoops();
+							icon.PivotOffset = icon.Size / 2f;
+							tw.TweenProperty(icon, "scale", new Vector2(1.12f, 1.12f), 0.45f)
+								.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+							tw.TweenProperty(icon, "scale", Vector2.One, 0.45f)
+								.SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+						}
+						else
+						{
+							tw?.Kill();
+							tw = null;
+							icon.Scale = Vector2.One;
+						}
+					}
+					SetIconPulse(ref _prophetIconPulse,  _globalProphetIcon,  prophetLeads);
+					SetIconPulse(ref _producerIconPulse, _globalProducerIcon, producerLeads);
+					SetIconPulse(ref _admirerIconPulse,  _globalAdmirerIcon,  admirerLeads);
 				}
 
 				ProcessInfluenceNotifications(states);
@@ -2929,10 +2999,43 @@ public partial class GameWorld : Node2D
 	{
 		if (_localGameState == null) return;
 
-		// Timer
+		// Timer — seconds only, color gradient, per-second bounce in last 20s
 		double time = _localGameState["time_remaining"]?.Value<double>() ?? 0;
-		TimeSpan ts = TimeSpan.FromSeconds(time);
-		_timerLabel.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}";
+		int secs = Mathf.CeilToInt((float)time);
+		_timerLabel.Text = $"{secs}";
+
+		// Color: 180-120 green | 120-60 green→yellow | 60-0 yellow→red
+		Color timerColor;
+		if (time >= 120)
+		{
+			timerColor = new Color(0.1f, 0.95f, 0.2f, 1f); // green
+		}
+		else if (time >= 60)
+		{
+			float t = (float)(time - 60) / 60f;
+			timerColor = new Color(0.1f, 0.95f, 0.2f).Lerp(new Color(1f, 0.92f, 0.05f), 1f - t);
+		}
+		else
+		{
+			float t = (float)time / 60f;
+			timerColor = new Color(1f, 0.92f, 0.05f).Lerp(new Color(1f, 0.08f, 0.08f), 1f - t);
+		}
+		_timerLabel.AddThemeColorOverride("font_color", timerColor);
+
+		// Per-second bounce pulse in last 20 seconds
+		if (secs != _lastDisplayedSecond)
+		{
+			_lastDisplayedSecond = secs;
+			if (time <= 20 && time > 0)
+			{
+				var tw = CreateTween();
+				_timerLabel.PivotOffset = _timerLabel.Size / 2f;
+				tw.TweenProperty(_timerLabel, "scale", new Vector2(1.35f, 1.35f), 0.08f)
+					.SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+				tw.TweenProperty(_timerLabel, "scale", Vector2.One, 0.18f)
+					.SetTrans(Tween.TransitionType.Elastic).SetEase(Tween.EaseType.Out);
+			}
+		}
 
 		// Check for new CAMERA ALERTS to reset local timer if needed
 		var notifications = _localGameState["notifications"]?.ToObject<List<string>>() ?? new List<string>();
