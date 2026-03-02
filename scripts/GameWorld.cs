@@ -1607,14 +1607,14 @@ public partial class GameWorld : Node2D
 		{
 			var npcStateData = _localGameState?["npc_states"]?[npcId];
 			bool isAlive = npcStateData?["alive"]?.Value<bool>() ?? true;
-			bool isConverted = npcStateData?["converted"]?.Value<bool>() ?? false;
+			// bool isConverted = npcStateData?["converted"]?.Value<bool>() ?? false;
 
 			var activeConvs = _localGameState?["active_conversions"] as JObject;
 			string rKey = Capitalize(_myRole);
 			bool alreadyConverting = activeConvs != null && activeConvs.ContainsKey(rKey)
 				&& activeConvs[rKey]["npcId"]?.Value<string>() == npcId;
 
-			if (isAlive && !isConverted && !alreadyConverting)
+			if (isAlive && !alreadyConverting)
 			{
 				RpcId(1, MethodName.SubmitAction, npcId, "start_convert");
 			}
@@ -1760,47 +1760,48 @@ public partial class GameWorld : Node2D
 		// Stun the NPC for 5 seconds (greyed out, idle)
 		Rpc(MethodName.RpcStunNpc, targetNpcId, 5.0f);
 
-		// --- Interaction Vector Penalty ---
-		// Helper: map role to its penalty vector dimension
-		System.Numerics.Vector3 RolePenalty(Role r) => r switch
-		{
-			Role.Admirer  => new System.Numerics.Vector3(-1, 0, 0),
-			Role.Prophet  => new System.Numerics.Vector3(0, -1, 0),
-			Role.Producer => new System.Numerics.Vector3(0, 0, -1),
-			_             => System.Numerics.Vector3.Zero
-		};
-
-		// Apply -1 to the punching player's dimension
-		npc.State += RolePenalty(senderRole);
-		_gameEngine.GameState.TriggerScoreChange(senderRole, -1);
-		GD.Print($"[PunchNPC] {senderRole} punched {npc.Name}, State += {RolePenalty(senderRole)} -> {npc.State}");
-
-		// Check if any OTHER player is actively conversing with this NPC
+		// --- Zero-Sum Punch Vectors ---
+		// Collect all OTHER roles actively conversing with this NPC
+		var conversingRoles = new HashSet<Role>();
 		foreach (var (role, ctx) in _gameEngine.GameState.ActiveInterviews)
 		{
 			if (ctx.NpcId == targetNpcId && role != senderRole)
-			{
-				npc.State += RolePenalty(role);
-				_gameEngine.GameState.TriggerScoreChange(role, -1);
-				GD.Print($"[PunchNPC] {role} was conversing (flirt) with {npc.Name} during punch, State += {RolePenalty(role)} -> {npc.State}");
-			}
+				conversingRoles.Add(role);
 		}
 		foreach (var (role, ctx) in _gameEngine.GameState.ActiveConversions)
 		{
 			if (ctx.NpcId == targetNpcId && role != senderRole)
-			{
-				npc.State += RolePenalty(role);
-				_gameEngine.GameState.TriggerScoreChange(role, -1);
-				GD.Print($"[PunchNPC] {role} was conversing (convert) with {npc.Name} during punch, State += {RolePenalty(role)} -> {npc.State}");
-			}
+				conversingRoles.Add(role);
 		}
 		foreach (var (role, ctx) in _gameEngine.GameState.ActiveProducerInterviews)
 		{
 			if (ctx.NpcId == targetNpcId && role != senderRole)
+				conversingRoles.Add(role);
+		}
+
+		if (conversingRoles.Count == 0)
+		{
+			// Punch alone NPC: puncher wins (+1, others -0.5 each) — same as chat game win
+			var points = ScoringRules.GetWinPoints(senderRole);
+			npc.State = ScoringRules.ClampState(npc.State + points);
+			_gameEngine.GameState.TriggerScoreChange(senderRole, 1);
+			GD.Print($"[PunchNPC] {senderRole} punched alone {npc.Name}, State += {points} -> {npc.State}");
+		}
+		else
+		{
+			// Punch NPC while someone is conversing:
+			// Both the puncher and the conversing player(s) get -1, third role gets +2
+			foreach (var conversingRole in conversingRoles)
 			{
-				npc.State += RolePenalty(role);
-				_gameEngine.GameState.TriggerScoreChange(role, -1);
-				GD.Print($"[PunchNPC] {role} was conversing (interview) with {npc.Name} during punch, State += {RolePenalty(role)} -> {npc.State}");
+				var points = ScoringRules.GetPunchInteractingPoints(senderRole, conversingRole);
+				npc.State = ScoringRules.ClampState(npc.State + points);
+
+				// Notify score changes: puncher -1, conversing -1, third +2
+				_gameEngine.GameState.TriggerScoreChange(senderRole, -1);
+				_gameEngine.GameState.TriggerScoreChange(conversingRole, -1);
+				var thirdRole = ScoringRules.GetThirdRole(senderRole, conversingRole);
+				_gameEngine.GameState.TriggerScoreChange(thirdRole, 2);
+				GD.Print($"[PunchNPC] {senderRole} punched {npc.Name} while {conversingRole} conversing, State += {points} -> {npc.State}");
 			}
 		}
 
@@ -3749,16 +3750,16 @@ public partial class GameWorld : Node2D
 					string npcName = _npcEntities.TryGetValue(npcId, out var entity) ? entity.NpcName : npcId;
 					
 					// Local player notifications
-					if (zone == myRoleLower)
-						AddSlidingNotification($"YOU are influencing {npcName} now.");
-					else if (prevZone == myRoleLower)
-						AddSlidingNotification($"YOU have lost influence over {npcName}!");
+					// if (zone == myRoleLower)
+					// 	AddSlidingNotification($"YOU are influencing {npcName} now.");
+					// else if (prevZone == myRoleLower)
+					// 	AddSlidingNotification($"YOU have lost influence over {npcName}!");
 					
 					// Other player notifications
-					else if (zone != "neutral" && zone != myRoleLower)
-						AddSlidingNotification($"{Capitalize(zone)} has gained influence over {npcName}!");
-					else if (prevZone != "neutral" && prevZone != myRoleLower)
-						AddSlidingNotification($"{Capitalize(prevZone)} has lost influence over {npcName}!");
+					// else if (zone != "neutral" && zone != myRoleLower)
+					// 	AddSlidingNotification($"{Capitalize(zone)} has gained influence over {npcName}!");
+					// else if (prevZone != "neutral" && prevZone != myRoleLower)
+					// 	AddSlidingNotification($"{Capitalize(prevZone)} has lost influence over {npcName}!");
 				}
 			}
 			_previousNpcZones[npcId] = zone;

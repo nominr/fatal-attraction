@@ -73,16 +73,21 @@ namespace FatalAttraction.Engine
 		public string CurrentRoomId { get; set; } = "Hallways";
 		
 		// VECTOR STATE: [Admirer, Prophet, Producer]
-		// VECTOR STATE: [Admirer, Prophet, Producer]
-		public Vector3 State { get; set; } = new Vector3(1, 1, 1); // Raw accumulation, starts at 1,1,1 to avoid zero division
-		public Vector3 NormalizedState => ScoringRules.NormalizeState(State);
+		// Always sums to 3. Initialized at center (1,1,1). No component goes negative.
+		public Vector3 State { get; set; } = new Vector3(1, 1, 1);
+		public Vector3 NormalizedState => State; // State is already normalized to sum to 3
 
 		public Vector2 TrianglePosition
 		{
 			get
 			{
 				var norm = NormalizedState;
-				// Barycentric mapping:
+				// Barycentric mapping — weights must sum to 1
+				// State sums to 3, so divide by 3 for barycentric coords
+				float bx = norm.X / ScoringRules.StateSum;
+				float by = norm.Y / ScoringRules.StateSum;
+				float bz = norm.Z / ScoringRules.StateSum;
+				
 				// Admirer (X) -> (0, -28)   [Top]
 				// Prophet (Y) -> (-30, 24)  [Bottom Left]
 				// Producer (Z) -> (30, 24)  [Bottom Right]
@@ -91,7 +96,7 @@ namespace FatalAttraction.Engine
 				Vector2 v2 = new Vector2(-30, 24);  // Prophet
 				Vector2 v3 = new Vector2(30, 24);   // Producer
 				
-				return (v1 * norm.X) + (v2 * norm.Y) + (v3 * norm.Z);
+				return (v1 * bx) + (v2 * by) + (v3 * bz);
 			}
 		}
 
@@ -402,8 +407,8 @@ namespace FatalAttraction.Engine
 				});
 			}
 
-			// PROPHET: Conversion Dialogue (Live, not yet converted)
-			if (playerRole == Role.Prophet && npc.Alive && !npc.Converted)
+			// PROPHET: Conversion Dialogue (Live, can be converted or already converted)
+			if (playerRole == Role.Prophet && npc.Alive)
 			{
 				if (_gameState.ActiveConversions.TryGetValue(playerRole, out var convCtx) && convCtx.NpcId == npcId)
 				{
@@ -590,12 +595,11 @@ namespace FatalAttraction.Engine
 			if (npc == null)
 				return (false, "NPC not found");
 
-			// PROPHET CONVERSION START
 			if (optionId == "start_convert")
 			{
 				if (playerRole != Role.Prophet) return (false, "Only Prophet can convert.");
 				if (_gameState.ActiveConversions.ContainsKey(playerRole)) return (true, null); // Already running, idempotent
-				if (npc.Converted) return (false, $"{npc.Name} is already converted.");
+				// Removed `if (npc.Converted)` check so Prophet can keep interacting
 
 				var convData = _gameState.ConversionData;
 				var topics = convData?["cult_recruitment"]?["conversion_topics"] as JArray;
@@ -965,11 +969,11 @@ namespace FatalAttraction.Engine
 			if (npc != null)
 			{
 				Vector3 points = ScoringRules.GetConversionPoints(ctx.CurrentScore);
-				npc.State += points;
+				npc.State = ScoringRules.ClampState(npc.State + points);
 				Console.WriteLine($"[DEBUG] Conversion: {npc.Name} State += {points} -> {npc.State}");
 
-				// Mark as converted if prophet score component reaches threshold
-				const float ConvertThreshold = 4f;
+				// Mark as converted if prophet's share reaches the top third (>= 2 out of 3)
+				const float ConvertThreshold = 2f;
 				if (npc.State.Y >= ConvertThreshold && !npc.Converted)
 				{
 					npc.Converted = true;
@@ -993,12 +997,12 @@ namespace FatalAttraction.Engine
 
 		private void ApplyInterviewResult(InterviewContext ctx, Role playerRole, bool clearAndFinish = true)
 		{
-			// Add score to NPC State (Admirer Component)
+			// Apply zero-sum vector to NPC State
 			var npc = _gameState.NPCs[ctx.NpcId];
 			if (npc != null)
 			{
 				Vector3 points = ScoringRules.GetFlirtPoints(ctx.CurrentScore);
-				npc.State += points;
+				npc.State = ScoringRules.ClampState(npc.State + points);
 				Console.WriteLine($"[DEBUG] Interview: {npc.Name} State += {points} -> {npc.State}");
 				
 				// Notify score change for visual feedback
@@ -1023,7 +1027,7 @@ namespace FatalAttraction.Engine
 			if (npc != null && !earlyStop)
 			{
 				Vector3 points = ScoringRules.GetMoneyGamePoints(ctx.CurrentScore);
-				npc.State += points;
+				npc.State = ScoringRules.ClampState(npc.State + points);
 				Console.WriteLine($"[DEBUG] ProducerInterview: {npc.Name} State += {points} -> {npc.State}");
 				_gameState.TriggerScoreChange(playerRole, ctx.CurrentScore);
 			}

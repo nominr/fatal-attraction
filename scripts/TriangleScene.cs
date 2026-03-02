@@ -24,10 +24,13 @@ public partial class TriangleScene : Control
 	private readonly Vector2 _v3 = new Vector2(0, -28);    // Top          (Admirer)
 	private readonly Vector2 _centerOffset = new Vector2(77, 82); // Position of Polygon2D/TriangleUi
 
-	// Inner medial triangle: midpoints of outer triangle edges
-	private Vector2 _m12; // midpoint of v1-v2 (bottom edge)
-	private Vector2 _m13; // midpoint of v1-v3 (left edge)
-	private Vector2 _m23; // midpoint of v2-v3 (right edge)
+	// Zone threshold points (2/3 along the edge from the corner)
+	private Vector2 _p_prophet_producer; // Y=2/3 on bottom edge
+	private Vector2 _p_prophet_admirer;  // Y=2/3 on left edge
+	private Vector2 _p_producer_prophet; // Z=2/3 on bottom edge
+	private Vector2 _p_producer_admirer; // Z=2/3 on right edge
+	private Vector2 _p_admirer_prophet;  // X=2/3 on left edge
+	private Vector2 _p_admirer_producer; // X=2/3 on right edge
 
 	// Zone colors (semi-transparent tints)
 	private readonly Color _prophetZoneColor  = new Color(0.3f, 0.5f, 1.0f, 0.18f); // Blue tint
@@ -72,10 +75,15 @@ public partial class TriangleScene : Control
 		
 		_npcNameLabel = GetNodeOrNull<Label>("NpcNameLabel");
 
-		// Compute inner medial triangle midpoints
-		_m12 = (_v1 + _v2) / 2f; // (0, 24)   — bottom midpoint
-		_m13 = (_v1 + _v3) / 2f; // (-15, -2) — left midpoint
-		_m23 = (_v2 + _v3) / 2f; // (15, -2)  — right midpoint
+		// Compute 2/3 threshold border points
+		_p_prophet_producer = (_v1 * 2f + _v2) / 3f;
+		_p_prophet_admirer  = (_v1 * 2f + _v3) / 3f;
+		
+		_p_producer_prophet = (_v2 * 2f + _v1) / 3f;
+		_p_producer_admirer = (_v2 * 2f + _v3) / 3f;
+
+		_p_admirer_prophet  = (_v3 * 2f + _v1) / 3f;
+		_p_admirer_producer = (_v3 * 2f + _v2) / 3f;
 
 		ComputeZoneMembership();
 	}
@@ -242,15 +250,18 @@ public partial class TriangleScene : Control
 		// Since overlay is full rect/anchored, its local 0,0 matches parent 0,0 
 		// (or rather, we want to draw relative to the same _centerOffset)
 
-		Vector2 im12 = _centerOffset + _m12; // inner bottom
-		Vector2 im13 = _centerOffset + _m13; // inner left
-		Vector2 im23 = _centerOffset + _m23; // inner right
+		Vector2 p_prophet_prod = _centerOffset + _p_prophet_producer;
+		Vector2 p_prophet_adm  = _centerOffset + _p_prophet_admirer;
+		Vector2 p_prod_proph   = _centerOffset + _p_producer_prophet;
+		Vector2 p_prod_adm     = _centerOffset + _p_producer_admirer;
+		Vector2 p_adm_proph    = _centerOffset + _p_admirer_prophet;
+		Vector2 p_adm_prod     = _centerOffset + _p_admirer_producer;
 
-		// Draw inner triangle boundary lines
+		// Draw threshold cutoff lines
 		float lineWidth = 1.0f; // Thin line as requested
-		_linesOverlay.DrawLine(im12, im13, Colors.Black, lineWidth);
-		_linesOverlay.DrawLine(im13, im23, Colors.Black, lineWidth);
-		_linesOverlay.DrawLine(im23, im12, Colors.Black, lineWidth);
+		_linesOverlay.DrawLine(p_prophet_prod, p_prophet_adm, Colors.Black, lineWidth);
+		_linesOverlay.DrawLine(p_prod_proph, p_prod_adm, Colors.Black, lineWidth);
+		_linesOverlay.DrawLine(p_adm_proph, p_adm_prod, Colors.Black, lineWidth);
 	}
 
 	// ── Zone of Influence Drawing ──────────────────────────────────
@@ -262,19 +273,20 @@ public partial class TriangleScene : Control
 		Vector2 ov2 = _centerOffset + _v2;  // outer bottom-right (Producer)
 		Vector2 ov3 = _centerOffset + _v3;  // outer top          (Admirer)
 
-		Vector2 im12 = _centerOffset + _m12; // inner bottom
-		Vector2 im13 = _centerOffset + _m13; // inner left
-		Vector2 im23 = _centerOffset + _m23; // inner right
+		Vector2 p_prophet_prod = _centerOffset + _p_prophet_producer;
+		Vector2 p_prophet_adm  = _centerOffset + _p_prophet_admirer;
+		Vector2 p_prod_proph   = _centerOffset + _p_producer_prophet;
+		Vector2 p_prod_adm     = _centerOffset + _p_producer_admirer;
+		Vector2 p_adm_proph    = _centerOffset + _p_admirer_prophet;
+		Vector2 p_adm_prod     = _centerOffset + _p_admirer_producer;
 
 		// Draw the 3 corner zone tints as filled polygons
-		// Prophet zone: outer bottom-left corner (v1, m12, m13)
-		DrawPolygon(new Vector2[] { ov1, im12, im13 }, new Color[] { _prophetZoneColor, _prophetZoneColor, _prophetZoneColor });
-
-		// Producer zone: outer bottom-right corner (v2, m12, m23)
-		DrawPolygon(new Vector2[] { ov2, im12, im23 }, new Color[] { _producerZoneColor, _producerZoneColor, _producerZoneColor });
-
-		// Admirer zone: outer top corner (v3, m13, m23)
-		DrawPolygon(new Vector2[] { ov3, im13, im23 }, new Color[] { _admirerZoneColor, _admirerZoneColor, _admirerZoneColor });
+		// Prophet zone
+		DrawPolygon(new Vector2[] { ov1, p_prophet_prod, p_prophet_adm }, new Color[] { _prophetZoneColor, _prophetZoneColor, _prophetZoneColor });
+		// Producer zone
+		DrawPolygon(new Vector2[] { ov2, p_prod_proph, p_prod_adm }, new Color[] { _producerZoneColor, _producerZoneColor, _producerZoneColor });
+		// Admirer zone
+		DrawPolygon(new Vector2[] { ov3, p_adm_proph, p_adm_prod }, new Color[] { _admirerZoneColor, _admirerZoneColor, _admirerZoneColor });
 
 		// Draw inner triangle boundary lines
 		// Moved to _linesOverlay to draw on top of sprite
@@ -290,21 +302,17 @@ public partial class TriangleScene : Control
 	/// </summary>
 	public string GetInfluenceZone(Vector2 point)
 	{
-		// If inside the inner medial triangle → neutral
-		if (PointInTriangle(point, _m12, _m13, _m23))
-			return "neutral";
-
 		// Check each corner sub-triangle
-		if (PointInTriangle(point, _v1, _m12, _m13))
+		if (PointInTriangle(point, _v1, _p_prophet_producer, _p_prophet_admirer))
 			return "prophet";
 
-		if (PointInTriangle(point, _v2, _m12, _m23))
+		if (PointInTriangle(point, _v2, _p_producer_prophet, _p_producer_admirer))
 			return "producer";
 
-		if (PointInTriangle(point, _v3, _m13, _m23))
+		if (PointInTriangle(point, _v3, _p_admirer_prophet, _p_admirer_producer))
 			return "admirer";
 
-		// Outside the triangle entirely
+		// Outside the corner regions -> neutral
 		return "neutral";
 	}
 
@@ -317,8 +325,11 @@ public partial class TriangleScene : Control
 		float d2 = Sign(p, b, c);
 		float d3 = Sign(p, c, a);
 
-		bool hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-		bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+		// Epsilon tolerance ensures points EXACTLY on the boundary (or slightly off due to float math)
+		// are counted as inside the triangle.
+		float epsilon = 0.1f;
+		bool hasNeg = (d1 < -epsilon) || (d2 < -epsilon) || (d3 < -epsilon);
+		bool hasPos = (d1 > epsilon) || (d2 > epsilon) || (d3 > epsilon);
 
 		return !(hasNeg && hasPos);
 	}
