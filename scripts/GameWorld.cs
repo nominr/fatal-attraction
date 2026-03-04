@@ -3813,8 +3813,23 @@ public partial class GameWorld : Node2D
 		
 		if (Multiplayer.IsServer())
 		{
-			// Server tells all clients to return to lobby, then returns itself
-			Rpc(MethodName.ReturnToLobby);
+			// Send the return signal to all connected clients first,
+			// then the server closes its own peer after a short delay so the
+			// RPC has time to reach clients before the connection drops.
+			Rpc(MethodName.ReturnToLobbyClient);
+			// Use a timer so the RPC packet is flushed before we close the peer
+			var timer = GetTree().CreateTimer(0.3);
+			timer.Timeout += () =>
+			{
+				GD.Print("[GameWorld] Server returning to lobby...");
+				_networkManager.Players.Clear();
+				if (Multiplayer.HasMultiplayerPeer())
+				{
+					Multiplayer.MultiplayerPeer.Close();
+					Multiplayer.MultiplayerPeer = null;
+				}
+				GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
+			};
 		}
 		else
 		{
@@ -3828,26 +3843,22 @@ public partial class GameWorld : Node2D
 	{
 		if (!Multiplayer.IsServer()) return;
 		GD.Print("[GameWorld] Server received request to return to lobby");
-		// Server broadcasts to all clients (including itself via CallLocal in ReturnToLobby)
-		Rpc(MethodName.ReturnToLobby);
+		// Reuse the same pressed handler so the timer logic is shared
+		OnReturnToLobbyPressed();
 	}
 
-	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
-	private void ReturnToLobby()
+	// Called on all clients (not the server) to return them to the lobby.
+	// Clients disconnect their own peer and change scene immediately.
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false)]
+	private void ReturnToLobbyClient()
 	{
-		GD.Print("[GameWorld] Returning to lobby...");
-		
-		// Disconnect all peers and reset network state
+		GD.Print("[GameWorld] Client returning to lobby...");
+		_networkManager.Players.Clear();
 		if (Multiplayer.HasMultiplayerPeer())
 		{
 			Multiplayer.MultiplayerPeer.Close();
 			Multiplayer.MultiplayerPeer = null;
 		}
-		
-		// Clear network manager state
-		_networkManager.Players.Clear();
-		
-		// Change scene to lobby
 		GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
 	}
 
