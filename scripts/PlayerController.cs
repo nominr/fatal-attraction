@@ -30,6 +30,7 @@ public partial class PlayerController : CharacterBody2D
 	private Camera2D _camera;
 	private Font _customFont;
 	private static Font _sharedFont;
+	private StyleBoxFlat _roleLabelBgStyle; // stored so SetRole can recolor it
 	private static readonly Dictionary<string, SpriteFrames> _spriteFramesCache = new();
 	private static readonly Dictionary<string, Dictionary<string, float>> _animationScalesCache = new();
 
@@ -122,9 +123,18 @@ public partial class PlayerController : CharacterBody2D
 		_roleLabel.AddThemeFontSizeOverride("font_size", 28);
 		// Add transparent grey background
 		var bgStyle = new StyleBoxFlat();
-		bgStyle.BgColor = new Color(0.2f, 0.2f, 0.2f, 0.6f); // Transparent grey
+		// PlayerRole is set before _Ready via SetRole being called before AddChild,
+		// so we can already read it here to pick the correct colour.
+		bgStyle.BgColor = PlayerRole?.ToLower() switch
+		{
+			"prophet"  => new Color(0.1f,  0.5f,  1.0f,  0.85f), // vivid blue
+			"admirer"  => new Color(1.0f,  0.08f, 0.08f, 0.85f), // red
+			"producer" => new Color(0.05f, 0.80f, 0.25f, 0.85f), // green
+			_          => new Color(0.2f,  0.2f,  0.2f,  0.6f),  // grey fallback
+		};
 		bgStyle.SetCornerRadiusAll(4);
 		bgStyle.SetContentMarginAll(4);
+		_roleLabelBgStyle = bgStyle;
 		_roleLabel.AddThemeStyleboxOverride("normal", bgStyle);
 		AddChild(_roleLabel);
 		// Center the label over the player based on text width
@@ -589,10 +599,24 @@ public partial class PlayerController : CharacterBody2D
 	{
 		PlayerRole = role;
 		GD.Print($"SetRole called: role={role}");
-		
+
 		if (_roleLabel != null)
 		{
 			_roleLabel.Text = role;
+
+			// Re-apply a new stylebox so Godot redraws the background immediately
+			string roleLower = role.ToLower();
+			var roleBg = new StyleBoxFlat();
+			roleBg.BgColor = roleLower switch
+			{
+				"prophet"  => new Color(0.1f,  0.5f,  1.0f,  0.85f), // vivid blue
+				"admirer"  => new Color(1.0f,  0.08f, 0.08f, 0.85f), // red
+				"producer" => new Color(0.05f, 0.80f, 0.25f, 0.85f), // green
+				_          => new Color(0.2f,  0.2f,  0.2f,  0.6f),  // grey fallback
+			};
+			roleBg.SetCornerRadiusAll(4);
+			roleBg.SetContentMarginAll(4);
+			_roleLabel.AddThemeStyleboxOverride("normal", roleBg);
 		}
 
 		// Load the correct sprite for this role
