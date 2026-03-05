@@ -56,8 +56,8 @@ public partial class TriangleScene : Control
 		// Instantiate the point sprite
 		_pointSprite = new Sprite2D();
 		_pointSprite.Texture = GD.Load<Texture2D>("res://assets/black-heart-ui.png");
-		// Match TriangleUi scale (1.1)
-		_pointSprite.Scale = new Vector2(1.1f, 1.1f);
+		// Note: GameWorld.cs scales the parent _triangleScene by 2.0x, so effective scale = this × 2.
+		_pointSprite.Scale = new Vector2(0.07f, 0.07f);
 		_pointSprite.ZIndex = 1; // Ensure it renders above the triangle base
 		// Initial position (center of triangle for now, or just hidden)
 		_pointSprite.Position = _centerOffset; // Start at center offset
@@ -133,6 +133,10 @@ public partial class TriangleScene : Control
 			}
 		}
 		
+		// Always enforce scale each time Show() is called (not just _Ready)
+		if (_pointSprite != null)
+			_pointSprite.Scale = new Vector2(0.07f, 0.07f);
+
 		if (pointPos.HasValue)
 		{
 			// Position relative to center offset
@@ -222,7 +226,7 @@ public partial class TriangleScene : Control
 			positionCounts[snapped] = positionCounts.GetValueOrDefault(snapped, 0) + 1;
 		}
 
-		const float baseScale = 0.58f;
+		const float baseScale = 0.12f; // Reduced — hearts were too large in the global influence triangle
 
 		foreach (var kvp in positionCounts)
 		{
