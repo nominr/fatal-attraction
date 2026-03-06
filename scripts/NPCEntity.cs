@@ -947,12 +947,14 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void SetupCollision()
 	{
-		// Create collision shape matching player controller (37x200 rectangle)
+		// Taller rectangle covering mid-body to feet.
+		// Sprite is ~200px tall, centered at origin → bottom is at y=+100.
+		// A taller shape stops the NPC before the upper body clips into objects.
 		_collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		// Reduced width to 37 to fit in corridors while increased height to 200
-		shape.Size = new Vector2(37, 200);
+		shape.Size = new Vector2(32, 40);
 		_collisionShape.Shape = shape;
+		_collisionShape.Position = new Vector2(0, 80); // lower-body centre
 		AddChild(_collisionShape);
 		
 		InputPickable = true;

@@ -87,16 +87,15 @@ public partial class PlayerController : CharacterBody2D
 
 	private void SetupVisuals()
 	{
-		// Create collision shape
+		// Create collision shape — taller rectangle covering mid-body to feet.
+		// Sprite is ~204px tall, centered at origin → bottom is at y=+102.
+		// A taller shape stops the player before the upper body clips into objects.
 		var collisionShape = new CollisionShape2D();
 		var shape = new RectangleShape2D();
-		
-		// Sprite is scaled (300 * scale = height)
-		// Set collision to match height (204) and width to fit corridors (37)
-		shape.Size = new Vector2(37, 204); 
+		shape.Size = new Vector2(32, 40);
 		collisionShape.Shape = shape;
-		// Position centered (0,0) matches sprite center
-		
+		collisionShape.Position = new Vector2(0, 80); // lower-body centre
+
 		AddChild(collisionShape);
 
 		// Player sprite - will be loaded when role is set

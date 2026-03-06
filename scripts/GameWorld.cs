@@ -216,20 +216,34 @@ public partial class GameWorld : Node2D
 			
 			isoMapNode.Scale = targetScale;
 			isoMapNode.Position = targetPos;
-			isoMapNode.ZIndex = -10;
+			isoMapNode.ZIndex = 0; // Must be 0 so furniture tiles Y-sort against character nodes (both at ZIndex=0)
 			GD.Print($"[Isometric] IsometricWorldMap scaled to {isoMapNode.Scale} and positioned at {isoMapNode.Position}");
 			
-			// Set z-index on each TileMapLayer child so they render below players/NPCs (z=0)
-			int layerZIndex = -10;
+			// Layer z-index setup — target TileMapLayer6 by name so index drift never breaks it.
+			int layerIdx = 0;
 			foreach (var child in isoMapNode.GetChildren())
 			{
 				if (child is Node2D childLayer)
 				{
-					childLayer.ZIndex = layerZIndex;
-					layerZIndex++;
-					GD.Print($"[Isometric] Set ZIndex={childLayer.ZIndex} on {childLayer.Name}");
+					if (layerIdx <= 2)
+					{
+						// Floor / wall layers — always behind characters.
+						// Layer 0 = -10, Layer 1 = -9, Layer 2 = -8
+						childLayer.ZIndex = -10 + layerIdx;
+					}
+					else
+					{
+						// Furniture / upper layers — Y-sort with characters.
+						childLayer.ZIndex = 0;
+					}
+					childLayer.YSortEnabled = true;
+					GD.Print($"[Isometric] ZIndex={childLayer.ZIndex} YSort={childLayer.YSortEnabled} on {childLayer.Name}");
+					layerIdx++;
 				}
 			}
+
+			// Enable Y-sort on the map node so character nodes and furniture tiles sort together.
+			isoMapNode.YSortEnabled = true;
 			
 			// --- ALIGN ROOM AREAS TO MATCH SCALED WORLD ---
 			string[] roomNames = { "Room1", "Room2", "Room3", "Room4", "Room5", "Hallways" };
@@ -340,6 +354,13 @@ public partial class GameWorld : Node2D
 		body.AddChild(shape);
 		AddChild(body);
 	}
+
+	/// <summary>
+	/// Returns null so all entities spawn as direct children of GameWorld (world-space positions).
+	/// This keeps NPC/player coordinate logic working correctly. Y-sorting against IsometricWorldMap
+	/// tiles is handled by GameWorld.YSortEnabled + IsometricWorldMap.YSortEnabled + per-layer YSort.
+	/// </summary>
+	private Node2D GetLayer6() => null;
 
 	private void ConnectRoomSignals()
 	{
@@ -1487,15 +1508,27 @@ public partial class GameWorld : Node2D
 			{ "eli", Colors.SlateBlue }
 		};
 
+		var layer6 = GetLayer6();
+
 		foreach (var npc in _gameEngine.GameState.NPCs.Values)
 		{
 			var entity = new NPCEntity();
 			entity.NpcId = npc.Id;
 			entity.NpcName = npc.Name;
 			entity.NpcColor = npcColors.GetValueOrDefault(npc.Id, Colors.Blue);
-			entity.Position = FindFreeNPCSpawnPosition();
+			Vector2 worldPos = FindFreeNPCSpawnPosition();
 			entity.NPCClicked += OnNPCClicked;
-			AddChild(entity);
+			if (layer6 != null)
+			{
+				entity.Position = layer6.ToLocal(worldPos);
+				entity.Scale = new Vector2(0.25f, 0.25f); // Counteract 4x inherited scale
+				layer6.AddChild(entity);
+			}
+			else
+			{
+				entity.Position = worldPos;
+				AddChild(entity);
+			}
 			_npcEntities[npc.Id] = entity;
 		}
 	}
@@ -1516,12 +1549,14 @@ public partial class GameWorld : Node2D
 			new Vector2(1100, 700)
 		};
 
+		var layer6 = GetLayer6();
+
 		int idx = 0;
 		foreach (var kvp in _networkManager.Players)
 		{
 			var player = new PlayerController();
 			player.Name = $"Player_{kvp.Key}"; // Set unique name for debugging
-			player.Position = startPositions[idx % startPositions.Length];
+			Vector2 worldPos = startPositions[idx % startPositions.Length];
 			player.PlayerIndex = (idx % 3) + 1; // 1, 2, or 3 for sprite selection
 			player.SetRole(kvp.Value.Role);
 			player.SetPlayerId(kvp.Key); // Set the network player ID
@@ -1534,13 +1569,23 @@ public partial class GameWorld : Node2D
 				player.PositionChanged += OnPlayerPositionChanged;
 				GD.Print($"[GameWorld] Connected PositionChanged signal for local player {kvp.Key}");
 			}
+
+			GD.Print($"[GameWorld] Spawning player {kvp.Key} as {kvp.Value.Role}, sprite={player.PlayerIndex}, isLocal={isLocal}, pos={worldPos}");
+
+			// Add to Layer6 so the player appears on the correct tilemap layer
+			if (layer6 != null)
+			{
+				player.Position = layer6.ToLocal(worldPos);
+				player.Scale = new Vector2(0.25f, 0.25f); // Counteract 4x inherited scale
+				layer6.AddChild(player);
+			}
+			else
+			{
+				player.Position = worldPos;
+				AddChild(player);
+			}
 			
-			GD.Print($"[GameWorld] Spawning player {kvp.Key} as {kvp.Value.Role}, sprite={player.PlayerIndex}, isLocal={isLocal}, pos={player.Position}");
-			
-			// Add child first so _Ready() gets called and camera is created
-			AddChild(player);
-			
-			// Then set local player status (camera must exist first)
+			// Re-apply local player status (camera must exist after AddChild)
 			player.SetLocalPlayer(isLocal);
 			
 			_playerControllers[kvp.Key] = player;
@@ -2979,6 +3024,8 @@ public partial class GameWorld : Node2D
 		var activeNpcs = _localGameState?["active_npcs"];
 		if (activeNpcs == null) return;
 
+		var layer6 = GetLayer6();
+
 		foreach (string npcId in activeNpcs)
 		{
 			if (_npcEntities.ContainsKey(npcId)) continue;
@@ -3000,12 +3047,21 @@ public partial class GameWorld : Node2D
 					initPos = new Vector2(px.Value, py.Value);
 				}
 			}
-			entity.Position = initPos;
-			// Initial sync for interpolation
-			entity.SyncPosition(initPos);
 
 			entity.NPCClicked += OnNPCClicked;
-			AddChild(entity);
+			if (layer6 != null)
+			{
+				entity.Position = layer6.ToLocal(initPos);
+				entity.Scale = new Vector2(0.25f, 0.25f); // Counteract 4x inherited scale
+				entity.SyncPosition(entity.Position);
+				layer6.AddChild(entity);
+			}
+			else
+			{
+				entity.Position = initPos;
+				entity.SyncPosition(initPos);
+				AddChild(entity);
+			}
 			_npcEntities[npcId] = entity;
 		}
 	}
@@ -3508,7 +3564,7 @@ public partial class GameWorld : Node2D
 		var player = new PlayerController();
 		player.Name = $"Player_{playerId}";
 		int idx = _playerControllers.Count % startPositions.Length;
-		player.Position = startPositions[idx];
+		Vector2 worldPos = startPositions[idx];
 		player.PlayerIndex = (idx % 3) + 1;
 		player.SetPlayerId(playerId);
 
@@ -3524,7 +3580,18 @@ public partial class GameWorld : Node2D
 			GD.Print($"[GameWorld] Connected PositionChanged for local player {playerId}");
 		}
 
-		AddChild(player);
+		var layer6 = GetLayer6();
+		if (layer6 != null)
+		{
+			player.Position = layer6.ToLocal(worldPos);
+			player.Scale = new Vector2(0.25f, 0.25f); // Counteract 4x inherited scale
+			layer6.AddChild(player);
+		}
+		else
+		{
+			player.Position = worldPos;
+			AddChild(player);
+		}
 		_playerControllers[playerId] = player;
 		GD.Print($"[GameWorld] Spawned player controller for {playerId}, role={role}, isLocal={isLocal}");
 	}
