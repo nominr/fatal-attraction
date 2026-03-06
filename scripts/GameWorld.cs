@@ -30,6 +30,7 @@ public partial class GameWorld : Node2D
 	private double _timeRemaining;
 	private double _broadcastTimer = 0.0;
 	private const double BROADCAST_INTERVAL = 0.1; // Broadcast game state every 0.1s (10Hz) for smoother movement
+	private bool _countdownTriggered = false;
 
 	// Local State Cache
 	private JObject _localGameState;
@@ -2372,6 +2373,8 @@ public partial class GameWorld : Node2D
 				string prevNotif = winner != null ? $"{winner.ToUpper()} WINS!" : "GAME OVER";
 				if (winner == null) _gameEngine.GameState.AddNotification("GAME OVER - TIME UP!"); // Only add if not already won
 				
+				GetNode<MusicManager>("/root/MusicManager")?.ForceLobbyMusic();
+				GetNode<SfxManager>("/root/SfxManager")?.StopCountdown();
 				BroadcastGameState();
 				return;
 			}
@@ -2380,6 +2383,14 @@ public partial class GameWorld : Node2D
 			_gameEngine.Update(delta);
 			
 			_timeRemaining -= delta;
+
+			// Trigger countdown voice at last ~13 seconds
+			if (_timeRemaining <= 13.0 && !_countdownTriggered)
+			{
+				_countdownTriggered = true;
+				GetNode<SfxManager>("/root/SfxManager")?.PlayCountdown();
+			}
+
 			if (_timeRemaining <= 0)
 			{
 				_timeRemaining = 0;
@@ -2402,6 +2413,8 @@ public partial class GameWorld : Node2D
 				_gameEngine.GameState.Winner = finalWinner;
 				_gameEngine.GameState.AddNotification($"GAME OVER - TIME UP! {finalWinner} Wins with {endCounts[finalWinner]} influenced contestants!");
 				
+				GetNode<MusicManager>("/root/MusicManager")?.StopMusic();
+				GetNode<SfxManager>("/root/SfxManager")?.StopCountdown();
 				BroadcastGameState();
 			}
 			else
@@ -3355,6 +3368,9 @@ public partial class GameWorld : Node2D
 				overlay.ZIndex = 200; // Well above score floats (ZIndex 100) and everything else
 				_uiLayer.AddChild(overlay);
 
+				// Switch to lobby music for the win screen
+				GetNode<MusicManager>("/root/MusicManager")?.ForceLobbyMusic();
+
 				// Centered Label
 				var label = new Label();
 				label.Name = "GameOverLabel";
@@ -4039,6 +4055,8 @@ public partial class GameWorld : Node2D
 					_gameActive = false;
 					_gameEngine.GameState.Winner = Capitalize(role);
 					_gameEngine.GameState.AddNotification($"GAME OVER - {Capitalize(role)} has won by influencing {WIN_THRESHOLD} contestants!");
+					GetNode<MusicManager>("/root/MusicManager")?.StopMusic();
+					GetNode<SfxManager>("/root/SfxManager")?.StopCountdown();
 					BroadcastGameState();
 					break;
 				}
