@@ -12,6 +12,7 @@ public partial class MusicManager : Node
 	private AudioStream _gameTrack;
 	private string _currentTrack = "";
 	private string _lastSceneName = "";
+	private bool _forceLobbyMusic = false;
 
 	public override void _Ready()
 	{
@@ -39,13 +40,16 @@ public partial class MusicManager : Node
 		if (currentScene == null) return;
 
 		string sceneName = currentScene.Name;
-		if (sceneName == _lastSceneName) return;
+		if (sceneName != _lastSceneName)
+		{
+			_lastSceneName = sceneName;
+			_forceLobbyMusic = false; // Reset on scene change
+			GD.Print($"[MusicManager] Scene changed to: {sceneName}");
+		}
 
-		_lastSceneName = sceneName;
-		GD.Print($"[MusicManager] Scene changed to: {sceneName}");
-
-		// GameWorld is the in-game scene — switch to game music
-		if (sceneName == "GameWorld")
+		// GameWorld is the in-game scene — play last 3 minutes of game track
+		// UNLESS we are forcing lobby music (e.g. game over)
+		if (sceneName == "GameWorld" && !_forceLobbyMusic)
 		{
 			PlayTrack("game");
 		}
@@ -74,7 +78,40 @@ public partial class MusicManager : Node
 		}
 
 		_player.Stream = track;
-		_player.Play();
-		GD.Print($"[MusicManager] Now playing: {trackName}");
+
+		if (trackName == "game" && _gameTrack != null)
+		{
+			// Play the last 3 minutes (180s) of the game track
+			double trackLength = _gameTrack.GetLength();
+			float seekPos = (float)Mathf.Max(0, trackLength - 180.0);
+			_player.Play(seekPos);
+			GD.Print($"[MusicManager] Now playing game track from {seekPos:F1}s / {trackLength:F1}s (last 3 min)");
+		}
+		else
+		{
+			_player.Play();
+			GD.Print($"[MusicManager] Now playing: {trackName}");
+		}
+	}
+
+	/// <summary>
+	/// Stops all music. Called when a winner is announced.
+	/// </summary>
+	public void StopMusic()
+	{
+		GD.Print("[MusicManager] Music stopped (game over)");
+		_player.Stop();
+		_currentTrack = "";
+	}
+
+	/// <summary>
+	/// Forces the lobby music to play even if in GameWorld.
+	/// Used for the winning screen.
+	/// </summary>
+	public void ForceLobbyMusic()
+	{
+		GD.Print("[MusicManager] Forced lobby music (game over)");
+		_forceLobbyMusic = true;
+		PlayTrack("lobby");
 	}
 }
