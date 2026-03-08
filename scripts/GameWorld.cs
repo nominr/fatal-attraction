@@ -1876,10 +1876,10 @@ public partial class GameWorld : Node2D
 
 		if (conversingRoles.Count == 0)
 		{
-			// Punch alone NPC: puncher wins (+1, others -0.5 each) — same as chat game win
-			var points = ScoringRules.GetWinPoints(senderRole);
+			// Punch alone NPC: puncher loses (-1, others +0.5 each)
+			var points = ScoringRules.GetLossPoints(senderRole);
 			npc.State = ScoringRules.ClampState(npc.State + points);
-			_gameEngine.GameState.TriggerScoreChange(senderRole, 1);
+			_gameEngine.GameState.TriggerScoreChange(senderRole, -1);
 			GD.Print($"[PunchNPC] {senderRole} punched alone {npc.Name}, State += {points} -> {npc.State}");
 		}
 		else
