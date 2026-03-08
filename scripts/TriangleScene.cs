@@ -57,7 +57,7 @@ public partial class TriangleScene : Control
 		_pointSprite = new Sprite2D();
 		_pointSprite.Texture = GD.Load<Texture2D>("res://assets/black-heart-ui.png");
 		// Note: GameWorld.cs scales the parent _triangleScene by 2.0x, so effective scale = this × 2.
-		_pointSprite.Scale = new Vector2(0.07f, 0.07f);
+		_pointSprite.Scale = new Vector2(0.4f, 0.4f);
 		_pointSprite.ZIndex = 1; // Ensure it renders above the triangle base
 		// Initial position (center of triangle for now, or just hidden)
 		_pointSprite.Position = _centerOffset; // Start at center offset
@@ -135,7 +135,7 @@ public partial class TriangleScene : Control
 		
 		// Always enforce scale each time Show() is called (not just _Ready)
 		if (_pointSprite != null)
-			_pointSprite.Scale = new Vector2(0.07f, 0.07f);
+			_pointSprite.Scale = new Vector2(0.4f, 0.4f);
 
 		if (pointPos.HasValue)
 		{
