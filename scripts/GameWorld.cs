@@ -89,6 +89,19 @@ public partial class GameWorld : Node2D
 	private const float PUNCH_RANGE = 120f;
 	private bool _wasPunchPressed = false;
 
+	// ── Producer Ultimate: Cash Trail ──────────────────────────────────────────
+	private bool   _ultimateActive      = false;
+	private bool   _ultimateUsed        = false; // can only be used once
+	private double _ultimateTimer       = 0.0;   // counts down while active
+	private double _cashSpawnTimer      = 0.0;   // time until next coin spawns
+	private bool   _wasUltimatePressed  = false;
+	private const double ULTIMATE_DURATION    = 10.0;  // seconds trail lasts
+	private const double CASH_SPAWN_INTERVAL  = 0.35;  // seconds between coins
+	private const float  CASH_COIN_RADIUS     = 28f;   // NPC/player pick-up radius
+	private const float  CASH_INFLUENCE_GAIN  = 0.5f;  // producer state bonus per coin
+	private Label  _ultimateCooldownLabel;             // HUD label under the button
+	private Button _ultimateButton;                    // "Cash Trail" button
+
 
 	private Font _customFont;
 	
@@ -843,6 +856,38 @@ public partial class GameWorld : Node2D
 
 	private void SetupProducerUI()
 	{
+		// ── Cash Trail Ultimate Button (Producers only) ──────────────────────────
+		_ultimateButton = new Button();
+		_ultimateButton.Name  = "UltimateButton";
+		_ultimateButton.Text  = "⚡ Cash Trail";
+		_ultimateButton.AddThemeFontOverride("font", _customFont);
+		_ultimateButton.AddThemeFontSizeOverride("font_size", 26);
+		_ultimateButton.Position          = new Vector2(20, 540);
+		_ultimateButton.CustomMinimumSize = new Vector2(220, 55);
+		_ultimateButton.Visible           = false; // shown only for Producer
+
+		var ulStyle = CreateTrapStyle(new Color(1.0f, 0.85f, 0.0f, 1f), Colors.Black); // gold
+		_ultimateButton.AddThemeStyleboxOverride("normal",   ulStyle);
+		_ultimateButton.AddThemeStyleboxOverride("hover",    CreateTrapStyle(new Color(0.9f, 0.75f, 0.0f, 1f), Colors.Black));
+		_ultimateButton.AddThemeStyleboxOverride("pressed",  CreateTrapStyle(new Color(0.7f, 0.6f,  0.0f, 1f), Colors.Black));
+		_ultimateButton.AddThemeStyleboxOverride("disabled", CreateTrapStyle(new Color(0.4f, 0.4f,  0.4f, 0.8f), Colors.DarkGray));
+		_ultimateButton.AddThemeColorOverride("font_color",          Colors.Black);
+		_ultimateButton.AddThemeColorOverride("font_hover_color",    Colors.Black);
+		_ultimateButton.AddThemeColorOverride("font_pressed_color",  Colors.Black);
+		_ultimateButton.AddThemeColorOverride("font_disabled_color", new Color(0.6f, 0.6f, 0.6f, 1f));
+		_ultimateButton.Pressed += OnUltimateButtonPressed;
+		_uiLayer.AddChild(_ultimateButton);
+
+		_ultimateCooldownLabel = new Label();
+		_ultimateCooldownLabel.Name = "UltimateCooldownLabel";
+		_ultimateCooldownLabel.AddThemeFontOverride("font", _customFont);
+		_ultimateCooldownLabel.AddThemeFontSizeOverride("font_size", 22);
+		_ultimateCooldownLabel.AddThemeColorOverride("font_color", Colors.White);
+		_ultimateCooldownLabel.Position = new Vector2(20, 600);
+		_ultimateCooldownLabel.Text     = "[Q] to activate";
+		_ultimateCooldownLabel.Visible  = false;
+		_uiLayer.AddChild(_ultimateCooldownLabel);
+
 		
 		// Manage Cameras Button (Restyled and Repositioned)
 		var manageCamsBtn = new Button();
@@ -1600,6 +1645,11 @@ public partial class GameWorld : Node2D
 			_myRole = _networkManager.Players[myId].Role;
 			// Role label hidden per user request
 			// _roleLabel.Text = $"Role: {_myRole?.ToUpper()}";
+
+			// Show ultimate button only for Producer
+			bool isProducer = string.Equals(_myRole, "Producer", StringComparison.OrdinalIgnoreCase);
+			if (_ultimateButton != null)        _ultimateButton.Visible        = isProducer;
+			if (_ultimateCooldownLabel != null)  _ultimateCooldownLabel.Visible = isProducer;
 		}
 	}
 
@@ -2532,6 +2582,227 @@ public partial class GameWorld : Node2D
 		// Punch hints and input handling
 		UpdatePunchHints();
 		HandlePunchInput();
+
+		// Producer Ultimate: cash trail
+		HandleUltimateInput(delta);
+	}
+
+	// ── Producer Ultimate: Cash Trail ───────────────────────────────────────────
+
+	private void OnUltimateButtonPressed()
+	{
+		if (_ultimateActive || _ultimateUsed) return;
+		ActivateCashTrailUltimate();
+	}
+
+	private void ActivateCashTrailUltimate()
+	{
+		if (_myRole?.ToLower() != "producer") return;
+		if (_ultimateActive || _ultimateUsed) return;
+
+		_ultimateActive = true;
+		_ultimateUsed   = true;
+		_ultimateTimer  = ULTIMATE_DURATION;
+		_cashSpawnTimer = 0.0; // spawn first coin immediately
+		if (_ultimateButton != null) _ultimateButton.Disabled = true;
+		AddSlidingNotification("⚡ Cash Trail activated for 10 seconds!");
+		GD.Print("[CashTrail] Producer activated ultimate");
+	}
+
+	private void HandleUltimateInput(double delta)
+	{
+		// Only the local Producer can trigger this
+		if (_myRole?.ToLower() != "producer") return;
+		if (IsLocalPlayerDead()) return;
+
+		// Resolve local player reference
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			_playerControllers.TryGetValue(myId, out _localPlayer);
+		}
+
+		// Show the ultimate button/label only while unused
+		if (_ultimateButton != null)       _ultimateButton.Visible       = !_ultimateUsed || _ultimateActive;
+		if (_ultimateCooldownLabel != null) _ultimateCooldownLabel.Visible = !_ultimateUsed || _ultimateActive;
+
+		// ── Q key detection (one-shot) ──────────────────────────────────────────
+		bool qPressed = Input.IsKeyPressed(Key.Q);
+		if (qPressed && !_wasUltimatePressed)
+		{
+			if (!_ultimateActive && !_ultimateUsed)
+				ActivateCashTrailUltimate();
+		}
+		_wasUltimatePressed = qPressed;
+
+		// ── Active trail: spawn coins + countdown ───────────────────────────────
+		if (!_ultimateActive) return;
+
+		_ultimateTimer  -= delta;
+		_cashSpawnTimer -= delta;
+
+		if (_ultimateCooldownLabel != null)
+			_ultimateCooldownLabel.Text = $"Trail active: {_ultimateTimer:F0}s";
+
+		if (_cashSpawnTimer <= 0 && _localPlayer != null)
+		{
+			_cashSpawnTimer = CASH_SPAWN_INTERVAL;
+			// Ask the server to spawn a cash coin at our current world position
+			string coinId = $"Cash_{Multiplayer.GetUniqueId()}_{Time.GetTicksMsec()}";
+			if (Multiplayer.IsServer())
+			{
+				// Server-hosted Producer: broadcast directly
+				Rpc(MethodName.SpawnCashCoinVisual, _localPlayer.GlobalPosition, coinId, Multiplayer.GetUniqueId());
+			}
+			else
+			{
+				RpcId(1, MethodName.RequestSpawnCashCoin, _localPlayer.GlobalPosition, coinId);
+			}
+		}
+
+		if (_ultimateTimer <= 0)
+		{
+			_ultimateActive = false;
+			_ultimateTimer  = 0;
+			// Hide button and label permanently — ult is single-use
+			if (_ultimateButton        != null) _ultimateButton.Visible        = false;
+			if (_ultimateCooldownLabel != null) _ultimateCooldownLabel.Visible = false;
+			GD.Print("[CashTrail] Producer ultimate ended (one-use consumed)");
+		}
+	}
+
+	// ── Server RPC: client asks server to spawn a coin ────────────────────────
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestSpawnCashCoin(Vector2 position, string coinId)
+	{
+		if (!Multiplayer.IsServer()) return;
+
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
+
+		// Must be the Producer
+		if (!_networkManager.Players.TryGetValue(senderId, out var info)) return;
+		if (!string.Equals(info.Role, "Producer", StringComparison.OrdinalIgnoreCase)) return;
+
+		// Broadcast to all peers (including server itself)
+		Rpc(MethodName.SpawnCashCoinVisual, position, coinId, senderId);
+	}
+
+	// ── Spawn the cash-coin node on ALL peers ─────────────────────────────────
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	public void SpawnCashCoinVisual(Vector2 position, string coinId, long producerPeerId)
+	{
+		if (HasNode(coinId)) return; // duplicate guard
+
+		var coinRoot = new Node2D();
+		coinRoot.Name     = coinId;
+		coinRoot.Position = position;
+		coinRoot.ZIndex   = -4; // above banana (-5), below NPCs/players
+		coinRoot.AddToGroup("cash_coins");
+
+		// ── Visual: golden circle drawn with CanvasItem ───────────────────────
+		var visual = new Node2D();
+		visual.Name = "Visual";
+		coinRoot.AddChild(visual);
+		visual.Draw += () =>
+		{
+			visual.DrawCircle(Vector2.Zero, 14f, new Color(1.0f, 0.85f, 0.0f, 0.92f));        // gold fill
+			visual.DrawArc(Vector2.Zero, 14f, 0, Mathf.Tau, 24, new Color(0.6f, 0.4f, 0.0f, 1f), 2.5f); // dark border
+			// Dollar sign
+			// (text requires a font reference – we skip that and rely on the gold circle instead)
+		};
+		visual.QueueRedraw();
+
+		// Pulsing scale animation via Tween
+		var tween = visual.CreateTween();
+		tween.SetLoops();
+		tween.TweenProperty(visual, "scale", new Vector2(1.15f, 1.15f), 0.4f).SetTrans(Tween.TransitionType.Sine);
+		tween.TweenProperty(visual, "scale", Vector2.One, 0.4f).SetTrans(Tween.TransitionType.Sine);
+
+		// ── Collision area (detects NPCs + players) ───────────────────────────
+		var area = new Area2D();
+		area.Name           = "CollisionArea";
+		area.CollisionMask  = 6;  // Layer 2: Players | Layer 4: NPCs
+		area.Monitoring    = true;
+		area.Monitorable   = false;
+		var shape = new CollisionShape2D();
+		var circle = new CircleShape2D { Radius = CASH_COIN_RADIUS };
+		shape.Shape = circle;
+		area.AddChild(shape);
+		coinRoot.AddChild(area);
+
+		// Only the server reacts to overlaps
+		if (Multiplayer.IsServer())
+		{
+			area.BodyEntered += (Node2D body) =>
+			{
+				if (!IsInstanceValid(coinRoot) || !coinRoot.IsInsideTree()) return;
+
+				if (body is NPCEntity npcEnt)
+				{
+					// NPC collects coin → Producer gains influence on this NPC
+					var npcData = _gameEngine?.GameState.GetNPC(npcEnt.NpcId);
+					if (npcData != null && npcData.Alive)
+					{
+						// Increase Producer component (Z) of the NPC's state
+						var delta_v = new System.Numerics.Vector3(0f, 0f, CASH_INFLUENCE_GAIN);
+						npcData.State = ScoringRules.ClampState(npcData.State + delta_v);
+						_gameEngine.GameState.TriggerScoreChange(Role.Producer, 1);
+						_gameEngine.GameState.AddNotification($"{npcEnt.NpcName} picked up the Producer's cash!");
+						GD.Print($"[CashTrail] NPC {npcEnt.NpcId} collected coin {coinId}. Producer +{CASH_INFLUENCE_GAIN}");
+						BroadcastGameState();
+					}
+					// Remove coin on all peers
+					Rpc(MethodName.RemoveCashCoin, coinId, true);
+				}
+				else if (body is PlayerController playerCtrl)
+				{
+					// Another player steps on it — coin disappears (no NPC benefit)
+					// Don't let the Producer collect their own coins
+					long bodyPeerId = 0;
+					foreach (var kvp in _playerControllers)
+					{
+						if (kvp.Value == playerCtrl) { bodyPeerId = kvp.Key; break; }
+					}
+					if (bodyPeerId == producerPeerId) return; // Producer doesn't collect own coins
+
+					GD.Print($"[CashTrail] Player {bodyPeerId} picked up cash coin {coinId}");
+					Rpc(MethodName.RemoveCashCoin, coinId, false);
+				}
+			};
+		}
+
+		AddChild(coinRoot);
+
+		// Coins expire after the ultimate duration if not collected
+		var lifeTimer = GetTree().CreateTimer(ULTIMATE_DURATION + 2.0);
+		lifeTimer.Timeout += () =>
+		{
+			if (Multiplayer.IsServer() && IsInstanceValid(coinRoot) && coinRoot.IsInsideTree())
+				Rpc(MethodName.RemoveCashCoin, coinId, false);
+		};
+	}
+
+	// ── Remove a cash-coin on ALL peers ──────────────────────────────────────
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	public void RemoveCashCoin(string coinId, bool wasCollectedByNpc)
+	{
+		var coinNode = GetNodeOrNull(coinId);
+		if (coinNode == null) return;
+
+		if (wasCollectedByNpc)
+		{
+			// Flash yellow before disappearing
+			var visualNode = coinNode.GetNodeOrNull<Node2D>("Visual");
+			if (visualNode != null)
+			{
+				var flashTween = visualNode.CreateTween();
+				flashTween.TweenProperty(visualNode, "modulate", new Color(1, 1, 1, 0), 0.25f);
+				flashTween.TweenCallback(Callable.From(() => coinNode.QueueFree()));
+				return;
+			}
+		}
+		coinNode.QueueFree();
 	}
 
 	private void CheckProducerPanelsOnMove()
