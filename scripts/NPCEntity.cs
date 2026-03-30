@@ -991,6 +991,9 @@ public partial class NPCEntity : CharacterBody2D
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
+		// Dead NPCs cannot be interacted with
+		if (!_isAlive) return;
+
 		// Fallback: Check global mouse position distance if physics click failed
 		if (@event is InputEventMouseButton mouseEvent && mouseEvent.Pressed && mouseEvent.ButtonIndex == MouseButton.Left)
 		{
@@ -1007,6 +1010,9 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void TryInteract()
 	{
+		// Dead NPCs cannot be interacted with
+		if (!_isAlive) return;
+
 		if (_playerInRange)
 		{
 			GD.Print($"Interacting with {NpcId}");
@@ -1026,8 +1032,8 @@ public partial class NPCEntity : CharacterBody2D
 			GD.Print($"Body entered {NpcName}: {body.Name}");
 			_playerInRange = true;
 			
-			// Just show hint, don't auto-interact (player must click)
-			if (body is PlayerController player && player.IsLocalPlayer)
+			// Only show interact hint for living NPCs
+			if (_isAlive && body is PlayerController player && player.IsLocalPlayer)
 			{
 				_interactHint.Visible = true;
 				GD.Print($"Local player entered {NpcName} range, showing hint");

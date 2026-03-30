@@ -102,6 +102,13 @@ public partial class GameWorld : Node2D
 	private Label  _ultimateCooldownLabel;             // HUD label under the button
 	private Button _ultimateButton;                    // "Cash Trail" button
 
+	// ── Admirer Ultimate: Knife Kill ─────────────────────────────────────────────
+	private bool   _admirerKnifeUsed         = false;  // can only be used once per game
+	private bool   _wasAdmirerUltPressed     = false;
+	private const float ADMIRER_KNIFE_RANGE  = 120f;   // same as punch range
+	private Button _admirerKnifeButton;                // "🔪 Knife" HUD button
+	private Label  _admirerKnifeLabel;                 // hint label under the button
+
 
 	private Font _customFont;
 	
@@ -832,6 +839,9 @@ public partial class GameWorld : Node2D
 		// Producer UI Elements
 		SetupProducerUI();
 		
+		// Admirer UI Elements
+		SetupAdmirerUI();
+		
 		// Triangle Scene (Left Middle)
 		var triangleScenePrefab = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
 		_triangleScene = triangleScenePrefab.Instantiate<TriangleScene>();
@@ -852,6 +862,41 @@ public partial class GameWorld : Node2D
 		
 		// TEST NOTIFICATION
 		CallDeferred(MethodName.AddSlidingNotification, "Notification System Online!");
+	}
+
+	private void SetupAdmirerUI()
+	{
+		// ── Knife Ultimate Button (Admirer only) ───────────────────────────────
+		_admirerKnifeButton = new Button();
+		_admirerKnifeButton.Name = "AdmirerKnifeButton";
+		_admirerKnifeButton.Text = "🔪 Knife";
+		_admirerKnifeButton.AddThemeFontOverride("font", _customFont);
+		_admirerKnifeButton.AddThemeFontSizeOverride("font_size", 26);
+		_admirerKnifeButton.Position          = new Vector2(20, 540);
+		_admirerKnifeButton.CustomMinimumSize = new Vector2(220, 55);
+		_admirerKnifeButton.Visible           = false; // shown only for Admirer
+
+		var knifeStyle = CreateTrapStyle(new Color(0.85f, 0.1f, 0.1f, 1f), Colors.Black); // red
+		_admirerKnifeButton.AddThemeStyleboxOverride("normal",   knifeStyle);
+		_admirerKnifeButton.AddThemeStyleboxOverride("hover",    CreateTrapStyle(new Color(1.0f, 0.2f, 0.2f, 1f), Colors.Black));
+		_admirerKnifeButton.AddThemeStyleboxOverride("pressed",  CreateTrapStyle(new Color(0.6f, 0.05f, 0.05f, 1f), Colors.Black));
+		_admirerKnifeButton.AddThemeStyleboxOverride("disabled", CreateTrapStyle(new Color(0.4f, 0.4f, 0.4f, 0.8f), Colors.DarkGray));
+		_admirerKnifeButton.AddThemeColorOverride("font_color",          Colors.White);
+		_admirerKnifeButton.AddThemeColorOverride("font_hover_color",    Colors.White);
+		_admirerKnifeButton.AddThemeColorOverride("font_pressed_color",  Colors.White);
+		_admirerKnifeButton.AddThemeColorOverride("font_disabled_color", new Color(0.6f, 0.6f, 0.6f, 1f));
+		_admirerKnifeButton.Pressed += OnAdmirerKnifeButtonPressed;
+		_uiLayer.AddChild(_admirerKnifeButton);
+
+		_admirerKnifeLabel = new Label();
+		_admirerKnifeLabel.Name = "AdmirerKnifeLabel";
+		_admirerKnifeLabel.AddThemeFontOverride("font", _customFont);
+		_admirerKnifeLabel.AddThemeFontSizeOverride("font_size", 22);
+		_admirerKnifeLabel.AddThemeColorOverride("font_color", Colors.White);
+		_admirerKnifeLabel.Position = new Vector2(20, 600);
+		_admirerKnifeLabel.Text     = "[Q] close to a contestant";
+		_admirerKnifeLabel.Visible  = false;
+		_uiLayer.AddChild(_admirerKnifeLabel);
 	}
 
 	private void SetupProducerUI()
@@ -1658,6 +1703,13 @@ public partial class GameWorld : Node2D
 		if (IsLocalPlayerDead())
 		{
 			GD.Print($"[GameWorld] Dead player tried to interact with NPC {npcId}, ignoring.");
+			return;
+		}
+
+		// Block interaction with dead NPCs (server-authoritative check)
+		if (TryGetNpcTargetState(npcId, out _, out bool npcAlive) && !npcAlive)
+		{
+			GD.Print($"[GameWorld] NPC {npcId} is dead, ignoring click.");
 			return;
 		}
 
@@ -2585,6 +2637,188 @@ public partial class GameWorld : Node2D
 
 		// Producer Ultimate: cash trail
 		HandleUltimateInput(delta);
+
+		// Admirer Ultimate: knife kill
+		HandleAdmirerKnifeInput();
+	}
+
+	// ── Admirer Ultimate: Knife Kill ──────────────────────────────────────────────
+
+	private void OnAdmirerKnifeButtonPressed()
+	{
+		if (_admirerKnifeUsed) return;
+		ActivateAdmirerKnife();
+	}
+
+	private void ActivateAdmirerKnife()
+	{
+		if (_myRole?.ToLower() != "admirer") return;
+		if (_admirerKnifeUsed) return;
+		if (IsLocalPlayerDead()) return;
+
+		// Resolve local player
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			_playerControllers.TryGetValue(myId, out _localPlayer);
+		}
+		if (_localPlayer == null) return;
+
+		// Find closest alive NPC within knife range
+		string closestNpcId = null;
+		float closestDist   = float.MaxValue;
+		foreach (var kvp in _npcEntities)
+		{
+			if (!TryGetNpcTargetState(kvp.Key, out _, out bool alive)) continue;
+			if (!alive) continue;
+			float dist = _localPlayer.Position.DistanceTo(kvp.Value.Position);
+			if (dist <= ADMIRER_KNIFE_RANGE && dist < closestDist)
+			{
+				closestDist   = dist;
+				closestNpcId  = kvp.Key;
+			}
+		}
+
+		if (string.IsNullOrEmpty(closestNpcId))
+		{
+			// No valid target — notify but don't consume the use
+			AddSlidingNotification("🔪 No contestant close enough to use the knife!");
+			return;
+		}
+
+		// Consume the ultimate
+		_admirerKnifeUsed = true;
+		if (_admirerKnifeButton != null) _admirerKnifeButton.Disabled = true;
+		AddSlidingNotification("🔪 Knife used! A contestant has been eliminated!");
+		GD.Print($"[AdmirerKnife] Admirer activating knife on NPC {closestNpcId}");
+
+		// Tell server to kill the NPC
+		if (Multiplayer.IsServer())
+			AdmirerKillNpc(closestNpcId);
+		else
+			RpcId(1, MethodName.RequestAdmirerKillNpc, closestNpcId);
+	}
+
+	private void HandleAdmirerKnifeInput()
+	{
+		if (_myRole?.ToLower() != "admirer") return;
+		if (IsLocalPlayerDead()) return;
+
+		// Resolve local player
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			_playerControllers.TryGetValue(myId, out _localPlayer);
+		}
+
+		// Show the knife button/label only while unused
+		if (_admirerKnifeButton != null) _admirerKnifeButton.Visible = !_admirerKnifeUsed;
+		if (_admirerKnifeLabel  != null) _admirerKnifeLabel.Visible  = !_admirerKnifeUsed;
+
+		// Once used, hide permanently
+		if (_admirerKnifeUsed)
+		{
+			if (_admirerKnifeButton != null) _admirerKnifeButton.Visible = false;
+			if (_admirerKnifeLabel  != null) _admirerKnifeLabel.Visible  = false;
+			return;
+		}
+
+		// ── Q key detection (one-shot) ─────────────────────────────────────────
+		bool qPressed = Input.IsKeyPressed(Key.Q);
+		if (qPressed && !_wasAdmirerUltPressed)
+		{
+			ActivateAdmirerKnife();
+		}
+		_wasAdmirerUltPressed = qPressed;
+	}
+
+	// ── Server RPC: client asks server to kill an NPC with the knife ──────────
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestAdmirerKillNpc(string npcId)
+	{
+		if (!Multiplayer.IsServer()) return;
+
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (!_networkManager.Players.TryGetValue(senderId, out var info)) return;
+		if (!string.Equals(info.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) return;
+
+		// Verify sender is alive
+		var senderState = _gameEngine.GameState.GetPlayerState(Role.Admirer);
+		if (senderState != null && !senderState.Alive) return;
+
+		// Verify admirer is close enough
+		if (!_playerControllers.TryGetValue(senderId, out var admirerCtrl)) return;
+		if (!_npcEntities.TryGetValue(npcId, out var npcEnt)) return;
+		if (admirerCtrl.Position.DistanceTo(npcEnt.Position) > ADMIRER_KNIFE_RANGE)
+		{
+			GD.Print($"[AdmirerKnife] Server rejected knife: Admirer too far from {npcId}");
+			return;
+		}
+
+		AdmirerKillNpc(npcId);
+	}
+
+	private void AdmirerKillNpc(string npcId)
+	{
+		if (!Multiplayer.IsServer()) return;
+		if (_gameEngine == null) return;
+
+		var npc = _gameEngine.GameState.GetNPC(npcId);
+		if (npc == null || !npc.Alive)
+		{
+			GD.Print($"[AdmirerKnife] NPC {npcId} not found or already dead.");
+			return;
+		}
+
+		// Kill the NPC
+		npc.Alive = false;
+		_gameEngine.GameState.AddNotification($"🔪 {npc.Name} has been eliminated by the Admirer!");
+		GD.Print($"[AdmirerKnife] NPC {npcId} ({npc.Name}) killed by Admirer.");
+
+		// Visual flash on all clients
+		Rpc(MethodName.RpcFlashNpcDamage, npcId);
+
+		// ── Witness AoE: nearby alive NPCs gain a heavy negative view of the Admirer ──
+		ApplyKnifeWitnessAoE(npcId, npc.Name);
+
+		BroadcastGameState();
+	}
+
+	// ── Witness AoE applied once per knife kill (server-only) ──────────────────
+	private const float KNIFE_WITNESS_RADIUS   = 350f;  // world-space radius around corpse
+	private const float KNIFE_WITNESS_PENALTY  = -2.0f; // Admirer score delta per witness
+
+	private void ApplyKnifeWitnessAoE(string deadNpcId, string deadNpcName)
+	{
+		if (!_npcEntities.TryGetValue(deadNpcId, out var corpseEntity)) return;
+		Vector2 corpsePos = corpseEntity.GlobalPosition;
+
+		int witnessCount = 0;
+		foreach (var kvp in _npcEntities)
+		{
+			if (kvp.Key == deadNpcId) continue; // skip the corpse itself
+
+			var witnessNpc = _gameEngine.GameState.GetNPC(kvp.Key);
+			if (witnessNpc == null || !witnessNpc.Alive) continue;
+
+			float dist = kvp.Value.GlobalPosition.DistanceTo(corpsePos);
+			if (dist > KNIFE_WITNESS_RADIUS) continue;
+
+			// Penalise Admirer's component (X axis in the state vector)
+			var penalty = new System.Numerics.Vector3(KNIFE_WITNESS_PENALTY, 0f, 0f);
+			witnessNpc.State = ScoringRules.ClampState(witnessNpc.State + penalty);
+			witnessCount++;
+
+			GD.Print($"[KnifeWitness] {witnessNpc.Name} witnessed murder of {deadNpcName} (dist {dist:F0}). Admirer penalty {KNIFE_WITNESS_PENALTY}");
+		}
+
+		if (witnessCount > 0)
+		{
+			_gameEngine.GameState.AddNotification(
+				$"👀 {witnessCount} contestant{(witnessCount > 1 ? "s" : "")} witnessed the murder! Admirer's reputation has plummeted!");
+			// Also push a visual score-drop notification for the admirer
+			_gameEngine.GameState.TriggerScoreChange(Role.Admirer, -witnessCount);
+		}
 	}
 
 	// ── Producer Ultimate: Cash Trail ───────────────────────────────────────────
