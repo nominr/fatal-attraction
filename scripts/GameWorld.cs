@@ -109,6 +109,21 @@ public partial class GameWorld : Node2D
 	private Button _admirerKnifeButton;                // "🔪 Knife" HUD button
 	private Label  _admirerKnifeLabel;                 // hint label under the button
 
+	// ── Prophet Ultimate: Mass Revelation ──────────────────────────────────────
+	private bool   _massRevActive            = false;
+	private bool   _massRevUsed              = false;
+	private double _massRevTimer             = 0.0;
+	private bool   _wasMassRevPressed        = false;
+	private bool   _massRevServerActive      = false;  // server-side flag
+	private long   _massRevProphetPeerId     = 0;      // which peer is channeling
+	private const double MASS_REV_DURATION   = 10.0;
+	private const float  MASS_REV_RADIUS     = 480f;   // NPC pull radius (world units)
+	private const float  MASS_REV_NPC_SPEED  = 65f;    // NPC march-toward-prophet speed
+	private const float  MASS_REV_PLAYER_SPD = 80f;    // Prophet reduced speed while chanting
+	private Button  _massRevButton;
+	private Label   _massRevLabel;
+	private Node2D  _massRevAuraVisual;                // pulsing aura circle node
+
 
 	private Font _customFont;
 	
@@ -841,6 +856,9 @@ public partial class GameWorld : Node2D
 		
 		// Admirer UI Elements
 		SetupAdmirerUI();
+
+		// Prophet UI Elements
+		SetupProphetUI();
 		
 		// Triangle Scene (Left Middle)
 		var triangleScenePrefab = GD.Load<PackedScene>("res://scenes/TriangleScene.tscn");
@@ -2105,6 +2123,15 @@ public partial class GameWorld : Node2D
 		}
 
 		GD.Print($"[PunchPlayer] SUCCESS: {senderRole} punching {targetRole}");
+
+		// ── Mass Revelation: shatters if Prophet is punched during channeling ──
+		if (_massRevServerActive &&
+		    string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase))
+		{
+			GD.Print("[MassRev] Prophet punched during channeling — shattering Mass Revelation!");
+			ShatterMassRevelationServer();
+		}
+
 		Rpc(MethodName.RpcFlashPlayerDamage, targetPlayerId);
 	}
 
@@ -2581,6 +2608,28 @@ public partial class GameWorld : Node2D
 					}
 
 					BroadcastGameState();
+
+					// ── Mass Revelation server tick ──────────────────────────────────
+					if (_massRevServerActive && _massRevProphetPeerId != 0 &&
+					    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetCtrl))
+					{
+						Vector2 prophetPos = prophetCtrl.GlobalPosition;
+						foreach (var kvp in _npcEntities)
+						{
+							var npcData   = _gameEngine.GameState.GetNPC(kvp.Key);
+							if (npcData == null || !npcData.Alive) continue;
+
+							float dist = kvp.Value.Position.DistanceTo(prophetPos);
+							if (dist <= MASS_REV_RADIUS)
+							{
+								// March toward prophet
+								kvp.Value.SetMarchTarget(prophetPos, MASS_REV_NPC_SPEED);
+
+								// Sever any active flirt dialog involving this NPC
+								BreakNpcDialog(kvp.Key);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -2640,6 +2689,9 @@ public partial class GameWorld : Node2D
 
 		// Admirer Ultimate: knife kill
 		HandleAdmirerKnifeInput();
+
+		// Prophet Ultimate: Mass Revelation
+		HandleProphetUltimateInput(delta);
 	}
 
 	// ── Admirer Ultimate: Knife Kill ──────────────────────────────────────────────
@@ -4594,4 +4646,304 @@ public partial class GameWorld : Node2D
 	}
 
 
+
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Prophet Ultimate: Mass Revelation — all methods inside partial class below
+// (Added as a separate block to keep diffs clean)
+// ═══════════════════════════════════════════════════════════════════════════
+public partial class GameWorld
+{
+	// ── UI Setup ──────────────────────────────────────────────────────────────
+	private void SetupProphetUI()
+	{
+		_massRevButton = new Button();
+		_massRevButton.Name = "MassRevButton";
+		_massRevButton.Text = "🌀 Mass Revelation";
+		_massRevButton.AddThemeFontOverride("font", _customFont);
+		_massRevButton.AddThemeFontSizeOverride("font_size", 26);
+		_massRevButton.Position          = new Vector2(20, 540);
+		_massRevButton.CustomMinimumSize = new Vector2(240, 55);
+		_massRevButton.Visible           = false; // shown only for Prophet
+
+		// Deep blue style
+		_massRevButton.AddThemeStyleboxOverride("normal",   CreateTrapStyle(new Color(0.1f, 0.3f, 0.9f, 1f), Colors.Black));
+		_massRevButton.AddThemeStyleboxOverride("hover",    CreateTrapStyle(new Color(0.2f, 0.45f, 1.0f, 1f), Colors.Black));
+		_massRevButton.AddThemeStyleboxOverride("pressed",  CreateTrapStyle(new Color(0.05f, 0.2f, 0.6f, 1f), Colors.Black));
+		_massRevButton.AddThemeStyleboxOverride("disabled", CreateTrapStyle(new Color(0.4f, 0.4f, 0.4f, 0.8f), Colors.DarkGray));
+		_massRevButton.AddThemeColorOverride("font_color",          Colors.White);
+		_massRevButton.AddThemeColorOverride("font_hover_color",    Colors.White);
+		_massRevButton.AddThemeColorOverride("font_pressed_color",  Colors.White);
+		_massRevButton.AddThemeColorOverride("font_disabled_color", new Color(0.6f, 0.6f, 0.6f, 1f));
+		_massRevButton.Pressed += OnMassRevButtonPressed;
+		_uiLayer.AddChild(_massRevButton);
+
+		_massRevLabel = new Label();
+		_massRevLabel.Name = "MassRevLabel";
+		_massRevLabel.AddThemeFontOverride("font", _customFont);
+		_massRevLabel.AddThemeFontSizeOverride("font_size", 22);
+		_massRevLabel.AddThemeColorOverride("font_color", Colors.White);
+		_massRevLabel.Position = new Vector2(20, 600);
+		_massRevLabel.Text     = "[Q] activate aura";
+		_massRevLabel.Visible  = false;
+		_uiLayer.AddChild(_massRevLabel);
+	}
+
+	private void OnMassRevButtonPressed()
+	{
+		if (_massRevActive || _massRevUsed) return;
+		ActivateMassRevelation();
+	}
+
+	// ── Client-side activation ─────────────────────────────────────────────
+	private void ActivateMassRevelation()
+	{
+		if (_myRole?.ToLower() != "prophet") return;
+		if (_massRevActive || _massRevUsed) return;
+		if (IsLocalPlayerDead()) return;
+
+		// Resolve local player reference
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			_playerControllers.TryGetValue(myId, out _localPlayer);
+		}
+		if (_localPlayer == null) return;
+
+		_massRevActive = true;
+		_massRevUsed   = true;
+		_massRevTimer  = MASS_REV_DURATION;
+
+		// Slow the Prophet down
+		_localPlayer.Speed = MASS_REV_PLAYER_SPD;
+
+		if (_massRevButton != null) _massRevButton.Disabled = true;
+
+		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 10 seconds…");
+		GD.Print("[MassRev] Prophet activated Mass Revelation");
+
+		// Build aura visual (pulsing blue circle) parented to world-space
+		BuildAuraVisual();
+
+		// Notify the server (or act directly if hosting)
+		if (Multiplayer.IsServer())
+			StartMassRevelationServer(Multiplayer.GetUniqueId());
+		else
+			RpcId(1, MethodName.RequestProphetMassRevelation);
+	}
+
+	private void BuildAuraVisual()
+	{
+		_massRevAuraVisual = new Node2D();
+		_massRevAuraVisual.Name   = "MassRevAura";
+		_massRevAuraVisual.ZIndex = -1; // behind players, above floor
+		AddChild(_massRevAuraVisual);
+
+		var visual = new Node2D();
+		visual.Name = "AuraCircle";
+		_massRevAuraVisual.AddChild(visual);
+
+		visual.Draw += () =>
+		{
+			// Soft outer ring
+			visual.DrawCircle(Vector2.Zero, MASS_REV_RADIUS,
+				new Color(0.1f, 0.3f, 1.0f, 0.10f));
+			// Slightly brighter inner ring
+			visual.DrawArc(Vector2.Zero, MASS_REV_RADIUS, 0, Mathf.Tau, 64,
+				new Color(0.3f, 0.6f, 1.0f, 0.55f), 4f);
+		};
+		visual.QueueRedraw();
+
+		// Pulsing scale tween
+		var tween = visual.CreateTween();
+		tween.SetLoops();
+		tween.TweenProperty(visual, "scale", new Vector2(1.06f, 1.06f), 0.6f)
+			.SetTrans(Tween.TransitionType.Sine);
+		tween.TweenProperty(visual, "scale", Vector2.One, 0.6f)
+			.SetTrans(Tween.TransitionType.Sine);
+	}
+
+	// ── Per-frame prophet handler ─────────────────────────────────────────
+	private void HandleProphetUltimateInput(double delta)
+	{
+		if (_myRole?.ToLower() != "prophet") return;
+		if (IsLocalPlayerDead()) return;
+
+		// Resolve local player reference
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			_playerControllers.TryGetValue(myId, out _localPlayer);
+		}
+
+		// Manage button/label visibility
+		bool showUI = !_massRevUsed || _massRevActive;
+		if (_massRevButton != null) _massRevButton.Visible = showUI;
+		if (_massRevLabel  != null) _massRevLabel.Visible  = showUI;
+
+		// One-shot Q key activation
+		bool qPressed = Input.IsKeyPressed(Key.Q);
+		if (qPressed && !_wasMassRevPressed && !_massRevActive && !_massRevUsed)
+			ActivateMassRevelation();
+		_wasMassRevPressed = qPressed;
+
+		// Active: countdown, aura follows prophet, update label
+		if (!_massRevActive) return;
+
+		_massRevTimer -= delta;
+
+		// Keep aura visual centred on local prophet
+		if (_massRevAuraVisual != null && _localPlayer != null)
+			_massRevAuraVisual.GlobalPosition = _localPlayer.GlobalPosition;
+
+		if (_massRevLabel != null)
+			_massRevLabel.Text = $"🌀 Chanting… {_massRevTimer:F0}s";
+
+		if (_massRevTimer <= 0)
+		{
+			// Aura expired
+			_massRevActive = false;
+			_massRevTimer  = 0;
+			EndMassRevelationLocally(false);
+		}
+	}
+
+	private void EndMassRevelationLocally(bool shattered)
+	{
+		// Restore prophet speed
+		if (_localPlayer != null)
+			_localPlayer.Speed = 425.0f; // default Speed
+
+		// Remove aura visual
+		if (_massRevAuraVisual != null && IsInstanceValid(_massRevAuraVisual))
+		{
+			_massRevAuraVisual.QueueFree();
+			_massRevAuraVisual = null;
+		}
+
+		// Update label / hide UI permanently
+		if (_massRevButton != null) _massRevButton.Visible = false;
+		if (_massRevLabel  != null) _massRevLabel.Visible  = false;
+
+		string msg = shattered
+			? "💥 Mass Revelation shattered by a punch!"
+			: "🌀 Mass Revelation ended. Contestants keep their new positions!";
+		AddSlidingNotification(msg);
+		GD.Print($"[MassRev] Ended locally (shattered={shattered})");
+	}
+
+	// ── Server-side: start ────────────────────────────────────────────────
+	private void StartMassRevelationServer(long prophetPeerId)
+	{
+		if (!Multiplayer.IsServer()) return;
+		_massRevServerActive  = true;
+		_massRevProphetPeerId = prophetPeerId;
+		_gameEngine?.GameState.AddNotification("🌀 The Prophet begins Mass Revelation! Contestants are drawn near!");
+		GD.Print($"[MassRev] Server started aura for peer {prophetPeerId}");
+
+		// Notify all clients so they can show the aura
+		Rpc(MethodName.RpcNotifyMassRevelationStart, prophetPeerId);
+	}
+
+	// ── Server-side: break all dialogs for an NPC ────────────────────────
+	private void BreakNpcDialog(string npcId)
+	{
+		if (!Multiplayer.IsServer() || _gameEngine == null) return;
+
+		// Snapshot first to avoid modifying the dictionary while iterating it
+		// (EndActiveInteraction removes entries from these collections).
+		// We intentionally do NOT break the Prophet's own ActiveConversions —
+		// Mass Revelation should never cancel the Prophet's own interactions.
+
+		// Break Admirer interviews for this NPC
+		var admirerMatches = _gameEngine.GameState.ActiveInterviews
+			.Where(kvp => kvp.Value.NpcId == npcId)
+			.Select(kvp => kvp.Key)
+			.ToList();
+		foreach (var role in admirerMatches)
+			_gameEngine.EndActiveInteraction(role);
+
+		// Break Producer interviews for this NPC
+		var producerMatches = _gameEngine.GameState.ActiveProducerInterviews
+			.Where(kvp => kvp.Value.NpcId == npcId)
+			.Select(kvp => kvp.Key)
+			.ToList();
+		foreach (var role in producerMatches)
+			_gameEngine.EndActiveInteraction(role);
+
+		// NOTE: We deliberately skip ActiveConversions (Prophet) here.
+		// The Prophet's own conversion with this NPC must NOT be interrupted
+		// by Mass Revelation's NPC-pull loop.
+	}
+
+	// ── Server-side: shatter ───────────────────────────────────────────────
+	private void ShatterMassRevelationServer()
+	{
+		if (!Multiplayer.IsServer()) return;
+		_massRevServerActive  = false;
+		_massRevProphetPeerId = 0;
+		// Clear all NPC march targets
+		foreach (var npcEnt in _npcEntities.Values)
+			npcEnt.ClearMarchTarget();
+		_gameEngine?.GameState.AddNotification("💥 Mass Revelation shattered!");
+		GD.Print("[MassRev] Server: aura shattered by punch.");
+		Rpc(MethodName.RpcEndMassRevelationAura, true);
+	}
+
+	// ── RPC: client requests server to start ─────────────────────────────
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestProphetMassRevelation()
+	{
+		if (!Multiplayer.IsServer()) return;
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (!_networkManager.Players.TryGetValue(senderId, out var info)) return;
+		if (!string.Equals(info.Role, "Prophet", StringComparison.OrdinalIgnoreCase)) return;
+
+		var state = _gameEngine?.GameState.GetPlayerState(Role.Prophet);
+		if (state != null && !state.Alive) return;
+
+		StartMassRevelationServer(senderId);
+	}
+
+	// ── RPC: all clients receive notification that aura started ──────────
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RpcNotifyMassRevelationStart(long prophetPeerId)
+	{
+		// Non-prophet clients: show a notification only (aura visual is prophet-local)
+		if (_myRole?.ToLower() != "prophet")
+			AddSlidingNotification("🌀 The Prophet is channeling Mass Revelation!");
+	}
+
+	// ── RPC: server broadcasts aura end to all peers ──────────────────────
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RpcEndMassRevelationAura(bool shattered)
+	{
+		if (_myRole?.ToLower() == "prophet")
+		{
+			// Prophet client: stop active state and clean up
+			_massRevActive = false;
+			EndMassRevelationLocally(shattered);
+		}
+		else
+		{
+			// Other clients: just show notification
+			string msg = shattered
+				? "💥 Mass Revelation was shattered!"
+				: "🌀 Mass Revelation ended.";
+			AddSlidingNotification(msg);
+		}
+
+		// Server also clears its state here (CallLocal = true means server runs this too)
+		if (Multiplayer.IsServer())
+		{
+			_massRevServerActive  = false;
+			_massRevProphetPeerId = 0;
+			foreach (var npcEnt in _npcEntities.Values)
+				npcEnt.ClearMarchTarget();
+		}
+	}
 }

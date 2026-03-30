@@ -118,6 +118,11 @@ public partial class NPCEntity : CharacterBody2D
 	private bool _isStunned = false;
 	private double _stunTimer = 0.0;
 
+	// ── Mass Revelation march override ─────────────────────────────────────────
+	private bool    _isMarchingToTarget = false;
+	private Vector2 _marchTarget        = Vector2.Zero;
+	private float   _marchSpeed         = 0f;
+
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
@@ -399,6 +404,24 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		*/
 		
+		// ── Mass Revelation march override (server-side only) ──────────────────
+		if (_isMarchingToTarget && _isAlive && !_isSlipping && !_isStunned &&
+		    (Multiplayer.MultiplayerPeer == null || Multiplayer.IsServer()))
+		{
+			Vector2 dir = (_marchTarget - Position);
+			if (dir.Length() > 8f)
+			{
+				Velocity = dir.Normalized() * _marchSpeed;
+				MoveAndSlide();
+			}
+			else
+			{
+				Velocity = Vector2.Zero;
+			}
+			// Don't run normal AI tick but still update stun timer below.
+			return;
+		}
+
 		// If slipping, frozen (interview), or stunned, don't move
 		if (_isSlipping || _isFrozen || _isStunned)
 		{
@@ -1254,6 +1277,29 @@ public partial class NPCEntity : CharacterBody2D
 			// GD.Print($"[NPCEntity] {NpcId} velocity set to zero, _isFrozen is now {_isFrozen}");
 		}
 	}
+
+	/// <summary>
+	/// Overrides wandering AI: march this NPC toward <paramref name="target"/> at
+	/// <paramref name="speed"/> pixels/sec. Called every server tick during Mass Revelation.
+	/// </summary>
+	public void SetMarchTarget(Vector2 target, float speed)
+	{
+		_isMarchingToTarget = true;
+		_marchTarget        = target;
+		_marchSpeed         = speed;
+	}
+
+	/// <summary>Clears the march override and returns the NPC to normal wandering AI.</summary>
+	public void ClearMarchTarget()
+	{
+		_isMarchingToTarget = false;
+		_marchSpeed         = 0f;
+		Velocity            = Vector2.Zero;
+		// Resume from the current position so the NPC picks a sensible next target
+		_wanderState = WanderState.Pausing;
+		_pauseTimer  = 0.5;
+	}
+
 	public void UpdateNameTagColor(Color bgColor)
 	{
 		if (_nameLabel == null) return;
