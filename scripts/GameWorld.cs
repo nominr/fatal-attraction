@@ -115,8 +115,10 @@ public partial class GameWorld : Node2D
 	private double _massRevTimer             = 0.0;
 	private bool   _wasMassRevPressed        = false;
 	private bool   _massRevServerActive      = false;  // server-side flag
-	private long   _massRevProphetPeerId     = 0;      // which peer is channeling
-	private const double MASS_REV_DURATION   = 10.0;
+	private long   _massRevProphetPeerId     = 0;
+	private Dictionary<string, float> _massRevNpcTimers = new();
+	private Dictionary<string, float> _massRevNpcPoints = new();      // which peer is channeling
+	private const double MASS_REV_DURATION   = 12.0;
 	private const float  MASS_REV_RADIUS     = 480f;   // NPC pull radius (world units)
 	private const float  MASS_REV_NPC_SPEED  = 65f;    // NPC march-toward-prophet speed
 	private const float  MASS_REV_PLAYER_SPD = 80f;    // Prophet reduced speed while chanting
@@ -2425,6 +2427,40 @@ public partial class GameWorld : Node2D
 			GD.Print($"[GameWorld] No asset defined for score {score}");
 		}
 	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	private void RpcShowNpcScoreFeedback(string npcId, string roleStr, int score)
+	{
+		if (_isGameOver || HasNode("GameOverOverlay")) return;
+
+		string roleLower = roleStr.ToLower();
+		string assetName = score >= 1 ? $"ai_{roleLower}_plusone.png" : $"ai_{roleLower}_minusone.png";
+		string path = $"res://assets/{assetName}";
+		var texture = ResourceLoader.Load<Texture2D>(path);
+
+		if (texture != null && _npcEntities.TryGetValue(npcId, out var npc))
+		{
+			var floatingRect = new TextureRect();
+			floatingRect.Texture = texture;
+			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			floatingRect.ZIndex = 100;
+			floatingRect.Scale = new Vector2(0.05f, 0.05f); // smaller
+
+			Vector2 texSize = texture.GetSize() * floatingRect.Scale;
+			// Position floating above NPC
+			floatingRect.Position = npc.Position - new Vector2(texSize.X / 2, 80);
+			
+			AddChild(floatingRect);
+
+			var tween = CreateTween();
+			tween.SetParallel(true);
+			Vector2 targetPos = floatingRect.Position - new Vector2(0, 100);
+			tween.TweenProperty(floatingRect, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+			tween.TweenProperty(floatingRect, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
+		}
+	}
 	
 	private void ShowScoreFeedback(string roleLower, string assetName)
 	{
@@ -2614,6 +2650,23 @@ public partial class GameWorld : Node2D
 					    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetCtrl))
 					{
 						Vector2 prophetPos = prophetCtrl.GlobalPosition;
+						
+						// Identify NPCs that left the radius or were removed
+						var keysToRemove = new List<string>();
+						foreach (var npcId in _massRevNpcTimers.Keys)
+						{
+							if (!_npcEntities.ContainsKey(npcId) || 
+								_npcEntities[npcId].Position.DistanceTo(prophetPos) > MASS_REV_RADIUS)
+							{
+								keysToRemove.Add(npcId);
+							}
+						}
+						foreach (var id in keysToRemove)
+						{
+							_massRevNpcTimers.Remove(id);
+							_massRevNpcPoints.Remove(id);
+						}
+
 						foreach (var kvp in _npcEntities)
 						{
 							var npcData   = _gameEngine.GameState.GetNPC(kvp.Key);
@@ -2627,6 +2680,31 @@ public partial class GameWorld : Node2D
 
 								// Sever any active flirt dialog involving this NPC
 								BreakNpcDialog(kvp.Key);
+								
+								// Process Continuous Mass Revelation Points
+								if (!_massRevNpcTimers.ContainsKey(kvp.Key))
+								{
+									_massRevNpcTimers[kvp.Key] = 0f;
+									_massRevNpcPoints[kvp.Key] = 0f;
+								}
+								// Since this loop runs every BROADCAST_INTERVAL
+								_massRevNpcTimers[kvp.Key] += (float)BROADCAST_INTERVAL;
+								
+								if (_massRevNpcTimers[kvp.Key] >= 2.0f)
+								{
+									_massRevNpcTimers[kvp.Key] -= 2.0f;
+									// Give 0.5 points to Prophet
+									npcData.State = FatalAttraction.Engine.ScoringRules.ClampState(
+										npcData.State + new System.Numerics.Vector3(0, 0.5f, 0)
+									);
+									
+									_massRevNpcPoints[kvp.Key] += 0.5f;
+									if (_massRevNpcPoints[kvp.Key] >= 1.0f)
+									{
+										_massRevNpcPoints[kvp.Key] -= 1.0f;
+										Rpc(MethodName.RpcShowNpcScoreFeedback, kvp.Key, "Prophet", 1);
+									}
+								}
 							}
 						}
 					}
@@ -4720,7 +4798,7 @@ public partial class GameWorld
 
 		if (_massRevButton != null) _massRevButton.Disabled = true;
 
-		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 10 seconds…");
+		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 12 seconds…");
 		GD.Print("[MassRev] Prophet activated Mass Revelation");
 
 		// Build aura visual (pulsing blue circle) parented to world-space
@@ -4746,21 +4824,38 @@ public partial class GameWorld
 
 		visual.Draw += () =>
 		{
-			// Soft outer ring
+			// Divine outer ring background (soft gold)
 			visual.DrawCircle(Vector2.Zero, MASS_REV_RADIUS,
-				new Color(0.1f, 0.3f, 1.0f, 0.10f));
-			// Slightly brighter inner ring
+				new Color(1.0f, 0.85f, 0.2f, 0.15f));
+			
+			// Inner intense core layer
+			visual.DrawCircle(Vector2.Zero, MASS_REV_RADIUS * 0.8f,
+				new Color(1.0f, 0.95f, 0.6f, 0.2f));
+
+			// Powerful outer ring edge
 			visual.DrawArc(Vector2.Zero, MASS_REV_RADIUS, 0, Mathf.Tau, 64,
-				new Color(0.3f, 0.6f, 1.0f, 0.55f), 4f);
+				new Color(1.0f, 0.9f, 0.1f, 0.7f), 8f);
+			
+			// Concentric inner line
+			visual.DrawArc(Vector2.Zero, MASS_REV_RADIUS * 0.9f, 0, Mathf.Tau, 64,
+				new Color(1.0f, 1.0f, 0.8f, 0.5f), 3f);
 		};
 		visual.QueueRedraw();
 
-		// Pulsing scale tween
-		var tween = visual.CreateTween();
-		tween.SetLoops();
-		tween.TweenProperty(visual, "scale", new Vector2(1.06f, 1.06f), 0.6f)
+		// Fast, pulsing scale tween (0.25s up, 0.25s down = 0.5s cycle)
+		var tweenScale = visual.CreateTween();
+		tweenScale.SetLoops();
+		tweenScale.TweenProperty(visual, "scale", new Vector2(1.06f, 1.06f), 0.25f)
 			.SetTrans(Tween.TransitionType.Sine);
-		tween.TweenProperty(visual, "scale", Vector2.One, 0.6f)
+		tweenScale.TweenProperty(visual, "scale", Vector2.One, 0.25f)
+			.SetTrans(Tween.TransitionType.Sine);
+
+		// Subtly pulse the brightness/opacity
+		var tweenColor = visual.CreateTween();
+		tweenColor.SetLoops();
+		tweenColor.TweenProperty(visual, "modulate", new Color(1.2f, 1.2f, 1.0f, 1.0f), 0.25f)
+			.SetTrans(Tween.TransitionType.Sine);
+		tweenColor.TweenProperty(visual, "modulate", new Color(1.0f, 1.0f, 1.0f, 0.7f), 0.25f)
 			.SetTrans(Tween.TransitionType.Sine);
 	}
 
@@ -4839,6 +4934,8 @@ public partial class GameWorld
 		if (!Multiplayer.IsServer()) return;
 		_massRevServerActive  = true;
 		_massRevProphetPeerId = prophetPeerId;
+		_massRevNpcTimers.Clear();
+		_massRevNpcPoints.Clear();
 		_gameEngine?.GameState.AddNotification("🌀 The Prophet begins Mass Revelation! Contestants are drawn near!");
 		GD.Print($"[MassRev] Server started aura for peer {prophetPeerId}");
 
@@ -4942,6 +5039,8 @@ public partial class GameWorld
 		{
 			_massRevServerActive  = false;
 			_massRevProphetPeerId = 0;
+			_massRevNpcTimers.Clear();
+			_massRevNpcPoints.Clear();
 			foreach (var npcEnt in _npcEntities.Values)
 				npcEnt.ClearMarchTarget();
 		}
