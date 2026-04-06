@@ -118,7 +118,7 @@ public partial class GameWorld : Node2D
 	private long   _massRevProphetPeerId     = 0;
 	private Dictionary<string, float> _massRevNpcTimers = new();
 	private Dictionary<string, float> _massRevNpcPoints = new();      // which peer is channeling
-	private const double MASS_REV_DURATION   = 12.0;
+	private const double MASS_REV_DURATION   = 10.0;
 	private const float  MASS_REV_RADIUS     = 480f;   // NPC pull radius (world units)
 	private const float  MASS_REV_NPC_SPEED  = 65f;    // NPC march-toward-prophet speed
 	private const float  MASS_REV_PLAYER_SPD = 80f;    // Prophet reduced speed while chanting
@@ -2461,6 +2461,41 @@ public partial class GameWorld : Node2D
 			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
 		}
 	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	private void RpcShowMassRevNpcFeedback(string npcId)
+	{
+		if (_isGameOver || HasNode("GameOverOverlay")) return;
+
+		string path = "res://assets/ai_prophet_one.png";
+		var texture = ResourceLoader.Load<Texture2D>(path);
+
+		if (texture != null && _npcEntities.TryGetValue(npcId, out var npc))
+		{
+			var floatingRect = new TextureRect();
+			floatingRect.Texture = texture;
+			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			floatingRect.ZIndex = 100;
+			floatingRect.Scale = new Vector2(0.025f, 0.025f);
+
+			Vector2 texSize = texture.GetSize() * floatingRect.Scale;
+			floatingRect.Position = npc.Position - new Vector2(texSize.X / 2, 80);
+
+			AddChild(floatingRect);
+
+			var tween = CreateTween();
+			tween.SetParallel(true);
+			Vector2 targetPos = floatingRect.Position - new Vector2(0, 100);
+			tween.TweenProperty(floatingRect, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+			tween.TweenProperty(floatingRect, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
+		}
+		else
+		{
+			GD.PrintErr($"[MassRev] Failed to load asset: {path}");
+		}
+	}
 	
 	private void ShowScoreFeedback(string roleLower, string assetName)
 	{
@@ -2690,20 +2725,16 @@ public partial class GameWorld : Node2D
 								// Since this loop runs every BROADCAST_INTERVAL
 								_massRevNpcTimers[kvp.Key] += (float)BROADCAST_INTERVAL;
 								
-								if (_massRevNpcTimers[kvp.Key] >= 2.0f)
+								if (_massRevNpcTimers[kvp.Key] >= 2.5f)
 								{
-									_massRevNpcTimers[kvp.Key] -= 2.0f;
+									_massRevNpcTimers[kvp.Key] -= 2.5f;
 									// Give 0.5 points to Prophet
 									npcData.State = FatalAttraction.Engine.ScoringRules.ClampState(
 										npcData.State + new System.Numerics.Vector3(0, 0.5f, 0)
 									);
 									
-									_massRevNpcPoints[kvp.Key] += 0.5f;
-									if (_massRevNpcPoints[kvp.Key] >= 1.0f)
-									{
-										_massRevNpcPoints[kvp.Key] -= 1.0f;
-										Rpc(MethodName.RpcShowNpcScoreFeedback, kvp.Key, "Prophet", 1);
-									}
+									// Animate every tick (every +0.5 pt) using the dedicated Prophet plus asset
+									Rpc(MethodName.RpcShowMassRevNpcFeedback, kvp.Key);
 								}
 							}
 						}
@@ -4798,7 +4829,13 @@ public partial class GameWorld
 
 		if (_massRevButton != null) _massRevButton.Disabled = true;
 
-		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 12 seconds…");
+		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 10 seconds…");
+		
+		// Play the actual character sprite replacement animation
+		_localPlayer.PlayMassRevelationAnimation();
+		const float MASS_REV_FADE = 1.0f;
+		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevIn();
+		GetNode<MusicManager>("/root/MusicManager")?.FadeOutForMassRev(MASS_REV_FADE);
 		GD.Print("[MassRev] Prophet activated Mass Revelation");
 
 		// Build aura visual (pulsing blue circle) parented to world-space
@@ -4897,10 +4934,16 @@ public partial class GameWorld
 
 		if (_massRevTimer <= 0)
 		{
-			// Aura expired
+			// Aura expired — clean up locally and notify the server so it stops NPC ticks
 			_massRevActive = false;
 			_massRevTimer  = 0;
 			EndMassRevelationLocally(false);
+
+			// Tell the server to stop the server-side aura (NPC ticks / points)
+			if (Multiplayer.IsServer())
+				RpcEndMassRevelationAura(false);   // server calls directly
+			else
+				RpcId(1, MethodName.RequestEndMassRevelation); // client asks server
 		}
 	}
 
@@ -4925,6 +4968,9 @@ public partial class GameWorld
 			? "💥 Mass Revelation shattered by a punch!"
 			: "🌀 Mass Revelation ended. Contestants keep their new positions!";
 		AddSlidingNotification(msg);
+		const float MASS_REV_FADE = 1.0f;
+		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevOut(MASS_REV_FADE);
+		GetNode<MusicManager>("/root/MusicManager")?.FadeInAfterMassRev(MASS_REV_FADE);
 		GD.Print($"[MassRev] Ended locally (shattered={shattered})");
 	}
 
@@ -5002,6 +5048,28 @@ public partial class GameWorld
 		if (state != null && !state.Alive) return;
 
 		StartMassRevelationServer(senderId);
+	}
+
+	// ── RPC: Prophet client notifies server that aura expired naturally ───
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestEndMassRevelation()
+	{
+		if (!Multiplayer.IsServer()) return;
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (!_networkManager.Players.TryGetValue(senderId, out var info)) return;
+		if (!string.Equals(info.Role, "Prophet", StringComparison.OrdinalIgnoreCase)) return;
+		if (!_massRevServerActive) return; // already ended
+
+		GD.Print("[MassRev] Server: Prophet client reported natural expiry — ending server aura.");
+		_massRevServerActive  = false;
+		_massRevProphetPeerId = 0;
+		_massRevNpcTimers.Clear();
+		_massRevNpcPoints.Clear();
+		foreach (var npcEnt in _npcEntities.Values)
+			npcEnt.ClearMarchTarget();
+		// Broadcast the end to all other clients (server already cleaned up above)
+		Rpc(MethodName.RpcEndMassRevelationAura, false);
 	}
 
 	// ── RPC: all clients receive notification that aura started ──────────

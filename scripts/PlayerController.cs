@@ -803,6 +803,46 @@ public partial class PlayerController : CharacterBody2D
 	}
 
 	/// <summary>
+	/// Temporarily overlays the mass revelation animation directly on the player,
+	/// temporarily hiding the regular sprite.
+	/// </summary>
+	public void PlayMassRevelationAnimation()
+	{
+		const string path = "res://assets/new-character-assets/prophet-mass-revalation.png";
+		var texture = ResourceLoader.Load<Texture2D>(path);
+		if (texture == null)
+		{
+			GD.PrintErr($"[PlayerController] Could not load mass rev image: {path}");
+			return;
+		}
+
+		var effectSprite = new Sprite2D();
+		effectSprite.Texture = texture;
+		effectSprite.Hframes = 6;
+		effectSprite.Vframes = 6;
+		
+		// Standardize scale to mimic the exact height normalizer applied to regular sprites
+		float frameHeight = texture.GetHeight() / 6f;
+		float scaleAdjust = 243.0f / frameHeight;
+		effectSprite.Scale = new Vector2(scaleAdjust, scaleAdjust);
+		
+		AddChild(effectSprite);
+		
+		// Hide normal animations
+		if (_sprite != null) _sprite.Visible = false;
+
+		var tween = effectSprite.CreateTween();
+		tween.TweenProperty(effectSprite, "frame", 35, 1.5f);
+		tween.TweenCallback(Callable.From(() => {
+			if (_sprite != null && IsInstanceValid(_sprite))
+			{
+				_sprite.Visible = true;
+			}
+			effectSprite.QueueFree();
+		}));
+	}
+
+	/// <summary>
 	/// Center the role label horizontally over the player based on its actual width.
 	/// Called deferred to ensure the label has been sized.
 	/// </summary>
