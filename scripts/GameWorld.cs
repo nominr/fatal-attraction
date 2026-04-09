@@ -125,6 +125,7 @@ public partial class GameWorld : Node2D
 	private Button  _massRevButton;
 	private Label   _massRevLabel;
 	private Node2D  _massRevAuraVisual;                // pulsing aura circle node
+	private bool    _massRevClientAuraActive = false;  // non-prophet clients: aura is showing
 
 
 	private Font _customFont;
@@ -2357,6 +2358,41 @@ public partial class GameWorld : Node2D
 			{
 				RpcId(1, MethodName.PunchTargetNPC, closestNpcId);
 			}
+
+			// ── Extra: Producer / Admirer can punch the Prophet to shatter Mass Revelation ──
+			// Only attempt player-punch when the local role is NOT the Prophet (can't shatter own ritual).
+			string myRoleLower = _myRole?.ToLower();
+			if (myRoleLower == "producer" || myRoleLower == "admirer")
+			{
+				// Find the Prophet player controller within punch range
+				long prophetPeerId = 0;
+				float closestPlayerDist = float.MaxValue;
+				foreach (var kvp in _playerControllers)
+				{
+					var ctrl = kvp.Value;
+					// Skip self and non-Prophet players
+					if (ctrl == _localPlayer) continue;
+
+					// Determine this controller's role
+					if (_networkManager.Players.TryGetValue(kvp.Key, out var pInfo) &&
+						string.Equals(pInfo.Role, "Prophet", StringComparison.OrdinalIgnoreCase))
+					{
+						float dist = _localPlayer.Position.DistanceTo(ctrl.Position);
+						if (dist <= PUNCH_RANGE && dist < closestPlayerDist)
+						{
+							closestPlayerDist = dist;
+							prophetPeerId = kvp.Key;
+						}
+					}
+				}
+
+				if (prophetPeerId != 0)
+				{
+					// Trigger the server-side PunchPlayer which already handles Mass Revelation shattering
+					RpcId(1, MethodName.PunchPlayer, prophetPeerId);
+					GD.Print($"[PunchInput] {_myRole} punching Prophet (peer {prophetPeerId}) to shatter Mass Revelation");
+				}
+			}
 		}
 
 		_wasPunchPressed = pPressed;
@@ -2801,6 +2837,9 @@ public partial class GameWorld : Node2D
 
 		// Prophet Ultimate: Mass Revelation
 		HandleProphetUltimateInput(delta);
+
+		// Non-prophet clients: keep the aura visual on the prophet puppet each frame
+		HandleNonProphetMassRevAura();
 	}
 
 	// ── Admirer Ultimate: Knife Kill ──────────────────────────────────────────────
@@ -4929,6 +4968,9 @@ public partial class GameWorld
 		if (_massRevAuraVisual != null && _localPlayer != null)
 			_massRevAuraVisual.GlobalPosition = _localPlayer.GlobalPosition;
 
+		// (non-prophet aura tracking is handled in HandleNonProphetMassRevAura)
+
+
 		if (_massRevLabel != null)
 			_massRevLabel.Text = $"🌀 Chanting… {_massRevTimer:F0}s";
 
@@ -4945,6 +4987,16 @@ public partial class GameWorld
 			else
 				RpcId(1, MethodName.RequestEndMassRevelation); // client asks server
 		}
+	}
+
+	// ── Per-frame: non-prophet clients keep the aura on the prophet puppet ──
+	private void HandleNonProphetMassRevAura()
+	{
+		if (!_massRevClientAuraActive) return;
+		if (_massRevAuraVisual == null || !IsInstanceValid(_massRevAuraVisual)) return;
+
+		if (_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet))
+			_massRevAuraVisual.GlobalPosition = prophetPuppet.GlobalPosition;
 	}
 
 	private void EndMassRevelationLocally(bool shattered)
@@ -5073,13 +5125,32 @@ public partial class GameWorld
 	}
 
 	// ── RPC: all clients receive notification that aura started ──────────
-	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false,
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true,
 		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void RpcNotifyMassRevelationStart(long prophetPeerId)
 	{
-		// Non-prophet clients: show a notification only (aura visual is prophet-local)
-		if (_myRole?.ToLower() != "prophet")
-			AddSlidingNotification("🌀 The Prophet is channeling Mass Revelation!");
+		// Skip on the prophet's own machine — ActivateMassRevelation already handled it.
+		if (_myRole?.ToLower() == "prophet") return;
+		// All non-prophet clients now show the full animation + aura on the prophet puppet.
+		AddSlidingNotification("🌀 The Prophet is channeling Mass Revelation!");
+
+		// Store prophet peer so the aura tracker in _Process can follow the puppet.
+		_massRevProphetPeerId    = prophetPeerId;
+		_massRevClientAuraActive = true;
+
+		// Find the prophet's puppet PlayerController and play the animation on it.
+		if (_playerControllers.TryGetValue(prophetPeerId, out var prophetPuppet))
+		{
+			prophetPuppet.PlayMassRevelationAnimation();
+		}
+
+		// Build the aura visual centred on the prophet puppet (initial position).
+		if (_massRevAuraVisual == null)
+		{
+			BuildAuraVisual();
+			if (_playerControllers.TryGetValue(prophetPeerId, out var pc))
+				_massRevAuraVisual.GlobalPosition = pc.GlobalPosition;
+		}
 	}
 
 	// ── RPC: server broadcasts aura end to all peers ──────────────────────
@@ -5095,7 +5166,14 @@ public partial class GameWorld
 		}
 		else
 		{
-			// Other clients: just show notification
+			// Non-prophet clients: remove our copy of the aura visual and show notification
+			_massRevClientAuraActive = false;
+			_massRevProphetPeerId    = 0;
+			if (_massRevAuraVisual != null && IsInstanceValid(_massRevAuraVisual))
+			{
+				_massRevAuraVisual.QueueFree();
+				_massRevAuraVisual = null;
+			}
 			string msg = shattered
 				? "💥 Mass Revelation was shattered!"
 				: "🌀 Mass Revelation ended.";
