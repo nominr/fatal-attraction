@@ -64,6 +64,7 @@ public partial class PlayerController : CharacterBody2D
 	private bool _isMovingSync = false;
 	public bool IsMoving => _isLocalPlayer ? Velocity.Length() > 0.1f : _isMovingSync;
 	private bool _isPunching = false;
+	private AnimatedSprite2D _massRevEffectSprite = null;
 
 	public override void _Ready()
 	{
@@ -803,11 +804,14 @@ public partial class PlayerController : CharacterBody2D
 	}
 
 	/// <summary>
-	/// Temporarily overlays the mass revelation animation directly on the player,
-	/// temporarily hiding the regular sprite.
+	/// Overlays the mass revelation sprite-sheet animation on the player,
+	/// looping it indefinitely until StopMassRevelationAnimation() is called.
 	/// </summary>
 	public void PlayMassRevelationAnimation()
 	{
+		// Don't double-start
+		if (_massRevEffectSprite != null && IsInstanceValid(_massRevEffectSprite)) return;
+
 		const string path = "res://assets/new-character-assets/prophet-mass-revalation.png";
 		var texture = ResourceLoader.Load<Texture2D>(path);
 		if (texture == null)
@@ -816,30 +820,56 @@ public partial class PlayerController : CharacterBody2D
 			return;
 		}
 
-		var effectSprite = new Sprite2D();
-		effectSprite.Texture = texture;
-		effectSprite.Hframes = 6;
-		effectSprite.Vframes = 6;
-		
-		// Standardize scale to mimic the exact height normalizer applied to regular sprites
-		float frameHeight = texture.GetHeight() / 6f;
-		float scaleAdjust = 243.0f / frameHeight;
-		effectSprite.Scale = new Vector2(scaleAdjust, scaleAdjust);
-		
-		AddChild(effectSprite);
-		
-		// Hide normal animations
-		if (_sprite != null) _sprite.Visible = false;
+		// Build a SpriteFrames with a looping "play" animation covering all 36 cells
+		var frames = new SpriteFrames();
+		frames.AddAnimation("play");
+		frames.SetAnimationLoop("play", true);
+		frames.SetAnimationSpeed("play", 24.0f); // 36 frames / 24 fps ≈ 1.5 s per cycle
 
-		var tween = effectSprite.CreateTween();
-		tween.TweenProperty(effectSprite, "frame", 35, 1.5f);
-		tween.TweenCallback(Callable.From(() => {
-			if (_sprite != null && IsInstanceValid(_sprite))
+		int gridCols = 6;
+		int gridRows = 6;
+		float fw = texture.GetWidth()  / (float)gridCols;
+		float fh = texture.GetHeight() / (float)gridRows;
+
+		for (int row = 0; row < gridRows; row++)
+		{
+			for (int col = 0; col < gridCols; col++)
 			{
-				_sprite.Visible = true;
+				var atlas = new AtlasTexture();
+				atlas.Atlas  = texture;
+				atlas.Region = new Rect2(col * fw, row * fh, fw, fh);
+				frames.AddFrame("play", atlas);
 			}
-			effectSprite.QueueFree();
-		}));
+		}
+
+		_massRevEffectSprite = new AnimatedSprite2D();
+		_massRevEffectSprite.SpriteFrames = frames;
+
+		// Match the scale used by regular character sprites
+		float scaleAdjust = 243.0f / fh;
+		_massRevEffectSprite.Scale = new Vector2(scaleAdjust, scaleAdjust);
+
+		AddChild(_massRevEffectSprite);
+		_massRevEffectSprite.Play("play");
+
+		// Hide normal sprite while the ritual animation runs
+		if (_sprite != null) _sprite.Visible = false;
+	}
+
+	/// <summary>
+	/// Stops the looping mass revelation overlay and restores the regular sprite.
+	/// Should be called when the ability ends (naturally or interrupted).
+	/// </summary>
+	public void StopMassRevelationAnimation()
+	{
+		if (_massRevEffectSprite != null && IsInstanceValid(_massRevEffectSprite))
+		{
+			_massRevEffectSprite.Stop();
+			_massRevEffectSprite.QueueFree();
+			_massRevEffectSprite = null;
+		}
+		if (_sprite != null && IsInstanceValid(_sprite))
+			_sprite.Visible = true;
 	}
 
 	/// <summary>

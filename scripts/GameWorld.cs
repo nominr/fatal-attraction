@@ -4933,7 +4933,86 @@ public partial class GameWorld
 			.SetTrans(Tween.TransitionType.Sine);
 		tweenColor.TweenProperty(visual, "modulate", new Color(1.0f, 1.0f, 1.0f, 0.7f), 0.25f)
 			.SetTrans(Tween.TransitionType.Sine);
+
+		// ── Noise-driven shader glow ──────────────────────────────────────────
+		// Shader is defined inline so no file import is ever needed.
+		// It draws a glowing ring shape (transparent centre + exterior) animated
+		// by two opposing noise layers, using additive blending so it purely adds
+		// light on top of the existing draw calls with zero background.
+
+		var glowShader = new Shader();
+		glowShader.Code = @"
+shader_type canvas_item;
+render_mode blend_add;
+
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform float intensity  = 2.8;
+uniform float speed      = 1.2;
+uniform float ring_inner = 0.70;
+uniform float ring_outer = 1.00;
+uniform float ring_soft  = 0.14;
+
+void fragment() {
+    vec2  uv_c = UV * 2.0 - 1.0;
+    float dist = length(uv_c);
+
+    // Ring mask: zero inside core, zero outside circle
+    float inner = smoothstep(ring_inner - ring_soft, ring_inner + ring_soft, dist);
+    float outer = 1.0 - smoothstep(ring_outer - ring_soft, ring_outer, dist);
+    float ring  = inner * outer;
+
+    // Two noise layers scrolling in opposite directions → swirling effect
+    vec2 s1 = vec2( TIME / (1.0 + speed),  TIME / (1.5 + speed));
+    vec2 s2 = vec2(-TIME / (2.0 + speed), -TIME / (1.0 + speed));
+    float n  = (texture(noise_tex, UV + s1).r + texture(noise_tex, UV + s2).r) * 0.5;
+
+    float a = clamp(n * intensity * ring, 0.0, 1.0);
+    a = pow(a, 2.0);   // sharpen the glow (from reference shader)
+
+    // Warm divine gold colour; blend_add means alpha acts as additive weight
+    COLOR = vec4(1.0, 0.88, 0.25, a);
+}
+";
+
+		// Procedural seamless simplex noise — no external file needed
+		var fnl = new FastNoiseLite();
+		fnl.NoiseType      = FastNoiseLite.NoiseTypeEnum.Simplex;
+		fnl.Frequency      = 0.012f;
+		fnl.FractalOctaves = 4;
+
+		var noiseTex = new NoiseTexture2D();
+		noiseTex.Width    = 256;
+		noiseTex.Height   = 256;
+		noiseTex.Seamless = true;
+		noiseTex.Noise    = fnl;
+
+		var glowMat = new ShaderMaterial();
+		glowMat.Shader = glowShader;
+		glowMat.SetShaderParameter("noise_tex",   noiseTex);
+		glowMat.SetShaderParameter("intensity",   2.8f);
+		glowMat.SetShaderParameter("speed",       1.2f);
+		glowMat.SetShaderParameter("ring_inner",  0.70f);
+		glowMat.SetShaderParameter("ring_outer",  1.00f);
+		glowMat.SetShaderParameter("ring_soft",   0.14f);
+
+		// White 1×1 texture — TEXTURE is only needed to drive UV; the shader
+		// does all masking itself.  Sprite2D centres at (0,0) automatically.
+		var onePixel = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+		onePixel.Fill(Colors.White);
+		var whiteTex = ImageTexture.CreateFromImage(onePixel);
+
+		// Scale the sprite so it covers exactly MASS_REV_RADIUS in every direction
+		float glowScale = MASS_REV_RADIUS * 2f; // Sprite2D at scale (s,s) → s world units wide
+
+		var glowSprite = new Sprite2D();
+		glowSprite.Name     = "AuraGlowShader";
+		glowSprite.Texture  = whiteTex;
+		glowSprite.Scale    = new Vector2(glowScale, glowScale);
+		glowSprite.Material = glowMat;
+		glowSprite.ZIndex   = 1; // above the DrawCircle / DrawArc layer
+		_massRevAuraVisual.AddChild(glowSprite);
 	}
+
 
 	// ── Per-frame prophet handler ─────────────────────────────────────────
 	private void HandleProphetUltimateInput(double delta)
@@ -5001,6 +5080,9 @@ public partial class GameWorld
 
 	private void EndMassRevelationLocally(bool shattered)
 	{
+		// Stop the looping sprite-sheet overlay
+		_localPlayer?.StopMassRevelationAnimation();
+
 		// Restore prophet speed
 		if (_localPlayer != null)
 			_localPlayer.Speed = 425.0f; // default Speed
@@ -5166,7 +5248,12 @@ public partial class GameWorld
 		}
 		else
 		{
-			// Non-prophet clients: remove our copy of the aura visual and show notification
+			// Non-prophet clients: stop the overlay on the prophet puppet
+			if (_massRevProphetPeerId != 0 &&
+			    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
+				prophetPuppet2.StopMassRevelationAnimation();
+
+			// Remove our copy of the aura visual and show notification
 			_massRevClientAuraActive = false;
 			_massRevProphetPeerId    = 0;
 			if (_massRevAuraVisual != null && IsInstanceValid(_massRevAuraVisual))
