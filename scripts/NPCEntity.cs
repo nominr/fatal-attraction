@@ -140,6 +140,7 @@ public partial class NPCEntity : CharacterBody2D
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
+	private Vector2 _smoothedVelocity = Vector2.Zero; // Anti-jitter filtering
 
 	public override void _Ready()
 	{
@@ -204,6 +205,7 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	private void ResolveInitialOverlap()
 	{
+		const float NUDGE = 40f;      // pixels per nudge attempt
 		const int   MAX_TRIES = 16;   // limit so we don't loop forever
 
 		// Eight cardinal + diagonal directions to try
@@ -227,7 +229,11 @@ public partial class NPCEntity : CharacterBody2D
 			{
 				// Clear — done
 				if (attempt > 0)
+				{
 					GD.Print($"[NPCEntity] {NpcId} resolved initial overlap after {attempt} nudge(s). Final pos: {Position}");
+					_targetPosition = Position;
+					_lastPosition = Position;
+				}
 				return;
 			}
 
@@ -236,11 +242,11 @@ public partial class NPCEntity : CharacterBody2D
 			if (pushDir == Vector2.Zero)
 				pushDir = dirs[attempt % dirs.Length];
 
-			// Position += pushDir * NUDGE;
-			// GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
+			Position += pushDir * NUDGE;
+			GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
 		}
 
-		// GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
+		GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
 	}
 
 	public override void _Process(double delta)
@@ -313,7 +319,9 @@ public partial class NPCEntity : CharacterBody2D
 			}
 		}
 
-		Vector2 velocity = Velocity;
+		// Use smoothed velocity to prevent single-frame physics jitter (resolves infinite spin/oscillations)
+		_smoothedVelocity = _smoothedVelocity.Lerp(Velocity, 0.2f);
+		Vector2 velocity = _smoothedVelocity;
 		string animToPlay = _sprite.Animation;
 		
 		// Use a small threshold to detect movement
@@ -591,6 +599,8 @@ public partial class NPCEntity : CharacterBody2D
 					}
 					else
 					{
+						// Snap X strictly to prevent jitter bouncing
+						Position = new Vector2(corridorTarget.X, Position.Y);
 						// Move Vertically
 						Velocity = new Vector2(0, Mathf.Sign(yDiff)) * MOVE_SPEED;
 					}

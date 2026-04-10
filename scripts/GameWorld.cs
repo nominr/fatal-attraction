@@ -125,13 +125,14 @@ public partial class GameWorld : Node2D
 	private long   _massRevProphetPeerId     = 0;
 	private Dictionary<string, float> _massRevNpcTimers = new();
 	private Dictionary<string, float> _massRevNpcPoints = new();      // which peer is channeling
-	private const double MASS_REV_DURATION   = 12.0;
+	private const double MASS_REV_DURATION   = 10.0;
 	private const float  MASS_REV_RADIUS     = 480f;   // NPC pull radius (world units)
 	private const float  MASS_REV_NPC_SPEED  = 65f;    // NPC march-toward-prophet speed
 	private const float  MASS_REV_PLAYER_SPD = 80f;    // Prophet reduced speed while chanting
 	private Button  _massRevButton;
 	private Label   _massRevLabel;
 	private Node2D  _massRevAuraVisual;                // pulsing aura circle node
+	private bool    _massRevClientAuraActive = false;  // non-prophet clients: aura is showing
 
 
 	private Font _customFont;
@@ -2364,6 +2365,41 @@ public partial class GameWorld : Node2D
 			{
 				RpcId(1, MethodName.PunchTargetNPC, closestNpcId);
 			}
+
+			// ── Extra: Producer / Admirer can punch the Prophet to shatter Mass Revelation ──
+			// Only attempt player-punch when the local role is NOT the Prophet (can't shatter own ritual).
+			string myRoleLower = _myRole?.ToLower();
+			if (myRoleLower == "producer" || myRoleLower == "admirer")
+			{
+				// Find the Prophet player controller within punch range
+				long prophetPeerId = 0;
+				float closestPlayerDist = float.MaxValue;
+				foreach (var kvp in _playerControllers)
+				{
+					var ctrl = kvp.Value;
+					// Skip self and non-Prophet players
+					if (ctrl == _localPlayer) continue;
+
+					// Determine this controller's role
+					if (_networkManager.Players.TryGetValue(kvp.Key, out var pInfo) &&
+						string.Equals(pInfo.Role, "Prophet", StringComparison.OrdinalIgnoreCase))
+					{
+						float dist = _localPlayer.Position.DistanceTo(ctrl.Position);
+						if (dist <= PUNCH_RANGE && dist < closestPlayerDist)
+						{
+							closestPlayerDist = dist;
+							prophetPeerId = kvp.Key;
+						}
+					}
+				}
+
+				if (prophetPeerId != 0)
+				{
+					// Trigger the server-side PunchPlayer which already handles Mass Revelation shattering
+					RpcId(1, MethodName.PunchPlayer, prophetPeerId);
+					GD.Print($"[PunchInput] {_myRole} punching Prophet (peer {prophetPeerId}) to shatter Mass Revelation");
+				}
+			}
 		}
 
 		_wasPunchPressed = pPressed;
@@ -2466,6 +2502,41 @@ public partial class GameWorld : Node2D
 			tween.TweenProperty(floatingRect, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
 			tween.TweenProperty(floatingRect, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
 			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	private void RpcShowMassRevNpcFeedback(string npcId)
+	{
+		if (_isGameOver || HasNode("GameOverOverlay")) return;
+
+		string path = "res://assets/ai_prophet_one.png";
+		var texture = ResourceLoader.Load<Texture2D>(path);
+
+		if (texture != null && _npcEntities.TryGetValue(npcId, out var npc))
+		{
+			var floatingRect = new TextureRect();
+			floatingRect.Texture = texture;
+			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			floatingRect.ZIndex = 100;
+			floatingRect.Scale = new Vector2(0.025f, 0.025f);
+
+			Vector2 texSize = texture.GetSize() * floatingRect.Scale;
+			floatingRect.Position = npc.Position - new Vector2(texSize.X / 2, 80);
+
+			AddChild(floatingRect);
+
+			var tween = CreateTween();
+			tween.SetParallel(true);
+			Vector2 targetPos = floatingRect.Position - new Vector2(0, 100);
+			tween.TweenProperty(floatingRect, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+			tween.TweenProperty(floatingRect, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
+		}
+		else
+		{
+			GD.PrintErr($"[MassRev] Failed to load asset: {path}");
 		}
 	}
 	
@@ -2697,20 +2768,16 @@ public partial class GameWorld : Node2D
 								// Since this loop runs every BROADCAST_INTERVAL
 								_massRevNpcTimers[kvp.Key] += (float)BROADCAST_INTERVAL;
 								
-								if (_massRevNpcTimers[kvp.Key] >= 2.0f)
+								if (_massRevNpcTimers[kvp.Key] >= 2.5f)
 								{
-									_massRevNpcTimers[kvp.Key] -= 2.0f;
+									_massRevNpcTimers[kvp.Key] -= 2.5f;
 									// Give 0.5 points to Prophet
 									npcData.State = FatalAttraction.Engine.ScoringRules.ClampState(
 										npcData.State + new System.Numerics.Vector3(0, 0.5f, 0)
 									);
 									
-									_massRevNpcPoints[kvp.Key] += 0.5f;
-									if (_massRevNpcPoints[kvp.Key] >= 1.0f)
-									{
-										_massRevNpcPoints[kvp.Key] -= 1.0f;
-										Rpc(MethodName.RpcShowNpcScoreFeedback, kvp.Key, "Prophet", 1);
-									}
+									// Animate every tick (every +0.5 pt) using the dedicated Prophet plus asset
+									Rpc(MethodName.RpcShowMassRevNpcFeedback, kvp.Key);
 								}
 							}
 						}
@@ -2777,6 +2844,9 @@ public partial class GameWorld : Node2D
 
 		// Prophet Ultimate: Mass Revelation
 		HandleProphetUltimateInput(delta);
+
+		// Non-prophet clients: keep the aura visual on the prophet puppet each frame
+		HandleNonProphetMassRevAura();
 	}
 
 	// ── Admirer Ultimate: Knife Kill ──────────────────────────────────────────────
@@ -4942,7 +5012,13 @@ public partial class GameWorld
 
 		if (_massRevButton != null) _massRevButton.Disabled = true;
 
-		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 12 seconds…");
+		AddSlidingNotification("🌀 Mass Revelation activated! All contestants drawn near for 10 seconds…");
+		
+		// Play the actual character sprite replacement animation
+		_localPlayer.PlayMassRevelationAnimation();
+		const float MASS_REV_FADE = 1.0f;
+		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevIn();
+		GetNode<MusicManager>("/root/MusicManager")?.FadeOutForMassRev(MASS_REV_FADE);
 		GD.Print("[MassRev] Prophet activated Mass Revelation");
 
 		// Build aura visual (pulsing blue circle) parented to world-space
@@ -5001,7 +5077,86 @@ public partial class GameWorld
 			.SetTrans(Tween.TransitionType.Sine);
 		tweenColor.TweenProperty(visual, "modulate", new Color(1.0f, 1.0f, 1.0f, 0.7f), 0.25f)
 			.SetTrans(Tween.TransitionType.Sine);
+
+		// ── Noise-driven shader glow ──────────────────────────────────────────
+		// Shader is defined inline so no file import is ever needed.
+		// It draws a glowing ring shape (transparent centre + exterior) animated
+		// by two opposing noise layers, using additive blending so it purely adds
+		// light on top of the existing draw calls with zero background.
+
+		var glowShader = new Shader();
+		glowShader.Code = @"
+shader_type canvas_item;
+render_mode blend_add;
+
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform float intensity  = 2.8;
+uniform float speed      = 1.2;
+uniform float ring_inner = 0.70;
+uniform float ring_outer = 1.00;
+uniform float ring_soft  = 0.14;
+
+void fragment() {
+    vec2  uv_c = UV * 2.0 - 1.0;
+    float dist = length(uv_c);
+
+    // Ring mask: zero inside core, zero outside circle
+    float inner = smoothstep(ring_inner - ring_soft, ring_inner + ring_soft, dist);
+    float outer = 1.0 - smoothstep(ring_outer - ring_soft, ring_outer, dist);
+    float ring  = inner * outer;
+
+    // Two noise layers scrolling in opposite directions → swirling effect
+    vec2 s1 = vec2( TIME / (1.0 + speed),  TIME / (1.5 + speed));
+    vec2 s2 = vec2(-TIME / (2.0 + speed), -TIME / (1.0 + speed));
+    float n  = (texture(noise_tex, UV + s1).r + texture(noise_tex, UV + s2).r) * 0.5;
+
+    float a = clamp(n * intensity * ring, 0.0, 1.0);
+    a = pow(a, 2.0);   // sharpen the glow (from reference shader)
+
+    // Warm divine gold colour; blend_add means alpha acts as additive weight
+    COLOR = vec4(1.0, 0.88, 0.25, a);
+}
+";
+
+		// Procedural seamless simplex noise — no external file needed
+		var fnl = new FastNoiseLite();
+		fnl.NoiseType      = FastNoiseLite.NoiseTypeEnum.Simplex;
+		fnl.Frequency      = 0.012f;
+		fnl.FractalOctaves = 4;
+
+		var noiseTex = new NoiseTexture2D();
+		noiseTex.Width    = 256;
+		noiseTex.Height   = 256;
+		noiseTex.Seamless = true;
+		noiseTex.Noise    = fnl;
+
+		var glowMat = new ShaderMaterial();
+		glowMat.Shader = glowShader;
+		glowMat.SetShaderParameter("noise_tex",   noiseTex);
+		glowMat.SetShaderParameter("intensity",   2.8f);
+		glowMat.SetShaderParameter("speed",       1.2f);
+		glowMat.SetShaderParameter("ring_inner",  0.70f);
+		glowMat.SetShaderParameter("ring_outer",  1.00f);
+		glowMat.SetShaderParameter("ring_soft",   0.14f);
+
+		// White 1×1 texture — TEXTURE is only needed to drive UV; the shader
+		// does all masking itself.  Sprite2D centres at (0,0) automatically.
+		var onePixel = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+		onePixel.Fill(Colors.White);
+		var whiteTex = ImageTexture.CreateFromImage(onePixel);
+
+		// Scale the sprite so it covers exactly MASS_REV_RADIUS in every direction
+		float glowScale = MASS_REV_RADIUS * 2f; // Sprite2D at scale (s,s) → s world units wide
+
+		var glowSprite = new Sprite2D();
+		glowSprite.Name     = "AuraGlowShader";
+		glowSprite.Texture  = whiteTex;
+		glowSprite.Scale    = new Vector2(glowScale, glowScale);
+		glowSprite.Material = glowMat;
+		glowSprite.ZIndex   = 1; // above the DrawCircle / DrawArc layer
+		_massRevAuraVisual.AddChild(glowSprite);
 	}
+
 
 	// ── Per-frame prophet handler ─────────────────────────────────────────
 	private void HandleProphetUltimateInput(double delta)
@@ -5036,20 +5191,42 @@ public partial class GameWorld
 		if (_massRevAuraVisual != null && _localPlayer != null)
 			_massRevAuraVisual.GlobalPosition = _localPlayer.GlobalPosition;
 
+		// (non-prophet aura tracking is handled in HandleNonProphetMassRevAura)
+
+
 		if (_massRevLabel != null)
 			_massRevLabel.Text = $"🌀 Chanting… {_massRevTimer:F0}s";
 
 		if (_massRevTimer <= 0)
 		{
-			// Aura expired
+			// Aura expired — clean up locally and notify the server so it stops NPC ticks
 			_massRevActive = false;
 			_massRevTimer  = 0;
 			EndMassRevelationLocally(false);
+
+			// Tell the server to stop the server-side aura (NPC ticks / points)
+			if (Multiplayer.IsServer())
+				RpcEndMassRevelationAura(false);   // server calls directly
+			else
+				RpcId(1, MethodName.RequestEndMassRevelation); // client asks server
 		}
+	}
+
+	// ── Per-frame: non-prophet clients keep the aura on the prophet puppet ──
+	private void HandleNonProphetMassRevAura()
+	{
+		if (!_massRevClientAuraActive) return;
+		if (_massRevAuraVisual == null || !IsInstanceValid(_massRevAuraVisual)) return;
+
+		if (_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet))
+			_massRevAuraVisual.GlobalPosition = prophetPuppet.GlobalPosition;
 	}
 
 	private void EndMassRevelationLocally(bool shattered)
 	{
+		// Stop the looping sprite-sheet overlay
+		_localPlayer?.StopMassRevelationAnimation();
+
 		// Restore prophet speed
 		if (_localPlayer != null)
 			_localPlayer.Speed = 425.0f; // default Speed
@@ -5069,6 +5246,9 @@ public partial class GameWorld
 			? "💥 Mass Revelation shattered by a punch!"
 			: "🌀 Mass Revelation ended. Contestants keep their new positions!";
 		AddSlidingNotification(msg);
+		const float MASS_REV_FADE = 1.0f;
+		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevOut(MASS_REV_FADE);
+		GetNode<MusicManager>("/root/MusicManager")?.FadeInAfterMassRev(MASS_REV_FADE);
 		GD.Print($"[MassRev] Ended locally (shattered={shattered})");
 	}
 
@@ -5148,14 +5328,55 @@ public partial class GameWorld
 		StartMassRevelationServer(senderId);
 	}
 
+	// ── RPC: Prophet client notifies server that aura expired naturally ───
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestEndMassRevelation()
+	{
+		if (!Multiplayer.IsServer()) return;
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (!_networkManager.Players.TryGetValue(senderId, out var info)) return;
+		if (!string.Equals(info.Role, "Prophet", StringComparison.OrdinalIgnoreCase)) return;
+		if (!_massRevServerActive) return; // already ended
+
+		GD.Print("[MassRev] Server: Prophet client reported natural expiry — ending server aura.");
+		_massRevServerActive  = false;
+		_massRevProphetPeerId = 0;
+		_massRevNpcTimers.Clear();
+		_massRevNpcPoints.Clear();
+		foreach (var npcEnt in _npcEntities.Values)
+			npcEnt.ClearMarchTarget();
+		// Broadcast the end to all other clients (server already cleaned up above)
+		Rpc(MethodName.RpcEndMassRevelationAura, false);
+	}
+
 	// ── RPC: all clients receive notification that aura started ──────────
-	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false,
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true,
 		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
 	private void RpcNotifyMassRevelationStart(long prophetPeerId)
 	{
-		// Non-prophet clients: show a notification only (aura visual is prophet-local)
-		if (_myRole?.ToLower() != "prophet")
-			AddSlidingNotification("🌀 The Prophet is channeling Mass Revelation!");
+		// Skip on the prophet's own machine — ActivateMassRevelation already handled it.
+		if (_myRole?.ToLower() == "prophet") return;
+		// All non-prophet clients now show the full animation + aura on the prophet puppet.
+		AddSlidingNotification("🌀 The Prophet is channeling Mass Revelation!");
+
+		// Store prophet peer so the aura tracker in _Process can follow the puppet.
+		_massRevProphetPeerId    = prophetPeerId;
+		_massRevClientAuraActive = true;
+
+		// Find the prophet's puppet PlayerController and play the animation on it.
+		if (_playerControllers.TryGetValue(prophetPeerId, out var prophetPuppet))
+		{
+			prophetPuppet.PlayMassRevelationAnimation();
+		}
+
+		// Build the aura visual centred on the prophet puppet (initial position).
+		if (_massRevAuraVisual == null)
+		{
+			BuildAuraVisual();
+			if (_playerControllers.TryGetValue(prophetPeerId, out var pc))
+				_massRevAuraVisual.GlobalPosition = pc.GlobalPosition;
+		}
 	}
 
 	// ── RPC: server broadcasts aura end to all peers ──────────────────────
@@ -5171,7 +5392,19 @@ public partial class GameWorld
 		}
 		else
 		{
-			// Other clients: just show notification
+			// Non-prophet clients: stop the overlay on the prophet puppet
+			if (_massRevProphetPeerId != 0 &&
+			    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
+				prophetPuppet2.StopMassRevelationAnimation();
+
+			// Remove our copy of the aura visual and show notification
+			_massRevClientAuraActive = false;
+			_massRevProphetPeerId    = 0;
+			if (_massRevAuraVisual != null && IsInstanceValid(_massRevAuraVisual))
+			{
+				_massRevAuraVisual.QueueFree();
+				_massRevAuraVisual = null;
+			}
 			string msg = shattered
 				? "💥 Mass Revelation was shattered!"
 				: "🌀 Mass Revelation ended.";

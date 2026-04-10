@@ -14,6 +14,12 @@ public partial class MusicManager : Node
 	private string _lastSceneName = "";
 	private bool _forceLobbyMusic = false;
 
+	// Volume control for crossfading
+	private const float NORMAL_VOLUME_DB = 0.0f;
+	private Tween _volumeTween;
+	// When true, _Process will not try to switch/restart the track
+	private bool _suppressAutoSwitch = false;
+
 	public override void _Ready()
 	{
 		// Load both tracks
@@ -27,6 +33,7 @@ public partial class MusicManager : Node
 		_player = new AudioStreamPlayer();
 		AddChild(_player);
 		_player.Bus = "Master";
+		_player.VolumeDb = NORMAL_VOLUME_DB;
 		_player.Finished += OnFinished;
 
 		// Start lobby music immediately (title screen is first scene)
@@ -35,6 +42,8 @@ public partial class MusicManager : Node
 
 	public override void _Process(double delta)
 	{
+		if (_suppressAutoSwitch) return;
+
 		// Check if the current scene has changed
 		var currentScene = GetTree().CurrentScene;
 		if (currentScene == null) return;
@@ -100,6 +109,8 @@ public partial class MusicManager : Node
 	public void StopMusic()
 	{
 		GD.Print("[MusicManager] Music stopped (game over)");
+		_suppressAutoSwitch = false;
+		_volumeTween?.Kill();
 		_player.Stop();
 		_currentTrack = "";
 	}
@@ -112,6 +123,43 @@ public partial class MusicManager : Node
 	{
 		GD.Print("[MusicManager] Forced lobby music (game over)");
 		_forceLobbyMusic = true;
+		_suppressAutoSwitch = false;
 		PlayTrack("lobby");
+	}
+
+	/// <summary>
+	/// Fades the background music volume to <paramref name="targetDb"/> over
+	/// <paramref name="durationSec"/> seconds.
+	/// Pass a very low value (e.g. -80) to fade out and NORMAL_VOLUME_DB (0) to fade back in.
+	/// </summary>
+	public void FadeTo(float targetDb, float durationSec)
+	{
+		_volumeTween?.Kill();
+		_volumeTween = CreateTween();
+		_volumeTween.TweenProperty(_player, "volume_db", targetDb, durationSec)
+			.SetTrans(Tween.TransitionType.Sine)
+			.SetEase(Tween.EaseType.InOut);
+		GD.Print($"[MusicManager] Fading music to {targetDb} dB over {durationSec}s");
+	}
+
+	/// <summary>
+	/// Fades music out (silence) and suppresses _Process so the track isn't restarted.
+	/// Call this at the start of Mass Revelation.
+	/// </summary>
+	public void FadeOutForMassRev(float durationSec)
+	{
+		_suppressAutoSwitch = true;
+		FadeTo(-80f, durationSec);
+	}
+
+	/// <summary>
+	/// Fades music back to normal volume and re-enables _Process track switching.
+	/// Call this at the end of Mass Revelation.
+	/// </summary>
+	public void FadeInAfterMassRev(float durationSec)
+	{
+		FadeTo(NORMAL_VOLUME_DB, durationSec);
+		// Re-enable auto-switching once the tween finishes
+		_volumeTween.Finished += () => { _suppressAutoSwitch = false; };
 	}
 }
