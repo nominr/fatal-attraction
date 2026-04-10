@@ -103,9 +103,16 @@ public partial class GameWorld : Node2D
 	private Button _ultimateButton;                    // "Cash Trail" button
 
 	// ── Admirer Ultimate: Knife Kill ─────────────────────────────────────────────
-	private bool   _admirerKnifeUsed         = false;  // can only be used once per game
 	private bool   _wasAdmirerUltPressed     = false;
 	private const float ADMIRER_KNIFE_RANGE  = 120f;   // same as punch range
+	private const int   ADMIRER_STABS_TO_KILL = 5;     // stabs needed to kill an NPC
+	private const double ADMIRER_STAB_COOLDOWN = 2.0;  // seconds between stabs
+	private const double ADMIRER_STAB_WINDOW  = 30.0;  // seconds to complete all stabs
+	private double _admirerStabCooldownTimer = 0.0;    // current cooldown remaining
+	private double _admirerStabWindowTimer   = 0.0;    // time left in current stab window
+	private string _admirerStabWindowTarget  = null;   // NPC being actively hunted
+	private Dictionary<string, int> _npcStabCounts = new(); // server-side stab counts per NPC
+	private Dictionary<string, ulong> _npcStabLastTime = new(); // server-side timestamp of the last stab per NPC
 	private Button _admirerKnifeButton;                // "🔪 Knife" HUD button
 	private Label  _admirerKnifeLabel;                 // hint label under the button
 
@@ -890,7 +897,7 @@ public partial class GameWorld : Node2D
 		// ── Knife Ultimate Button (Admirer only) ───────────────────────────────
 		_admirerKnifeButton = new Button();
 		_admirerKnifeButton.Name = "AdmirerKnifeButton";
-		_admirerKnifeButton.Text = "🔪 Knife";
+		_admirerKnifeButton.Text = "🔪 Stab [Q]";
 		_admirerKnifeButton.AddThemeFontOverride("font", _customFont);
 		_admirerKnifeButton.AddThemeFontSizeOverride("font_size", 26);
 		_admirerKnifeButton.Position          = new Vector2(20, 540);
@@ -915,7 +922,7 @@ public partial class GameWorld : Node2D
 		_admirerKnifeLabel.AddThemeFontSizeOverride("font_size", 22);
 		_admirerKnifeLabel.AddThemeColorOverride("font_color", Colors.White);
 		_admirerKnifeLabel.Position = new Vector2(20, 600);
-		_admirerKnifeLabel.Text     = "[Q] close to a contestant";
+		_admirerKnifeLabel.Text     = "Press Q near a contestant";
 		_admirerKnifeLabel.Visible  = false;
 		_uiLayer.AddChild(_admirerKnifeLabel);
 	}
@@ -2129,7 +2136,7 @@ public partial class GameWorld : Node2D
 
 		// ── Mass Revelation: shatters if Prophet is punched during channeling ──
 		if (_massRevServerActive &&
-		    string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase))
+			string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase))
 		{
 			GD.Print("[MassRev] Prophet punched during channeling — shattering Mass Revelation!");
 			ShatterMassRevelationServer();
@@ -2718,7 +2725,7 @@ public partial class GameWorld : Node2D
 
 					// ── Mass Revelation server tick ──────────────────────────────────
 					if (_massRevServerActive && _massRevProphetPeerId != 0 &&
-					    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetCtrl))
+						_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetCtrl))
 					{
 						Vector2 prophetPos = prophetCtrl.GlobalPosition;
 						
@@ -2846,15 +2853,14 @@ public partial class GameWorld : Node2D
 
 	private void OnAdmirerKnifeButtonPressed()
 	{
-		if (_admirerKnifeUsed) return;
 		ActivateAdmirerKnife();
 	}
 
 	private void ActivateAdmirerKnife()
 	{
 		if (_myRole?.ToLower() != "admirer") return;
-		if (_admirerKnifeUsed) return;
 		if (IsLocalPlayerDead()) return;
+		if (_admirerStabCooldownTimer > 0) return; // still on cooldown
 
 		// Resolve local player
 		if (_localPlayer == null)
@@ -2881,20 +2887,40 @@ public partial class GameWorld : Node2D
 
 		if (string.IsNullOrEmpty(closestNpcId))
 		{
-			// No valid target — notify but don't consume the use
 			AddSlidingNotification("🔪 No contestant close enough to use the knife!");
 			return;
 		}
 
-		// Consume the ultimate
-		_admirerKnifeUsed = true;
-		if (_admirerKnifeButton != null) _admirerKnifeButton.Disabled = true;
-		AddSlidingNotification("🔪 Knife used! A contestant has been eliminated!");
-		GD.Print($"[AdmirerKnife] Admirer activating knife on NPC {closestNpcId}");
+		// Start cooldown
+		_admirerStabCooldownTimer = ADMIRER_STAB_COOLDOWN;
+		_admirerStabWindowTimer = ADMIRER_STAB_WINDOW;
+		_admirerStabWindowTarget = closestNpcId;
 
-		// Tell server to kill the NPC
+		// Track count locally for UI display
+		ulong now = Time.GetTicksMsec();
+		if (!_npcStabCounts.ContainsKey(closestNpcId) || 
+			(_npcStabLastTime.ContainsKey(closestNpcId) && now - _npcStabLastTime[closestNpcId] > ADMIRER_STAB_WINDOW * 1000))
+		{
+			_npcStabCounts[closestNpcId] = 0;
+		}
+		_npcStabCounts[closestNpcId]++;
+		_npcStabLastTime[closestNpcId] = now;
+
+		GD.Print($"[AdmirerKnife] Admirer stabbing NPC {closestNpcId} (UI tracking: {_npcStabCounts[closestNpcId]}/{ADMIRER_STABS_TO_KILL})");
+
+		// Play stab animation on the Admirer (synced to all clients)
+		{
+			string facing = _localPlayer.FacingDirection;
+			bool flipH = _localPlayer.FlipH;
+			if (Multiplayer.IsServer())
+				Rpc(MethodName.SyncStabAnimation, (long)Multiplayer.GetUniqueId(), facing, flipH);
+			else
+				RpcId(1, MethodName.RequestStabAnimation, facing, flipH);
+		}
+
+		// Tell server to stab the NPC (may or may not kill)
 		if (Multiplayer.IsServer())
-			AdmirerKillNpc(closestNpcId);
+			AdmirerStabNpc(closestNpcId);
 		else
 			RpcId(1, MethodName.RequestAdmirerKillNpc, closestNpcId);
 	}
@@ -2904,6 +2930,38 @@ public partial class GameWorld : Node2D
 		if (_myRole?.ToLower() != "admirer") return;
 		if (IsLocalPlayerDead()) return;
 
+		// Check if any NPC is already dead (Admirer can only kill once)
+		bool anyDead = false;
+		foreach (var kvp in _npcEntities)
+		{
+			if (TryGetNpcTargetState(kvp.Key, out _, out bool alive) && !alive)
+			{
+				anyDead = true;
+				break;
+			}
+		}
+		if (anyDead) return; // Disable knife input completely if someone is dead
+
+		double dt = GetProcessDeltaTime();
+
+		// Tick down cooldown
+		if (_admirerStabCooldownTimer > 0)
+		{
+			_admirerStabCooldownTimer -= dt;
+			if (_admirerStabCooldownTimer < 0) _admirerStabCooldownTimer = 0;
+		}
+
+		// Tick down stab window timer (client-side display only; server has its own)
+		if (_admirerStabWindowTimer > 0)
+		{
+			_admirerStabWindowTimer -= dt;
+			if (_admirerStabWindowTimer <= 0)
+			{
+				_admirerStabWindowTimer  = 0;
+				_admirerStabWindowTarget = null;
+			}
+		}
+
 		// Resolve local player
 		if (_localPlayer == null)
 		{
@@ -2911,16 +2969,10 @@ public partial class GameWorld : Node2D
 			_playerControllers.TryGetValue(myId, out _localPlayer);
 		}
 
-		// Show the knife button/label only while unused
-		if (_admirerKnifeButton != null) _admirerKnifeButton.Visible = !_admirerKnifeUsed;
-		if (_admirerKnifeLabel  != null) _admirerKnifeLabel.Visible  = !_admirerKnifeUsed;
-
-		// Once used, hide permanently
-		if (_admirerKnifeUsed)
+		// Update button state based on cooldown
+		if (_admirerKnifeButton != null)
 		{
-			if (_admirerKnifeButton != null) _admirerKnifeButton.Visible = false;
-			if (_admirerKnifeLabel  != null) _admirerKnifeLabel.Visible  = false;
-			return;
+			_admirerKnifeButton.Disabled = _admirerStabCooldownTimer > 0;
 		}
 
 		// ── Q key detection (one-shot) ─────────────────────────────────────────
@@ -2955,10 +3007,13 @@ public partial class GameWorld : Node2D
 			return;
 		}
 
-		AdmirerKillNpc(npcId);
+		AdmirerStabNpc(npcId);
 	}
 
-	private void AdmirerKillNpc(string npcId)
+	/// <summary>
+	/// Server-side: apply one stab to an NPC. Kills on the Nth stab and makes the NPC flee.
+	/// </summary>
+	private void AdmirerStabNpc(string npcId)
 	{
 		if (!Multiplayer.IsServer()) return;
 		if (_gameEngine == null) return;
@@ -2970,16 +3025,58 @@ public partial class GameWorld : Node2D
 			return;
 		}
 
-		// Kill the NPC
-		npc.Alive = false;
-		_gameEngine.GameState.AddNotification($"🔪 {npc.Name} has been eliminated by the Admirer!");
-		GD.Print($"[AdmirerKnife] NPC {npcId} ({npc.Name}) killed by Admirer.");
+		// Increment stab counter or reset if window expired
+		ulong now = Time.GetTicksMsec();
+		if (!_npcStabCounts.ContainsKey(npcId) || 
+			(_npcStabLastTime.ContainsKey(npcId) && now - _npcStabLastTime[npcId] > ADMIRER_STAB_WINDOW * 1000))
+		{
+			_npcStabCounts[npcId] = 0;
+		}
+
+		_npcStabCounts[npcId]++;
+		_npcStabLastTime[npcId] = now;
+		int stabCount = _npcStabCounts[npcId];
+
+		GD.Print($"[AdmirerKnife] NPC {npcId} ({npc.Name}) stabbed {stabCount}/{ADMIRER_STABS_TO_KILL} times.");
 
 		// Visual flash on all clients
 		Rpc(MethodName.RpcFlashNpcDamage, npcId);
 
-		// ── Witness AoE: nearby alive NPCs gain a heavy negative view of the Admirer ──
-		ApplyKnifeWitnessAoE(npcId, npc.Name);
+		// Find admirer position for flee direction
+		Vector2 admirerPos = Vector2.Zero;
+		foreach (var kvp in _playerControllers)
+		{
+			if (_networkManager.Players.TryGetValue(kvp.Key, out var pInfo) &&
+				string.Equals(pInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase))
+			{
+				admirerPos = kvp.Value.Position;
+				break;
+			}
+		}
+
+		if (stabCount >= ADMIRER_STABS_TO_KILL)
+		{
+			// Kill the NPC on the final stab
+			npc.Alive = false;
+			Rpc(MethodName.RpcSyncNpcStabStatus, npcId, ADMIRER_STABS_TO_KILL, 0f);
+			_gameEngine.GameState.AddNotification($"🔪 {npc.Name} has been eliminated by the Admirer!");
+			GD.Print($"[AdmirerKnife] NPC {npcId} ({npc.Name}) killed by Admirer after {stabCount} stabs.");
+
+			// Witness AoE: nearby alive NPCs gain a heavy negative view of the Admirer
+			ApplyKnifeWitnessAoE(npcId, npc.Name);
+		}
+		else
+		{
+			Rpc(MethodName.RpcSyncNpcStabStatus, npcId, stabCount, ADMIRER_STAB_WINDOW);
+			// NPC is still alive — make them flee from the admirer
+			if (_npcEntities.TryGetValue(npcId, out var npcEntity))
+			{
+				npcEntity.StartFleeingFrom(admirerPos);
+			}
+
+			int remaining = ADMIRER_STABS_TO_KILL - stabCount;
+			_gameEngine.GameState.AddNotification($"🔪 {npc.Name} was stabbed! ({remaining} more to eliminate)");
+		}
 
 		BroadcastGameState();
 	}
@@ -3018,6 +3115,37 @@ public partial class GameWorld : Node2D
 				$"👀 {witnessCount} contestant{(witnessCount > 1 ? "s" : "")} witnessed the murder! Admirer's reputation has plummeted!");
 			// Also push a visual score-drop notification for the admirer
 			_gameEngine.GameState.TriggerScoreChange(Role.Admirer, -witnessCount);
+		}
+	}
+
+	// ── Stab Animation RPCs (Admirer Knife Kill) ────────────────────────────────
+	
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RpcSyncNpcStabStatus(string npcId, int stabCount, double windowRemaining)
+	{
+		if (_npcEntities.TryGetValue(npcId, out var npcEnt))
+		{
+			npcEnt.UpdateStabStatus(stabCount, windowRemaining);
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void RequestStabAnimation(string facing, bool flipH)
+	{
+		if (!Multiplayer.IsServer()) return;
+		long senderId = Multiplayer.GetRemoteSenderId();
+		if (senderId == 0) senderId = Multiplayer.GetUniqueId();
+
+		// Broadcast stab animation to all clients
+		Rpc(MethodName.SyncStabAnimation, senderId, facing, flipH);
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void SyncStabAnimation(long playerId, string facing, bool flipH)
+	{
+		if (_playerControllers.TryGetValue(playerId, out var playerCtrl))
+		{
+			playerCtrl.TriggerStabAnimation(facing, flipH);
 		}
 	}
 
@@ -3134,24 +3262,45 @@ public partial class GameWorld : Node2D
 		coinRoot.ZIndex   = -4; // above banana (-5), below NPCs/players
 		coinRoot.AddToGroup("cash_coins");
 
-		// ── Visual: golden circle drawn with CanvasItem ───────────────────────
-		var visual = new Node2D();
-		visual.Name = "Visual";
-		coinRoot.AddChild(visual);
-		visual.Draw += () =>
+		// ── Visual: animated spinning coin sprite sheet ───────────────────────
+		const int COIN_COLS       = 4;
+		const int COIN_ROWS       = 4;
+		const int COIN_FRAME_W    = 67;   // 268 / 4
+		const int COIN_FRAME_H    = 69;   // 276 / 4
+		const int COIN_FRAMES     = COIN_COLS * COIN_ROWS; // 16
+		const float COIN_FPS      = 12.0f;
+		const float COIN_SCALE    = 0.45f; // world-space size
+
+		var coinTexture = GD.Load<Texture2D>("res://assets/ai-spinning-coin.png");
+
+		var frames = new SpriteFrames();
+		frames.AddAnimation("spin");
+		frames.SetAnimationLoop("spin", true);
+		frames.SetAnimationSpeed("spin", COIN_FPS);
+
+		for (int fi = 0; fi < COIN_FRAMES; fi++)
 		{
-			visual.DrawCircle(Vector2.Zero, 14f, new Color(1.0f, 0.85f, 0.0f, 0.92f));        // gold fill
-			visual.DrawArc(Vector2.Zero, 14f, 0, Mathf.Tau, 24, new Color(0.6f, 0.4f, 0.0f, 1f), 2.5f); // dark border
-			// Dollar sign
-			// (text requires a font reference – we skip that and rely on the gold circle instead)
-		};
-		visual.QueueRedraw();
+			int col = fi % COIN_COLS;
+			int row = fi / COIN_COLS;
+			var atlas = new AtlasTexture();
+			atlas.Atlas  = coinTexture;
+			atlas.Region = new Rect2(col * COIN_FRAME_W, row * COIN_FRAME_H, COIN_FRAME_W, COIN_FRAME_H);
+			frames.AddFrame("spin", atlas);
+		}
+
+		var visual = new AnimatedSprite2D();
+		visual.Name         = "Visual";
+		visual.SpriteFrames = frames;
+		visual.Scale        = new Vector2(COIN_SCALE, COIN_SCALE);
+		visual.Centered     = true;
+		coinRoot.AddChild(visual);
+		visual.Play("spin");
 
 		// Pulsing scale animation via Tween
 		var tween = visual.CreateTween();
 		tween.SetLoops();
-		tween.TweenProperty(visual, "scale", new Vector2(1.15f, 1.15f), 0.4f).SetTrans(Tween.TransitionType.Sine);
-		tween.TweenProperty(visual, "scale", Vector2.One, 0.4f).SetTrans(Tween.TransitionType.Sine);
+		tween.TweenProperty(visual, "scale", new Vector2(COIN_SCALE * 1.15f, COIN_SCALE * 1.15f), 0.4f).SetTrans(Tween.TransitionType.Sine);
+		tween.TweenProperty(visual, "scale", new Vector2(COIN_SCALE, COIN_SCALE), 0.4f).SetTrans(Tween.TransitionType.Sine);
 
 		// ── Collision area (detects NPCs + players) ───────────────────────────
 		var area = new Area2D();
@@ -3876,6 +4025,22 @@ public partial class GameWorld : Node2D
 
 		bool isProphet = (_myRole?.ToLower() == "prophet");
 		bool isAdmirer = (_myRole?.ToLower() == "admirer");
+
+		// Check if any player or NPC has been killed (one kill per game limit for Admirer UI)
+		bool anyNPCDead = false;
+		foreach (var kvp in _npcEntities)
+		{
+			if (TryGetNpcTargetState(kvp.Key, out _, out bool alive) && !alive)
+			{
+				anyNPCDead = true;
+				break;
+			}
+		}
+
+		// Update Admirer Knife Visibility (Only show if admirer AND nobody is dead)
+		bool showKnife = isAdmirer && !anyNPCDead;
+		if (_admirerKnifeButton != null) _admirerKnifeButton.Visible = showKnife;
+		if (_admirerKnifeLabel != null) _admirerKnifeLabel.Visible = showKnife;
 
 		// Update Trap Button Visibility (Prophet only)
 		if (_uiLayer.GetNodeOrNull<Button>("TrapButton") is Button trapBtn)
@@ -5250,7 +5415,7 @@ void fragment() {
 		{
 			// Non-prophet clients: stop the overlay on the prophet puppet
 			if (_massRevProphetPeerId != 0 &&
-			    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
+				_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
 				prophetPuppet2.StopMassRevelationAnimation();
 
 			// Remove our copy of the aura visual and show notification

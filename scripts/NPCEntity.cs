@@ -123,6 +123,20 @@ public partial class NPCEntity : CharacterBody2D
 	private Vector2 _marchTarget        = Vector2.Zero;
 	private float   _marchSpeed         = 0f;
 
+	// ── Flee from threat (Admirer knife) ──────────────────────────────────────
+	private bool    _isFleeing       = false;
+	private double  _fleeTimer       = 0.0;
+	private Vector2 _fleeFromPos     = Vector2.Zero;
+	private const float FLEE_SPEED   = 510f;   // 2x normal NPC speed
+	private const float FLEE_DURATION = 3.0f;  // seconds to run
+
+	// ── Admirer UI State ───────────────────────────────────────────────────────
+	private Label   _stabLabel;
+	private int     _stabCount        = 0;
+	private double  _stabWindowTimer  = 0.0;
+	private const int ADMIRER_STABS_TO_KILL = 5;
+	private AnimatedSprite2D _bloodSprite;
+
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
@@ -237,6 +251,26 @@ public partial class NPCEntity : CharacterBody2D
 
 	public override void _Process(double delta)
 	{
+		// Update Stab Window Timer
+		if (_stabWindowTimer > 0)
+		{
+			_stabWindowTimer -= delta;
+			if (_stabWindowTimer <= 0 || !_isAlive)
+			{
+				_stabWindowTimer = 0;
+				_stabCount = 0;
+				if (_stabLabel != null) _stabLabel.Visible = false;
+			}
+			else if (_stabLabel != null)
+			{
+				int secs = (int)Math.Ceiling(_stabWindowTimer);
+				_stabLabel.Text = $"🗡️ {_stabCount}/{ADMIRER_STABS_TO_KILL} | {secs}s";
+				_stabLabel.Visible = true;
+				// Continuously update position based on size changes just in case
+				CenterStabLabel();
+			}
+		}
+
 		// Update slip timer and resume when elapsed
 		if (_isSlipping)
 		{
@@ -412,6 +446,34 @@ public partial class NPCEntity : CharacterBody2D
 		}
 		*/
 		
+		// ── Flee from threat override (server-side only) ─────────────────────
+		if (_isFleeing && _isAlive && !_isSlipping && !_isStunned &&
+		    (Multiplayer.MultiplayerPeer == null || Multiplayer.IsServer()))
+		{
+			_fleeTimer -= delta;
+			if (_fleeTimer <= 0)
+			{
+				StopFleeing();
+			}
+			else
+			{
+				// Run away from threat position
+				Vector2 awayDir = (Position - _fleeFromPos);
+				if (awayDir.Length() > 1f)
+				{
+					Velocity = awayDir.Normalized() * FLEE_SPEED;
+					MoveAndSlide();
+				}
+				else
+				{
+					// If somehow on top of threat, pick random direction
+					Velocity = new Vector2(_random.Next(-1, 2), _random.Next(-1, 2)).Normalized() * FLEE_SPEED;
+					MoveAndSlide();
+				}
+			}
+			return;
+		}
+
 		// ── Mass Revelation march override (server-side only) ──────────────────
 		if (_isMarchingToTarget && _isAlive && !_isSlipping && !_isStunned &&
 		    (Multiplayer.MultiplayerPeer == null || Multiplayer.IsServer()))
@@ -724,6 +786,44 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void SetupVisuals()
 	{
+		// Blood pool (Animated spilling)
+		_bloodSprite = new AnimatedSprite2D();
+		var bloodFrames = new SpriteFrames();
+		bloodFrames.AddAnimation("bleed");
+		var texBlood = GD.Load<Texture2D>("res://assets/new-character-assets/blood-npc.png");
+		if (texBlood != null)
+		{
+			int cols = 8;
+			int rows = 5;
+			float bWidth = texBlood.GetWidth() / (float)cols;
+			float bHeight = texBlood.GetHeight() / (float)rows;
+			int totalAdded = 0;
+			// Read lines as frames row by row
+			for (int y = 0; y < rows; y++)
+			{
+				for (int x = 0; x < cols; x++)
+				{
+					if (totalAdded >= 39) break; // Skip the very last frame (sparkle)
+
+					var atlasKey = new AtlasTexture();
+					atlasKey.Atlas = texBlood;
+					// Inset by 22 pixels to safely crop borders without biting into too much core artwork
+					atlasKey.Region = new Rect2((x * bWidth) + 22, (y * bHeight) + 22, bWidth - 44, bHeight - 44);
+					bloodFrames.AddFrame("bleed", atlasKey);
+					totalAdded++;
+				}
+				if (totalAdded >= 39) break;
+			}
+			bloodFrames.SetAnimationLoop("bleed", false);
+			bloodFrames.SetAnimationSpeed("bleed", 2f); // Animate at 2 fps
+		}
+		_bloodSprite.SpriteFrames = bloodFrames;
+		_bloodSprite.ZIndex = -1; // Keep it behind the NPC
+		_bloodSprite.Visible = false; // Hidden initially
+		_bloodSprite.Scale = new Vector2(1.0f, 1.0f); // Default scale
+		_bloodSprite.Position = new Vector2(0, 90); // Place near feet
+		AddChild(_bloodSprite);
+
 		// Main NPC sprite - load from file based on NPC ID
 		_sprite = new AnimatedSprite2D();
 		_sprite.YSortEnabled = true; // Participate in Y-sort
@@ -764,6 +864,22 @@ public partial class NPCEntity : CharacterBody2D
 		_punchHint.Visible = false;
 		AddChild(_punchHint);
 		CallDeferred(MethodName.CenterPunchHint);
+
+		// Stab Status Tracker (below punch hint, above name)
+		_stabLabel = new Label();
+		_stabLabel.Text = $"🗡️ 0/{ADMIRER_STABS_TO_KILL} | 30s";
+		_stabLabel.HorizontalAlignment = HorizontalAlignment.Center;
+		_stabLabel.AddThemeColorOverride("font_color", Colors.White);
+		_stabLabel.AddThemeFontOverride("font", _customFont);
+		_stabLabel.AddThemeFontSizeOverride("font_size", 24);
+		var stabBgStyle = new StyleBoxFlat();
+		stabBgStyle.BgColor = new Color(0.8f, 0.1f, 0.1f, 0.85f); // Red
+		stabBgStyle.SetCornerRadiusAll(4);
+		stabBgStyle.SetContentMarginAll(4);
+		_stabLabel.AddThemeStyleboxOverride("normal", stabBgStyle);
+		_stabLabel.Visible = false;
+		AddChild(_stabLabel);
+		CallDeferred(MethodName.CenterStabLabel);
 
 		// Converted (Halo) — commented out per request
 		// _convertedIndicator = CreateStatusIndicator("res://assets/halo.png", new Vector2(0, -110));
@@ -909,17 +1025,61 @@ public partial class NPCEntity : CharacterBody2D
 		// Add back-directional walk for up-diagonals
 		AddAnimationFrames("walk_up_right", $"{basePath}{npcAsset}-back-walk.png");
 		AddAnimationFrames("walk_up_left", $"{basePath}{npcAsset}-back-walk.png");
+		// For John (npc6), limit back-walk animations to the first row (first 6 frames) and reuse them
+		if (npcAsset == "npc6")
+		{
+			string[] backWalkAnims = { "walk_up", "walk_up_right", "walk_up_left" };
+			foreach (var anim in backWalkAnims)
+			{
+				int frameCount = frames.GetFrameCount(anim);
+				// Remove frames beyond the first 6 (indices 6 and above)
+				for (int i = frameCount - 1; i >= 6; i--)
+				{
+					frames.RemoveFrame(anim, i);
+				}
+			}
+		}
+		// For John (npc6), skip every other frame in walking animations
+		if (npcAsset == "npc6")
+		{
+			string[] walkAnims = { "walk_down", "walk_up", "walk_right", "walk_left", "walk_up_right", "walk_up_left" };
+			foreach (var anim in walkAnims)
+			{
+				int frameCount = frames.GetFrameCount(anim);
+				for (int i = frameCount - 1; i >= 0; i--)
+				{
+					if (i % 2 == 1)
+					{
+						frames.RemoveFrame(anim, i);
+					}
+				}
+			}
+		}
 
 		AddAnimationFrames("idle_right", $"{basePath}{npcAsset}-front-idle.png");
 		AddAnimationFrames("idle_left", $"{basePath}{npcAsset}-front-idle.png");
 		
-		// Admirer's back-idle has a broken first frame and is exported smaller than other sides
-		bool isAdmirer = (npcAsset == "admirer2"); 
-		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		// Admirer's and NPC6's (John) back-idle has a broken first frame (grey background)
+		bool skipBrokenFrame = (npcAsset == "admirer2" || npcAsset == "npc6"); 
+		AddAnimationFrames("idle_up", $"{basePath}{npcAsset}-back-idle.png", skipBrokenFrame, (npcAsset == "admirer2") ? 1.15f : 1.0f);
+		if (npcAsset == "npc6")
+		{
+			// Keep only the first frame for a static idle
+			if (frames.HasAnimation("idle_up"))
+			{
+				int count = frames.GetFrameCount("idle_up");
+				for (int i = count - 1; i > 0; i--)
+				{
+					frames.RemoveFrame("idle_up", i);
+				}
+			}
+		}
+
+
 		
 		// Add back-directional idle for up-diagonals
-		AddAnimationFrames("idle_up_right", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
-		AddAnimationFrames("idle_up_left", $"{basePath}{npcAsset}-back-idle.png", isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_right", $"{basePath}{npcAsset}-back-idle.png", skipBrokenFrame, (npcAsset == "admirer2") ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_left", $"{basePath}{npcAsset}-back-idle.png", skipBrokenFrame, (npcAsset == "admirer2") ? 1.15f : 1.0f);
 
 		AddAnimationFrames("idle_down", $"{basePath}{npcAsset}-front-idle.png");
 
@@ -1114,7 +1274,7 @@ public partial class NPCEntity : CharacterBody2D
 	public void UpdateState(bool alive, bool converted, bool married, bool isTarget = false)
 	{
 		_isAlive = alive;
-		_deadOverlay.Visible = !alive;
+		_deadOverlay.Visible = false; // Dead overlay disabled per request
 		// _convertedIndicator.Visible = converted; // halo commented out per request
 		_convertedIndicator.Visible = false;
 		_marriedIndicator.Visible = false; // Marriage removed from game
@@ -1124,8 +1284,8 @@ public partial class NPCEntity : CharacterBody2D
 			_punchHint.Visible = false;
 		}
 		
-		// Dim the sprite if dead
-		_sprite.Modulate = alive ? Colors.White : Colors.DarkGray;
+		// Do not dim the sprite if dead per request, just keep it normal
+		_sprite.Modulate = Colors.White;
 		
 		// Rotate sprite 90 degrees clockwise if dead. If alive and currently slipping, preserve slip rotation.
 		if (!alive)
@@ -1263,6 +1423,18 @@ public partial class NPCEntity : CharacterBody2D
 	}
 
 	/// <summary>
+	/// Center the stab hint horizontally over the NPC based on its actual width.
+	/// </summary>
+	private void CenterStabLabel()
+	{
+		if (_stabLabel != null)
+		{
+			var labelWidth = _stabLabel.Size.X;
+			_stabLabel.Position = new Vector2(-labelWidth / 2, -150);
+		}
+	}
+
+	/// <summary>
 	/// Center the interact hint horizontally over the NPC based on its actual width.
 	/// Called deferred to ensure the label has been sized.
 	/// </summary>
@@ -1313,6 +1485,88 @@ public partial class NPCEntity : CharacterBody2D
 		_marchSpeed         = 0f;
 		Velocity            = Vector2.Zero;
 		// Resume from the current position so the NPC picks a sensible next target
+		_wanderState = WanderState.Pausing;
+		_pauseTimer  = 0.5;
+	}
+
+	/// <summary>
+	/// Makes this NPC flee away from the given position at high speed.
+	/// Used when the Admirer stabs this NPC.
+	/// </summary>
+	public void StartFleeingFrom(Vector2 threatPosition)
+	{
+		if (!_isAlive) return;
+		_isFleeing   = true;
+		_fleeTimer   = FLEE_DURATION;
+		_fleeFromPos = threatPosition;
+		GD.Print($"[NPCEntity] {NpcId} is now fleeing from {threatPosition}!");
+	}
+
+	/// <summary>
+	/// Updates the overhead label with current stab counts and starts the timer.
+	/// </summary>
+	public void UpdateStabStatus(int count, double windowRemaining)
+	{
+		_stabCount = count;
+		_stabWindowTimer = windowRemaining;
+		if (count <= 0 || count >= ADMIRER_STABS_TO_KILL || !_isAlive)
+		{
+			if (_stabLabel != null) _stabLabel.Visible = false; // Immediately hide UI regardless of process tick
+		}
+
+		// Slowly spill blood
+		if (_bloodSprite != null)
+		{
+			if (count >= ADMIRER_STABS_TO_KILL || !_isAlive)
+			{
+				// NPC died before animation runs out. Quickly spill the blood and end on 39th frame.
+				if (!_bloodSprite.Visible) 
+				{
+					_bloodSprite.Visible = true;
+					_bloodSprite.Modulate = new Color(1, 1, 1, 1);
+					_bloodSprite.Frame = 0;
+				}
+				_bloodSprite.Scale = new Vector2(1.0f, 1.0f);
+				_bloodSprite.Position = new Vector2(0, 90);
+				_bloodSprite.Stop();
+				// Rapidly accelerate to the 39th frame (index 38)
+				var tw = CreateTween();
+				tw.TweenProperty(_bloodSprite, "frame", 38, 0.4f);
+			}
+			else if (count == 0)
+			{
+				// NPC survives. Keep blood spilling but only on the NPC itself.
+				if (_bloodSprite.Visible)
+				{
+					var tw = CreateTween();
+					tw.TweenProperty(_bloodSprite, "scale", new Vector2(0.4f, 0.4f), 0.5f);
+					// Move slightly lower on upright body than before
+					tw.TweenProperty(_bloodSprite, "position", new Vector2(0, 55), 0.5f);
+					if (!_bloodSprite.IsPlaying()) _bloodSprite.Play("bleed");
+				}
+			}
+			else
+			{
+				// Actively being stabbed
+				if (!_bloodSprite.Visible) 
+				{
+					_bloodSprite.Visible = true;
+					_bloodSprite.Modulate = new Color(1, 1, 1, 1);
+					_bloodSprite.Scale = new Vector2(1.0f, 1.0f);
+					_bloodSprite.Position = new Vector2(0, 90);
+					_bloodSprite.Frame = 0;
+					_bloodSprite.Play("bleed");
+				}
+			}
+		}
+	}
+
+	/// <summary>Stops the flee behavior and returns to normal wandering.</summary>
+	private void StopFleeing()
+	{
+		_isFleeing  = false;
+		_fleeTimer  = 0;
+		Velocity    = Vector2.Zero;
 		_wanderState = WanderState.Pausing;
 		_pauseTimer  = 0.5;
 	}
