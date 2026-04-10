@@ -1,4 +1,4 @@
-;using Godot;
+using Godot;
 using System;
 using System.Collections.Generic;
 
@@ -868,6 +868,51 @@ public partial class PlayerController : CharacterBody2D
 			var labelWidth = _roleLabel.Size.X;
 			_roleLabel.Position = new Vector2(-labelWidth / 2, -195);
 		}
+	}
+
+	// ── Mass Revelation overlay ───────────────────────────────────────────────
+	private Tween _massRevTween;
+
+	/// <summary>
+	/// Start a looping golden-glow modulate on the sprite to indicate the
+	/// Prophet is channeling Mass Revelation. Safe to call on any peer.
+	/// </summary>
+	public void PlayMassRevelationAnimation()
+	{
+		if (_sprite == null) return;
+
+		// Kill any leftover tween first
+		_massRevTween?.Kill();
+
+		_massRevTween = CreateTween();
+		_massRevTween.SetLoops();
+
+		// Pulse between warm gold and bright white-gold
+		_massRevTween
+			.TweenProperty(_sprite, "modulate",
+				new Color(1.4f, 1.1f, 0.2f, 1.0f), 0.35f)
+			.SetTrans(Tween.TransitionType.Sine);
+		_massRevTween
+			.TweenProperty(_sprite, "modulate",
+				new Color(1.0f, 0.85f, 0.4f, 1.0f), 0.35f)
+			.SetTrans(Tween.TransitionType.Sine);
+	}
+
+	/// <summary>
+	/// Stop the Mass Revelation glow and restore the sprite's normal modulate.
+	/// </summary>
+	public void StopMassRevelationAnimation()
+	{
+		_massRevTween?.Kill();
+		_massRevTween = null;
+
+		if (_sprite == null) return;
+
+		// Restore the correct base modulate (local = white, remote = slightly dimmed)
+		float alpha = _isGhostMode ? 0.5f : 1.0f;
+		_sprite.Modulate = _isLocalPlayer
+			? new Color(1f, 1f, 1f, alpha)
+			: new Color(0.8f, 0.8f, 0.8f, alpha);
 	}
 
 }

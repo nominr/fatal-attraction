@@ -3047,7 +3047,7 @@ public partial class GameWorld : Node2D
 		foreach (var kvp in _playerControllers)
 		{
 			if (_networkManager.Players.TryGetValue(kvp.Key, out var pInfo) &&
-			    string.Equals(pInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase))
+				string.Equals(pInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase))
 			{
 				admirerPos = kvp.Value.Position;
 				break;
