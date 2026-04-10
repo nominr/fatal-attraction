@@ -2129,7 +2129,7 @@ public partial class GameWorld : Node2D
 
 		// ── Mass Revelation: shatters if Prophet is punched during channeling ──
 		if (_massRevServerActive &&
-		    string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase))
+			string.Equals(targetRole, "Prophet", StringComparison.OrdinalIgnoreCase))
 		{
 			GD.Print("[MassRev] Prophet punched during channeling — shattering Mass Revelation!");
 			ShatterMassRevelationServer();
@@ -2718,7 +2718,7 @@ public partial class GameWorld : Node2D
 
 					// ── Mass Revelation server tick ──────────────────────────────────
 					if (_massRevServerActive && _massRevProphetPeerId != 0 &&
-					    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetCtrl))
+						_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetCtrl))
 					{
 						Vector2 prophetPos = prophetCtrl.GlobalPosition;
 						
@@ -3134,24 +3134,45 @@ public partial class GameWorld : Node2D
 		coinRoot.ZIndex   = -4; // above banana (-5), below NPCs/players
 		coinRoot.AddToGroup("cash_coins");
 
-		// ── Visual: golden circle drawn with CanvasItem ───────────────────────
-		var visual = new Node2D();
-		visual.Name = "Visual";
-		coinRoot.AddChild(visual);
-		visual.Draw += () =>
+		// ── Visual: animated spinning coin sprite sheet ───────────────────────
+		const int COIN_COLS       = 4;
+		const int COIN_ROWS       = 4;
+		const int COIN_FRAME_W    = 67;   // 268 / 4
+		const int COIN_FRAME_H    = 69;   // 276 / 4
+		const int COIN_FRAMES     = COIN_COLS * COIN_ROWS; // 16
+		const float COIN_FPS      = 12.0f;
+		const float COIN_SCALE    = 0.45f; // world-space size
+
+		var coinTexture = GD.Load<Texture2D>("res://assets/ai-spinning-coin.png");
+
+		var frames = new SpriteFrames();
+		frames.AddAnimation("spin");
+		frames.SetAnimationLoop("spin", true);
+		frames.SetAnimationSpeed("spin", COIN_FPS);
+
+		for (int fi = 0; fi < COIN_FRAMES; fi++)
 		{
-			visual.DrawCircle(Vector2.Zero, 14f, new Color(1.0f, 0.85f, 0.0f, 0.92f));        // gold fill
-			visual.DrawArc(Vector2.Zero, 14f, 0, Mathf.Tau, 24, new Color(0.6f, 0.4f, 0.0f, 1f), 2.5f); // dark border
-			// Dollar sign
-			// (text requires a font reference – we skip that and rely on the gold circle instead)
-		};
-		visual.QueueRedraw();
+			int col = fi % COIN_COLS;
+			int row = fi / COIN_COLS;
+			var atlas = new AtlasTexture();
+			atlas.Atlas  = coinTexture;
+			atlas.Region = new Rect2(col * COIN_FRAME_W, row * COIN_FRAME_H, COIN_FRAME_W, COIN_FRAME_H);
+			frames.AddFrame("spin", atlas);
+		}
+
+		var visual = new AnimatedSprite2D();
+		visual.Name         = "Visual";
+		visual.SpriteFrames = frames;
+		visual.Scale        = new Vector2(COIN_SCALE, COIN_SCALE);
+		visual.Centered     = true;
+		coinRoot.AddChild(visual);
+		visual.Play("spin");
 
 		// Pulsing scale animation via Tween
 		var tween = visual.CreateTween();
 		tween.SetLoops();
-		tween.TweenProperty(visual, "scale", new Vector2(1.15f, 1.15f), 0.4f).SetTrans(Tween.TransitionType.Sine);
-		tween.TweenProperty(visual, "scale", Vector2.One, 0.4f).SetTrans(Tween.TransitionType.Sine);
+		tween.TweenProperty(visual, "scale", new Vector2(COIN_SCALE * 1.15f, COIN_SCALE * 1.15f), 0.4f).SetTrans(Tween.TransitionType.Sine);
+		tween.TweenProperty(visual, "scale", new Vector2(COIN_SCALE, COIN_SCALE), 0.4f).SetTrans(Tween.TransitionType.Sine);
 
 		// ── Collision area (detects NPCs + players) ───────────────────────────
 		var area = new Area2D();
@@ -5250,7 +5271,7 @@ void fragment() {
 		{
 			// Non-prophet clients: stop the overlay on the prophet puppet
 			if (_massRevProphetPeerId != 0 &&
-			    _playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
+				_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
 				prophetPuppet2.StopMassRevelationAnimation();
 
 			// Remove our copy of the aura visual and show notification
