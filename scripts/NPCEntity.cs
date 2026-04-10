@@ -190,6 +190,7 @@ public partial class NPCEntity : CharacterBody2D
 	/// </summary>
 	private void ResolveInitialOverlap()
 	{
+		const float NUDGE = 40f;      // pixels per nudge attempt
 		const int   MAX_TRIES = 16;   // limit so we don't loop forever
 
 		// Eight cardinal + diagonal directions to try
@@ -222,11 +223,11 @@ public partial class NPCEntity : CharacterBody2D
 			if (pushDir == Vector2.Zero)
 				pushDir = dirs[attempt % dirs.Length];
 
-			// Position += pushDir * NUDGE;
-			// GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
+			Position += pushDir * NUDGE;
+			GD.Print($"[NPCEntity] {NpcId} overlap attempt {attempt + 1}: nudging {pushDir * NUDGE}, new pos={Position}");
 		}
 
-		// GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
+		GD.PrintErr($"[NPCEntity] {NpcId} could not resolve initial overlap after {MAX_TRIES} attempts — NPC may be stuck!");
 	}
 
 	public override void _Process(double delta)
