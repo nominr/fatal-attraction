@@ -1,4 +1,4 @@
-using Godot;
+;using Godot;
 using System;
 using System.Collections.Generic;
 
@@ -64,7 +64,7 @@ public partial class PlayerController : CharacterBody2D
 	private bool _isMovingSync = false;
 	public bool IsMoving => _isLocalPlayer ? Velocity.Length() > 0.1f : _isMovingSync;
 	private bool _isPunching = false;
-	private AnimatedSprite2D _massRevEffectSprite = null;
+	private bool _isStabbing = false;
 
 	public override void _Ready()
 	{
@@ -205,12 +205,23 @@ public partial class PlayerController : CharacterBody2D
 		{
 			_isPunching = false;
 		}
+		if (_sprite.Animation == "stab_front")
+		{
+			_isStabbing = false;
+		}
 	}
 
 	private void UpdateAnimation()
 	{
 		if (_sprite == null) return;
 		
+		// Priority for stabbing (highest)
+		if (_isStabbing)
+		{
+			// Stab animation is playing — don't override
+			return;
+		}
+
 		// Priority for punching
 		if (_isPunching) 
 		{
@@ -505,13 +516,13 @@ public partial class PlayerController : CharacterBody2D
 		AddAnimationFrames("idle_right", frontIdle);
 		AddAnimationFrames("idle_left", frontIdle);
 		
-		// Admirer's back-idle has a broken first frame and is exported smaller than other sides
 		bool isAdmirer = (roleName == "admirer2");
-		AddAnimationFrames("idle_up", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f); 
+		bool skipBrokenFrame = (isAdmirer || roleName == "npc6");
+		AddAnimationFrames("idle_up", backIdle, false, skipBrokenFrame, isAdmirer ? 1.15f : 1.0f); 
 		
 		// Add back-directional idle for up-diagonals
-		AddAnimationFrames("idle_up_right", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f);
-		AddAnimationFrames("idle_up_left", backIdle, false, isAdmirer, isAdmirer ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_right", backIdle, false, skipBrokenFrame, isAdmirer ? 1.15f : 1.0f);
+		AddAnimationFrames("idle_up_left", backIdle, false, skipBrokenFrame, isAdmirer ? 1.15f : 1.0f);
 
 		AddAnimationFrames("idle_down", frontIdle);
 
@@ -537,6 +548,15 @@ public partial class PlayerController : CharacterBody2D
 		// Skip 7th frame (index 6) for Admirer back punch
 		AddAnimationFrames("punch_back", punchBack, false, false, isAdmirer ? 1.3f : 1.0f, isAdmirer ? 6 : -1);
 		
+		// Load stab animation for Admirer
+		if (isAdmirer)
+		{
+			string stabFront = $"{basePath}admirer2-stab-front.png";
+			AddAnimationFrames("stab_front", stabFront, false, false, 1.5f, -1, 0, 36);
+			frames.SetAnimationLoop("stab_front", false);
+			frames.SetAnimationSpeed("stab_front", 15.0f);
+		}
+
 		// Set punch animations to NOT loop
 		frames.SetAnimationLoop("punch_front", false);
 		frames.SetAnimationLoop("punch_back", false);
@@ -714,6 +734,26 @@ public partial class PlayerController : CharacterBody2D
 		}
 	}
 
+	/// <summary>
+	/// Trigger the stabbing animation for this player (Admirer knife kill).
+	/// </summary>
+	public void TriggerStabAnimation(string facing = null, bool? flipH = null)
+	{
+		if (_sprite == null) return;
+		if (!_sprite.SpriteFrames.HasAnimation("stab_front")) return;
+
+		if (facing != null) _lastFacingDirection = facing;
+		if (flipH.HasValue) _sprite.FlipH = flipH.Value;
+
+		_isStabbing = true;
+		_isPunching = false; // cancel any punch
+		_sprite.Play("stab_front");
+		if (_animationScales.TryGetValue("stab_front", out float s))
+		{
+			_sprite.Scale = new Vector2(s, s);
+		}
+	}
+
 	public override void _PhysicsProcess(double delta)
 	{
 		// Only process input for the local player
@@ -733,6 +773,20 @@ public partial class PlayerController : CharacterBody2D
 		// If slipping, disable movement entirely
 		if (_isSlipping)
 		{
+			Velocity = Vector2.Zero;
+			MoveAndSlide();
+			return;
+		}
+
+		// If stabbing but a movement key was pressed, cancel the stab animation and let the player walk
+		if (_isStabbing && velocity.Length() > 0)
+		{
+			_isStabbing = false;
+			// Fall through to normal movement below
+		}
+		else if (_isStabbing)
+		{
+			// Still stabbing and no movement input — keep player frozen
 			Velocity = Vector2.Zero;
 			MoveAndSlide();
 			return;
@@ -801,75 +855,6 @@ public partial class PlayerController : CharacterBody2D
 			float alpha = _isGhostMode ? 0.5f : 1.0f;
 			_sprite.Modulate = new Color(1, 0, 0, alpha); // Red flash with preserved alpha
 		}
-	}
-
-	/// <summary>
-	/// Overlays the mass revelation sprite-sheet animation on the player,
-	/// looping it indefinitely until StopMassRevelationAnimation() is called.
-	/// </summary>
-	public void PlayMassRevelationAnimation()
-	{
-		// Don't double-start
-		if (_massRevEffectSprite != null && IsInstanceValid(_massRevEffectSprite)) return;
-
-		const string path = "res://assets/new-character-assets/prophet-mass-revalation.png";
-		var texture = ResourceLoader.Load<Texture2D>(path);
-		if (texture == null)
-		{
-			GD.PrintErr($"[PlayerController] Could not load mass rev image: {path}");
-			return;
-		}
-
-		// Build a SpriteFrames with a looping "play" animation covering all 36 cells
-		var frames = new SpriteFrames();
-		frames.AddAnimation("play");
-		frames.SetAnimationLoop("play", true);
-		frames.SetAnimationSpeed("play", 24.0f); // 36 frames / 24 fps ≈ 1.5 s per cycle
-
-		int gridCols = 6;
-		int gridRows = 6;
-		float fw = texture.GetWidth()  / (float)gridCols;
-		float fh = texture.GetHeight() / (float)gridRows;
-
-		for (int row = 0; row < gridRows; row++)
-		{
-			for (int col = 0; col < gridCols; col++)
-			{
-				var atlas = new AtlasTexture();
-				atlas.Atlas  = texture;
-				atlas.Region = new Rect2(col * fw, row * fh, fw, fh);
-				frames.AddFrame("play", atlas);
-			}
-		}
-
-		_massRevEffectSprite = new AnimatedSprite2D();
-		_massRevEffectSprite.SpriteFrames = frames;
-
-		// Match the scale used by regular character sprites
-		float scaleAdjust = 243.0f / fh;
-		_massRevEffectSprite.Scale = new Vector2(scaleAdjust, scaleAdjust);
-
-		AddChild(_massRevEffectSprite);
-		_massRevEffectSprite.Play("play");
-
-		// Hide normal sprite while the ritual animation runs
-		if (_sprite != null) _sprite.Visible = false;
-	}
-
-	/// <summary>
-	/// Stops the looping mass revelation overlay and restores the regular sprite.
-	/// Should be called when the ability ends (naturally or interrupted).
-	/// </summary>
-	public void StopMassRevelationAnimation()
-	{
-		if (_massRevEffectSprite != null && IsInstanceValid(_massRevEffectSprite))
-		{
-			_massRevEffectSprite.Stop();
-			_massRevEffectSprite.QueueFree();
-			_massRevEffectSprite = null;
-		}
-		if (_sprite != null && IsInstanceValid(_sprite))
-			_sprite.Visible = true;
 	}
 
 	/// <summary>
