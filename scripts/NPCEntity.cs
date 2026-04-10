@@ -126,6 +126,7 @@ public partial class NPCEntity : CharacterBody2D
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
 	private string _lastFacingDirection = "right"; // "up", "down", "left", "right"
+	private Vector2 _smoothedVelocity = Vector2.Zero; // Anti-jitter filtering
 
 	public override void _Ready()
 	{
@@ -214,7 +215,11 @@ public partial class NPCEntity : CharacterBody2D
 			{
 				// Clear — done
 				if (attempt > 0)
+				{
 					GD.Print($"[NPCEntity] {NpcId} resolved initial overlap after {attempt} nudge(s). Final pos: {Position}");
+					_targetPosition = Position;
+					_lastPosition = Position;
+				}
 				return;
 			}
 
@@ -280,7 +285,9 @@ public partial class NPCEntity : CharacterBody2D
 			}
 		}
 
-		Vector2 velocity = Velocity;
+		// Use smoothed velocity to prevent single-frame physics jitter (resolves infinite spin/oscillations)
+		_smoothedVelocity = _smoothedVelocity.Lerp(Velocity, 0.2f);
+		Vector2 velocity = _smoothedVelocity;
 		string animToPlay = _sprite.Animation;
 		
 		// Use a small threshold to detect movement
@@ -530,6 +537,8 @@ public partial class NPCEntity : CharacterBody2D
 					}
 					else
 					{
+						// Snap X strictly to prevent jitter bouncing
+						Position = new Vector2(corridorTarget.X, Position.Y);
 						// Move Vertically
 						Velocity = new Vector2(0, Mathf.Sign(yDiff)) * MOVE_SPEED;
 					}
