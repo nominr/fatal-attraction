@@ -15,6 +15,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _massRevPlayer;
 	private AudioStreamPlayer _followMePlayer;
 	private AudioStreamPlayer _dontIgnoreMePlayer;
+	private AudioStreamPlayer _beholdPlayer;
 	private Tween _massRevTween;
 	private const float MASS_REV_NORMAL_DB = 0.0f;
 
@@ -32,6 +33,9 @@ public partial class SfxManager : Node
 		_followMePlayer = CreatePlayer("res://assets/sounds/followme.wav");
 		_followMePlayer.VolumeDb = 9.0f;
 		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
+
+		_beholdPlayer = CreatePlayerFromBytes("res://assets/sounds/behold.mp3");
+		_beholdPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
 
 		_countdownStream = GD.Load<AudioStream>("res://assets/sounds/voicebosch-countdown-from-10-190389.mp3");
 		_countdownPlayer = new AudioStreamPlayer();
@@ -52,6 +56,34 @@ public partial class SfxManager : Node
 		var player = new AudioStreamPlayer();
 		player.Stream = stream;
 		player.Bus = "Master";
+		AddChild(player);
+		return player;
+	}
+
+	/// <summary>
+	/// Loads an MP3 file directly from disk bytes, bypassing Godot's import system.
+	/// Use this for audio files that haven't been imported by the editor yet.
+	/// </summary>
+	private AudioStreamPlayer CreatePlayerFromBytes(string resPath)
+	{
+		var player = new AudioStreamPlayer();
+		player.Bus = "Master";
+
+		var file = FileAccess.Open(resPath, FileAccess.ModeFlags.Read);
+		if (file == null)
+		{
+			GD.PrintErr($"[SfxManager] FileAccess failed for: {resPath} err={FileAccess.GetOpenError()}");
+		}
+		else
+		{
+			var bytes = file.GetBuffer((long)file.GetLength());
+			file.Close();
+			var stream = new AudioStreamMP3();
+			stream.Data = bytes;
+			player.Stream = stream;
+			GD.Print($"[SfxManager] Loaded {bytes.Length} bytes from {resPath}");
+		}
+
 		AddChild(player);
 		return player;
 	}
@@ -130,4 +162,29 @@ public partial class SfxManager : Node
 			};
 		}
 	}
+
+	/// <summary>
+	/// Plays the Producer's "Behold" voice line and ducks the music slightly.
+	/// </summary>
+	public void PlayBehold()
+	{
+		if (_beholdPlayer == null) return;
+		_beholdPlayer.Stop(); // reset if already playing
+		_beholdPlayer.Play();
+
+		// Duck music while the line plays
+		var music = GetNodeOrNull<MusicManager>("/root/MusicManager");
+		if (music != null)
+		{
+			music.FadeTo(-10.0f, 0.15f);
+			// Restore after ~3 s (generous estimate for clip length)
+			var timer = GetTree().CreateTimer(3.0f);
+			timer.Timeout += () => music.FadeTo(0.0f, 0.6f);
+		}
+	}
+
+	/// <summary>
+	/// Stops the "Behold" voice line early if needed.
+	/// </summary>
+	public void StopBehold() => _beholdPlayer?.Stop();
 }

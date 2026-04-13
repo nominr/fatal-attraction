@@ -3436,6 +3436,7 @@ public partial class GameWorld : Node2D
 		_cashSpawnTimer = 0.0; // spawn first coin immediately
 		if (_ultimateButton != null) _ultimateButton.Disabled = true;
 		AddSlidingNotification("⚡ Cash Trail activated for 10 seconds!");
+		GetNode<SfxManager>("/root/SfxManager")?.PlayBehold();
 		GD.Print("[CashTrail] Producer activated ultimate");
 
 		// Show green aura on the local Producer
