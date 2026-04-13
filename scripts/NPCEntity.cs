@@ -35,9 +35,11 @@ public partial class NPCEntity : CharacterBody2D
 	
 	// State indicators
 	private Sprite2D _convertedIndicator;
-	private Sprite2D _deadOverlay;
+	private Node2D _deadOverlay;
 	private Sprite2D _marriedIndicator;
 	private Sprite2D _targetIndicator;
+	private Sprite2D _bloodBodyOverlay;
+	private static Texture2D _midtermBloodSheet;
 
 	// Interaction range
 	private Area2D _interactionArea;
@@ -134,8 +136,7 @@ public partial class NPCEntity : CharacterBody2D
 	private Label   _stabLabel;
 	private int     _stabCount        = 0;
 	private double  _stabWindowTimer  = 0.0;
-	private const int ADMIRER_STABS_TO_KILL = 5;
-	private AnimatedSprite2D _bloodSprite;
+	private const int ADMIRER_STABS_TO_KILL = 3;
 
 	// Animation state
 	private Dictionary<string, float> _animationScales = new Dictionary<string, float>();
@@ -718,12 +719,22 @@ public partial class NPCEntity : CharacterBody2D
 			int corridorIndex = _random.Next(_corridors.Count);
 			Corridor corridor = _corridors[corridorIndex];
 			
-			// Pick a random point in the corridor
-			float x = (float)(_random.NextDouble() * (corridor.maxX - corridor.minX) + corridor.minX);
-			float y = (float)(_random.NextDouble() * (corridor.maxY - corridor.minY) + corridor.minY);
+			// Add padding to corridors to avoid walking directly on walls (stay in the center)
+			float corridorPadding = 60.0f; 
+			float cMinX = corridor.minX + corridorPadding;
+			float cMaxX = corridor.maxX - corridorPadding;
+			float cMinY = corridor.minY + corridorPadding;
+			float cMaxY = corridor.maxY - corridorPadding;
+
+			// Safety check for narrow corridors
+			if (cMinX >= cMaxX) { cMinX = corridor.minX; cMaxX = corridor.maxX; }
+			if (cMinY >= cMaxY) { cMinY = corridor.minY; cMaxY = corridor.maxY; }
+			
+			float x = (float)(_random.NextDouble() * (cMaxX - cMinX) + cMinX);
+			float y = (float)(_random.NextDouble() * (cMaxY - cMinY) + cMinY);
 			_targetPosition = new Vector2(x, y);
 			
-			GD.Print($"{NpcId} heading to corridor {corridorIndex}");
+			GD.Print($"{NpcId} heading to corridor {corridorIndex} with wall-avoidance.");
 		}
 		else
 		{
@@ -731,7 +742,8 @@ public partial class NPCEntity : CharacterBody2D
 			if (_currentRoomIndex >= 0 && _currentRoomIndex < _rooms.Count)
 			{
 				Room room = _rooms[_currentRoomIndex];
-				float padding = 100.0f; 
+				// Increased padding to push NPCs further from wall edges (where blood clips)
+				float padding = 150.0f; 
 
 				float rMinX = room.minX + padding;
 				float rMaxX = room.maxX - padding;
@@ -786,43 +798,6 @@ public partial class NPCEntity : CharacterBody2D
 
 	private void SetupVisuals()
 	{
-		// Blood pool (Animated spilling)
-		_bloodSprite = new AnimatedSprite2D();
-		var bloodFrames = new SpriteFrames();
-		bloodFrames.AddAnimation("bleed");
-		var texBlood = GD.Load<Texture2D>("res://assets/new-character-assets/blood-npc.png");
-		if (texBlood != null)
-		{
-			int cols = 8;
-			int rows = 5;
-			float bWidth = texBlood.GetWidth() / (float)cols;
-			float bHeight = texBlood.GetHeight() / (float)rows;
-			int totalAdded = 0;
-			// Read lines as frames row by row
-			for (int y = 0; y < rows; y++)
-			{
-				for (int x = 0; x < cols; x++)
-				{
-					if (totalAdded >= 39) break; // Skip the very last frame (sparkle)
-
-					var atlasKey = new AtlasTexture();
-					atlasKey.Atlas = texBlood;
-					// Inset by 22 pixels to safely crop borders without biting into too much core artwork
-					atlasKey.Region = new Rect2((x * bWidth) + 22, (y * bHeight) + 22, bWidth - 44, bHeight - 44);
-					bloodFrames.AddFrame("bleed", atlasKey);
-					totalAdded++;
-				}
-				if (totalAdded >= 39) break;
-			}
-			bloodFrames.SetAnimationLoop("bleed", false);
-			bloodFrames.SetAnimationSpeed("bleed", 2f); // Animate at 2 fps
-		}
-		_bloodSprite.SpriteFrames = bloodFrames;
-		_bloodSprite.ZIndex = -1; // Keep it behind the NPC
-		_bloodSprite.Visible = false; // Hidden initially
-		_bloodSprite.Scale = new Vector2(1.0f, 1.0f); // Default scale
-		_bloodSprite.Position = new Vector2(0, 90); // Place near feet
-		AddChild(_bloodSprite);
 
 		// Main NPC sprite - load from file based on NPC ID
 		_sprite = new AnimatedSprite2D();
@@ -916,7 +891,13 @@ public partial class NPCEntity : CharacterBody2D
 		AddChild(_interactHint);
 		// Center the label over the NPC based on text width
 		CallDeferred(MethodName.CenterInteractHint);
-		// Size will auto-adjust based on text content
+
+		// ── Midterm Demo Blood Overlay (Body Splatter) ──
+		_bloodBodyOverlay = new Sprite2D();
+		_bloodBodyOverlay.Visible = false;
+		_bloodBodyOverlay.TextureFilter = TextureFilterEnum.Nearest;
+		_bloodBodyOverlay.ZIndex = 1; // On top of NPC sprite
+		AddChild(_bloodBodyOverlay);
 	}
 
 	private void LoadSpriteForNPC()
@@ -1514,51 +1495,6 @@ public partial class NPCEntity : CharacterBody2D
 			if (_stabLabel != null) _stabLabel.Visible = false; // Immediately hide UI regardless of process tick
 		}
 
-		// Slowly spill blood
-		if (_bloodSprite != null)
-		{
-			if (count >= ADMIRER_STABS_TO_KILL || !_isAlive)
-			{
-				// NPC died before animation runs out. Quickly spill the blood and end on 39th frame.
-				if (!_bloodSprite.Visible) 
-				{
-					_bloodSprite.Visible = true;
-					_bloodSprite.Modulate = new Color(1, 1, 1, 1);
-					_bloodSprite.Frame = 0;
-				}
-				_bloodSprite.Scale = new Vector2(1.0f, 1.0f);
-				_bloodSprite.Position = new Vector2(0, 90);
-				_bloodSprite.Stop();
-				// Rapidly accelerate to the 39th frame (index 38)
-				var tw = CreateTween();
-				tw.TweenProperty(_bloodSprite, "frame", 38, 0.4f);
-			}
-			else if (count == 0)
-			{
-				// NPC survives. Keep blood spilling but only on the NPC itself.
-				if (_bloodSprite.Visible)
-				{
-					var tw = CreateTween();
-					tw.TweenProperty(_bloodSprite, "scale", new Vector2(0.4f, 0.4f), 0.5f);
-					// Move slightly lower on upright body than before
-					tw.TweenProperty(_bloodSprite, "position", new Vector2(0, 55), 0.5f);
-					if (!_bloodSprite.IsPlaying()) _bloodSprite.Play("bleed");
-				}
-			}
-			else
-			{
-				// Actively being stabbed
-				if (!_bloodSprite.Visible) 
-				{
-					_bloodSprite.Visible = true;
-					_bloodSprite.Modulate = new Color(1, 1, 1, 1);
-					_bloodSprite.Scale = new Vector2(1.0f, 1.0f);
-					_bloodSprite.Position = new Vector2(0, 90);
-					_bloodSprite.Frame = 0;
-					_bloodSprite.Play("bleed");
-				}
-			}
-		}
 	}
 
 	/// <summary>Stops the flee behavior and returns to normal wandering.</summary>
