@@ -16,6 +16,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _followMePlayer;
 	private AudioStreamPlayer _dontIgnoreMePlayer;
 	private AudioStreamPlayer _beholdPlayer;
+	private AudioStreamPlayer _wilhelmScreamPlayer;
 	private Tween _massRevTween;
 	private const float MASS_REV_NORMAL_DB = -6.0f;
 
@@ -33,6 +34,8 @@ public partial class SfxManager : Node
 		_followMePlayer = CreatePlayer("res://assets/sounds/followme.wav");
 		_followMePlayer.VolumeDb = 9.0f;
 		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
+
+		_wilhelmScreamPlayer = CreatePlayerFromBytes("res://assets/new-character-assets/wilhelmscream.mp3");
 
 		_beholdPlayer = CreatePlayerFromBytes("res://assets/sounds/behold.mp3");
 		_beholdPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
@@ -187,4 +190,12 @@ public partial class SfxManager : Node
 	/// Stops the "Behold" voice line early if needed.
 	/// </summary>
 	public void StopBehold() => _beholdPlayer?.Stop();
+
+	/// <summary>
+	/// Plays the iconic Wilhelm Scream sound effect.
+	/// </summary>
+	public void PlayWilhelmScream()
+	{
+		_wilhelmScreamPlayer?.Play();
+	}
 }
