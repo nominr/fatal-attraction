@@ -16,7 +16,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _followMePlayer;
 	private AudioStreamPlayer _dontIgnoreMePlayer;
 	private Tween _massRevTween;
-	private const float MASS_REV_NORMAL_DB = 0.0f;
+	private const float MASS_REV_NORMAL_DB = -6.0f;
 
 	// Offset in seconds to the start of the third countdown in the track
 	// Track is ~47s with 3 countdowns; third starts at roughly 33.5s

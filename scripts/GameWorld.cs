@@ -5653,6 +5653,11 @@ void fragment() {
 		_massRevProphetPeerId    = prophetPeerId;
 		_massRevClientAuraActive = true;
 
+		// Play the Mass Revelation sounds on non-prophet screens too.
+		const float MASS_REV_FADE = 1.0f;
+		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevIn();
+		GetNode<MusicManager>("/root/MusicManager")?.FadeOutForMassRev(MASS_REV_FADE);
+
 		// Find the prophet's puppet PlayerController and play the animation on it.
 		if (_playerControllers.TryGetValue(prophetPeerId, out var prophetPuppet))
 		{
@@ -5685,6 +5690,11 @@ void fragment() {
 			if (_massRevProphetPeerId != 0 &&
 				_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
 				prophetPuppet2.StopMassRevelationAnimation();
+
+			// Fade out the sounds that were started in RpcNotifyMassRevelationStart.
+			const float MASS_REV_FADE = 1.0f;
+			GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevOut(MASS_REV_FADE);
+			GetNode<MusicManager>("/root/MusicManager")?.FadeInAfterMassRev(MASS_REV_FADE);
 
 			// Remove our copy of the aura visual and show notification
 			_massRevClientAuraActive = false;
