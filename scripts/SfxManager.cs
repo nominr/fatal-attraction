@@ -13,6 +13,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _countdownPlayer;
 	private AudioStream _countdownStream;
 	private AudioStreamPlayer _massRevPlayer;
+	private AudioStreamPlayer _followMePlayer;
 	private Tween _massRevTween;
 	private const float MASS_REV_NORMAL_DB = 0.0f;
 
@@ -27,6 +28,8 @@ public partial class SfxManager : Node
 		_chatSuccessPlayer = CreatePlayer("res://assets/sounds/freesound_crunchpixstudio-purchase-success-384963.mp3");
 		_chatFailurePlayer = CreatePlayer("res://assets/sounds/freesound_community-failure-drum-sound-effect-2-7184.mp3");
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
+		_followMePlayer = CreatePlayer("res://assets/sounds/followme.wav");
+		_followMePlayer.VolumeDb = 9.0f;
 
 		_countdownStream = GD.Load<AudioStream>("res://assets/sounds/voicebosch-countdown-from-10-190389.mp3");
 		_countdownPlayer = new AudioStreamPlayer();
@@ -65,6 +68,7 @@ public partial class SfxManager : Node
 		_massRevTween?.Kill();
 		_massRevPlayer.VolumeDb = MASS_REV_NORMAL_DB;
 		_massRevPlayer.Play();
+		_followMePlayer?.Play();
 		GD.Print("[SfxManager] Mass Rev started at full volume");
 	}
 
