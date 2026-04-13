@@ -65,6 +65,7 @@ public partial class PlayerController : CharacterBody2D
 	public bool IsMoving => _isLocalPlayer ? Velocity.Length() > 0.1f : _isMovingSync;
 	private bool _isPunching = false;
 	private bool _isStabbing = false;
+	private bool _isMassRevAnimating = false;
 
 	public override void _Ready()
 	{
@@ -215,6 +216,11 @@ public partial class PlayerController : CharacterBody2D
 	{
 		if (_sprite == null) return;
 		
+		if (_isMassRevAnimating)
+		{
+			return;
+		}
+
 		// Priority for stabbing (highest)
 		if (_isStabbing)
 		{
@@ -561,6 +567,14 @@ public partial class PlayerController : CharacterBody2D
 		frames.SetAnimationLoop("punch_front", false);
 		frames.SetAnimationLoop("punch_back", false);
 
+		if (roleName == "prophet")
+		{
+			string massRevTexture = $"{basePath}prophet-mass-revalation.png";
+			AddAnimationFrames("mass_revelation", massRevTexture, false, false, 1.0f, -1, 0, 36);
+			frames.SetAnimationLoop("mass_revelation", true);
+			frames.SetAnimationSpeed("mass_revelation", 15.0f);
+		}
+
 		_animationScales = generatedScales;
 		_spriteFramesCache[roleName] = frames;
 		_animationScalesCache[roleName] = new Dictionary<string, float>(generatedScales);
@@ -881,6 +895,13 @@ public partial class PlayerController : CharacterBody2D
 	{
 		if (_sprite == null) return;
 
+		_isMassRevAnimating = true;
+		_sprite.Play("mass_revelation");
+		if (_animationScales.TryGetValue("mass_revelation", out float s))
+		{
+			_sprite.Scale = new Vector2(s, s);
+		}
+
 		// Kill any leftover tween first
 		_massRevTween?.Kill();
 
@@ -903,6 +924,7 @@ public partial class PlayerController : CharacterBody2D
 	/// </summary>
 	public void StopMassRevelationAnimation()
 	{
+		_isMassRevAnimating = false;
 		_massRevTween?.Kill();
 		_massRevTween = null;
 

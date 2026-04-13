@@ -559,57 +559,64 @@ public partial class NPCEntity : CharacterBody2D
 				break;
 
 			case WanderState.Moving:
-				// Corridor waypoint rule: if near entry points, walk straight to exit
+				// Corridor waypoint rule: if near entry points and needing to traverse, walk straight to exit
 				Vector2 corridorTarget = Vector2.Zero;
 				bool inCorridorTransit = false;
 				
-				// Check proximity to each entry point (within 50px)
-				if (Position.DistanceTo(new Vector2(177, 517)) < 50f)
+				// Corridor 0 (Left top-to-mid)
+				if (Position.DistanceTo(new Vector2(177, 517)) < 50f && _targetPosition.Y > 700f)
 				{
 					corridorTarget = new Vector2(177, 946);
 					inCorridorTransit = true;
 				}
-				else if (Position.DistanceTo(new Vector2(1579, 510)) < 50f)
+				else if (Position.DistanceTo(new Vector2(177, 946)) < 50f && _targetPosition.Y < 700f)
+				{
+					corridorTarget = new Vector2(177, 517);
+					inCorridorTransit = true;
+				}
+				// Corridor 1 (Mid top-to-mid)
+				else if (Position.DistanceTo(new Vector2(1579, 510)) < 50f && _targetPosition.Y > 700f)
 				{
 					corridorTarget = new Vector2(1579, 946);
 					inCorridorTransit = true;
 				}
-				else if (Position.DistanceTo(new Vector2(2741, 1418)) < 50f)
+				else if (Position.DistanceTo(new Vector2(1579, 946)) < 50f && _targetPosition.Y < 700f)
+				{
+					corridorTarget = new Vector2(1579, 510);
+					inCorridorTransit = true;
+				}
+				// Corridor 2 (Right mid-to-bottom)
+				else if (Position.DistanceTo(new Vector2(2741, 1418)) < 50f && _targetPosition.Y < 1200f)
 				{
 					corridorTarget = new Vector2(2741, 968);
 					inCorridorTransit = true;
 				}
-				else if (Position.DistanceTo(new Vector2(959, 1418)) < 50f)
+				else if (Position.DistanceTo(new Vector2(2741, 968)) < 50f && _targetPosition.Y > 1200f)
+				{
+					corridorTarget = new Vector2(2741, 1418);
+					inCorridorTransit = true;
+				}
+				// Corridor 3 (Left mid-to-bottom)
+				else if (Position.DistanceTo(new Vector2(959, 1418)) < 50f && _targetPosition.Y < 1200f)
 				{
 					corridorTarget = new Vector2(959, 968);
+					inCorridorTransit = true;
+				}
+				else if (Position.DistanceTo(new Vector2(959, 968)) < 50f && _targetPosition.Y > 1200f)
+				{
+					corridorTarget = new Vector2(959, 1418);
 					inCorridorTransit = true;
 				}
 				
 				if (inCorridorTransit)
 				{
-					// Axis-Aligned Movement for Corridors
-					// First align X (center in corridor), then move Y (traverse).
-					float xDiff = corridorTarget.X - Position.X;
-					float yDiff = corridorTarget.Y - Position.Y;
-
-					// Threshold for X alignment
-					if (Mathf.Abs(xDiff) > 5.0f)
-					{
-						// Move Horizontally
-						Velocity = new Vector2(Mathf.Sign(xDiff), 0) * MOVE_SPEED;
-					}
-					else
-					{
-						// Snap X strictly to prevent jitter bouncing
-						Position = new Vector2(corridorTarget.X, Position.Y);
-						// Move Vertically
-						Velocity = new Vector2(0, Mathf.Sign(yDiff)) * MOVE_SPEED;
-					}
-
+					// Move smoothly toward corridor target without arbitrary axis locking
+					Vector2 transitDir = (corridorTarget - Position).Normalized();
+					Velocity = transitDir * MOVE_SPEED;
 					MoveAndSlide();
 					
 					// Once close to exit, resume normal movement
-					if (Position.DistanceTo(corridorTarget) < 10f)
+					if (Position.DistanceTo(corridorTarget) < 15f)
 					{
 						Position = corridorTarget;
 						PickNewTarget(); // Pick new target in room
