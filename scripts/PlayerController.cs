@@ -937,4 +937,169 @@ public partial class PlayerController : CharacterBody2D
 			: new Color(0.8f, 0.8f, 0.8f, alpha);
 	}
 
+	// ── Producer Cash-Trail Aura ───────────────────────────────────────────────
+	private Tween _auraSpriteTween;
+	private Tween _auraRingTween;
+	private Timer _sparkleTimer;
+
+	/// <summary>
+	/// Activates a hazy, sparkly green aura around the producer for the duration
+	/// of the Cash Trail ultimate. Safe to call on any peer.
+	/// </summary>
+	public void ShowCashTrailAura()
+	{
+		StopCashTrailAura(); // clean up any previous (shouldn't exist, but be safe)
+
+		// ── 1. Sprite green-pulse tween ──────────────────────────────────────
+		if (_sprite != null)
+		{
+			_auraSpriteTween = CreateTween();
+			_auraSpriteTween.SetLoops();
+			_auraSpriteTween
+				.TweenProperty(_sprite, "modulate",
+					new Color(0.55f, 1.4f, 0.6f, 1.0f), 0.4f)   // saturated lime-green
+				.SetTrans(Tween.TransitionType.Sine);
+			_auraSpriteTween
+				.TweenProperty(_sprite, "modulate",
+					new Color(0.3f, 1.0f, 0.4f, 1.0f), 0.4f)    // deep green
+				.SetTrans(Tween.TransitionType.Sine);
+		}
+
+		// ── 2. Multi-ring haze node ───────────────────────────────────────────
+		// ZIndex +1 so rings render IN FRONT of the sprite → always visible from
+		// all facing directions regardless of sprite transparency.
+		// Radii are scaled to the 243-world-unit character height:
+		//   inner  ≈  110  (just outside the silhouette)
+		//   mid    ≈  180
+		//   outer  ≈  280
+		var auraNode = new Node2D();
+		auraNode.Name    = "CashAura";
+		auraNode.ZIndex  = 1;   // in front of sprite, behind labels (labels default to 0 but are added later)
+
+		// Three layers of filled-disc + arc per ring so they look hazy/glowing.
+		// disc = large semi-transparent fill; arc = bright stroke outline.
+		var rings = new (float radius, Color discCol, Color arcCol, float arcWidth)[]
+		{
+			(280f, new Color(0.1f, 0.9f, 0.3f, 0.04f), new Color(0.3f, 1.0f, 0.4f, 0.10f), 22f),  // outer haze
+			(180f, new Color(0.2f, 1.0f, 0.4f, 0.07f), new Color(0.4f, 1.0f, 0.5f, 0.16f), 14f),  // mid glow
+			(110f, new Color(0.3f, 1.0f, 0.5f, 0.10f), new Color(0.6f, 1.0f, 0.6f, 0.22f), 8f),   // inner core
+		};
+
+		foreach (var (radius, discCol, arcCol, arcWidth) in rings)
+		{
+			var ring = new Node2D();
+			float r = radius;
+			Color dc = discCol; Color ac = arcCol; float aw = arcWidth;
+
+			ring.Draw += () =>
+			{
+				ring.DrawCircle(Vector2.Zero, r, dc);          // hazy filled disc
+				ring.DrawArc(Vector2.Zero, r, 0f, Mathf.Tau, 64, ac, aw); // bright stroke
+			};
+			ring.QueueRedraw();
+			auraNode.AddChild(ring);
+
+			// Pulse the ring scale so it breathes in and out
+			var t = auraNode.CreateTween();
+			t.SetLoops();
+			float phaseOffset = radius / 500f; // stagger phase by ring size
+			t.TweenProperty(ring, "scale", new Vector2(1.08f, 1.08f), 0.7f + phaseOffset)
+				.SetTrans(Tween.TransitionType.Sine);
+			t.TweenProperty(ring, "scale", new Vector2(0.93f, 0.93f), 0.7f + phaseOffset)
+				.SetTrans(Tween.TransitionType.Sine);
+
+			// QueueRedraw is needed every frame because Node2D.Draw doesn't
+			// auto-fire when only the transform (scale tween) changes.
+			// We attach a lightweight _Process-like timer to keep it live.
+			var redrawTimer = new Timer();
+			redrawTimer.WaitTime = 0.05; // 20 fps refresh — enough for smooth look
+			redrawTimer.Autostart = true;
+			redrawTimer.Timeout += () => { if (GodotObject.IsInstanceValid(ring)) ring.QueueRedraw(); };
+			ring.AddChild(redrawTimer);
+		}
+
+		AddChild(auraNode);
+
+		// ── 3. Sparkle emitter (Timer that spawns rising dots) ────────────────
+		_sparkleTimer = new Timer();
+		_sparkleTimer.WaitTime = 0.10;
+		_sparkleTimer.Autostart = true;
+		_sparkleTimer.Timeout += () =>
+		{
+			if (!IsInsideTree() || !GodotObject.IsInstanceValid(this)) return;
+			SpawnAuraSparkle();
+		};
+		AddChild(_sparkleTimer);
+	}
+
+	private void SpawnAuraSparkle()
+	{
+		// Create a tiny glowing dot that floats upward and fades
+		var dot = new Node2D();
+		dot.ZIndex = 2; // above rings (ZIndex 1) and sprite
+
+		// Spawn anywhere within the outer ring radius (~280 wu), but at least
+		// 40 wu from centre so they don't appear inside the character body.
+		float angle = (float)(GD.Randf() * Mathf.Tau);
+		float dist  = (float)(GD.Randf() * 200f + 40f);
+		dot.Position = new Vector2(Mathf.Cos(angle) * dist, Mathf.Sin(angle) * dist);
+
+		// Pick a sparkling green-gold hue
+		var sparkColors = new Color[]
+		{
+			new Color(0.4f, 1.0f, 0.5f, 0.95f),  // bright green
+			new Color(0.7f, 1.0f, 0.3f, 0.90f),  // yellow-green
+			new Color(0.2f, 0.9f, 0.6f, 0.95f),  // teal-green
+			new Color(1.0f, 1.0f, 0.4f, 0.85f),  // gold sparkle
+		};
+		Color chosenColor = sparkColors[(int)(GD.Randf() * sparkColors.Length)];
+		float radius = GD.Randf() * 8f + 3f; // 3–11 px
+
+		dot.Draw += () => dot.DrawCircle(Vector2.Zero, radius, chosenColor);
+		dot.QueueRedraw();
+		AddChild(dot);
+
+		// Tween: float upward and fade out
+		float upDist = (float)(GD.Randf() * 100f + 80f); // 80–180 wu rise
+		var tween = dot.CreateTween();
+		tween.SetParallel(true);
+		tween.TweenProperty(dot, "position",
+			dot.Position + new Vector2((GD.Randf() - 0.5f) * 60f, -upDist), 0.9f)
+			.SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+		tween.TweenProperty(dot, "modulate", new Color(1, 1, 1, 0), 0.9f)
+			.SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+		tween.Chain().TweenCallback(Callable.From(() => dot.QueueFree()));
+	}
+
+	/// <summary>
+	/// Removes the cash-trail aura and restores normal sprite colour.
+	/// </summary>
+	public void StopCashTrailAura()
+	{
+		// Kill sprite tween
+		_auraSpriteTween?.Kill();
+		_auraSpriteTween = null;
+
+		// Remove haze node
+		var aura = GetNodeOrNull<Node2D>("CashAura");
+		aura?.QueueFree();
+
+		// Stop sparkle timer
+		if (_sparkleTimer != null && GodotObject.IsInstanceValid(_sparkleTimer))
+		{
+			_sparkleTimer.Stop();
+			_sparkleTimer.QueueFree();
+			_sparkleTimer = null;
+		}
+
+		// Restore normal sprite modulate
+		if (_sprite != null)
+		{
+			float alpha = _isGhostMode ? 0.5f : 1.0f;
+			_sprite.Modulate = _isLocalPlayer
+				? new Color(1f, 1f, 1f, alpha)
+				: new Color(0.8f, 0.8f, 0.8f, alpha);
+		}
+	}
+
 }

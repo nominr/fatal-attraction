@@ -3436,7 +3436,11 @@ public partial class GameWorld : Node2D
 		_cashSpawnTimer = 0.0; // spawn first coin immediately
 		if (_ultimateButton != null) _ultimateButton.Disabled = true;
 		AddSlidingNotification("⚡ Cash Trail activated for 10 seconds!");
+		GetNode<SfxManager>("/root/SfxManager")?.PlayBehold();
 		GD.Print("[CashTrail] Producer activated ultimate");
+
+		// Show green aura on the local Producer
+		_localPlayer?.ShowCashTrailAura();
 	}
 
 	private void HandleUltimateInput(double delta)
@@ -3497,6 +3501,8 @@ public partial class GameWorld : Node2D
 			// Hide button and label permanently — ult is single-use
 			if (_ultimateButton        != null) _ultimateButton.Visible        = false;
 			if (_ultimateCooldownLabel != null) _ultimateCooldownLabel.Visible = false;
+			// Remove green aura from the Producer
+			_localPlayer?.StopCashTrailAura();
 			GD.Print("[CashTrail] Producer ultimate ended (one-use consumed)");
 		}
 	}
