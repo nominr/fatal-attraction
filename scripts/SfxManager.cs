@@ -13,6 +13,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _countdownPlayer;
 	private AudioStream _countdownStream;
 	private AudioStreamPlayer _massRevPlayer;
+	private AudioStreamPlayer _dontIgnoreMePlayer;
 	private Tween _massRevTween;
 	private const float MASS_REV_NORMAL_DB = 0.0f;
 
@@ -27,6 +28,7 @@ public partial class SfxManager : Node
 		_chatSuccessPlayer = CreatePlayer("res://assets/sounds/freesound_crunchpixstudio-purchase-success-384963.mp3");
 		_chatFailurePlayer = CreatePlayer("res://assets/sounds/freesound_community-failure-drum-sound-effect-2-7184.mp3");
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
+		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
 
 		_countdownStream = GD.Load<AudioStream>("res://assets/sounds/voicebosch-countdown-from-10-190389.mp3");
 		_countdownPlayer = new AudioStreamPlayer();
@@ -100,5 +102,28 @@ public partial class SfxManager : Node
 	public void StopCountdown()
 	{
 		_countdownPlayer?.Stop();
+	}
+
+	/// <summary>
+	/// Plays the Admirer's "Don't ignore me" line and ducks music volume.
+	/// </summary>
+	public void PlayDontIgnoreMe()
+	{
+		if (_dontIgnoreMePlayer == null) return;
+		
+		_dontIgnoreMePlayer.Play();
+		
+		// Duck music
+		var music = GetNodeOrNull<MusicManager>("/root/MusicManager");
+		if (music != null)
+		{
+			music.FadeTo(-15.0f, 0.15f);
+			
+			// Restore music after delay (approx length of the clip)
+			var timer = GetTree().CreateTimer(2.5f);
+			timer.Timeout += () => {
+				music.FadeTo(0.0f, 0.6f);
+			};
+		}
 	}
 }

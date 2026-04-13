@@ -104,13 +104,22 @@ public partial class GameWorld : Node2D
 
 	// ── Admirer Ultimate: Knife Kill ─────────────────────────────────────────────
 	private bool   _wasAdmirerUltPressed     = false;
-	private const float ADMIRER_KNIFE_RANGE  = 120f;   // same as punch range
-	private const int   ADMIRER_STABS_TO_KILL = 5;     // stabs needed to kill an NPC
-	private const double ADMIRER_STAB_COOLDOWN = 2.0;  // seconds between stabs
-	private const double ADMIRER_STAB_WINDOW  = 30.0;  // seconds to complete all stabs
+	private const float ADMIRER_KNIFE_RANGE  = 160f;   // increased for reliability
+	private const int   ADMIRER_STABS_TO_KILL = 3;     // stabs needed to kill an NPC
+	private const double ADMIRER_STAB_COOLDOWN = 1.0;  // reduced for fluid resetting feel
+	private const double ADMIRER_STAB_WINDOW  = 10.0;  // 10s window to land next stab (refreshes)
 	private double _admirerStabCooldownTimer = 0.0;    // current cooldown remaining
 	private double _admirerStabWindowTimer   = 0.0;    // time left in current stab window
 	private string _admirerStabWindowTarget  = null;   // NPC being actively hunted
+	private bool   _knifePermanentlyLost     = false;  // Lost if hunt timer expires
+	private Node2D _admirerAuraVisual;                 // private red circle
+	private Dictionary<string, float> _bleedingNpcTimers = new Dictionary<string, float>();
+	private Dictionary<string, float> _npcBloodDropTimers = new Dictionary<string, float>();
+	private const float BLOOD_TRAIL_DURATION = 8.0f; // Seconds to bleed after a stab
+	private const float BLOOD_DROP_INTERVAL = 0.6f; // Seconds between trail drops
+	private Dictionary<string, Vector2> _lastBloodPositions = new(); // Track last puddle for de-duplication
+	private Node2D _floorLayer; // Reference to the floor layer node
+	private Texture2D[] _splashTextures;
 	private Dictionary<string, int> _npcStabCounts = new(); // server-side stab counts per NPC
 	private Dictionary<string, ulong> _npcStabLastTime = new(); // server-side timestamp of the last stab per NPC
 	private Button _admirerKnifeButton;                // "🔪 Knife" HUD button
@@ -271,11 +280,16 @@ public partial class GameWorld : Node2D
 			{
 				if (child is Node2D childLayer)
 				{
-					if (layerIdx <= 2)
+					if (layerIdx <= 1)
 					{
-						// Floor / wall layers — always behind characters.
-						// Layer 0 = -10, Layer 1 = -9, Layer 2 = -8
-						childLayer.ZIndex = -10 + layerIdx;
+						// Base Floor / Carpet layers
+						childLayer.ZIndex = -10 + layerIdx; // Floor = -10, Carpet = -9
+						if (layerIdx == 0) _floorLayer = childLayer; // Store base floor for blood parenting
+					}
+					else if (layerIdx == 2)
+					{
+						// Wall layer — MUST be above blood (which is at -8)
+						childLayer.ZIndex = -7; 
 					}
 					else
 					{
@@ -925,6 +939,30 @@ public partial class GameWorld : Node2D
 		_admirerKnifeLabel.Text     = "Press Q near a contestant";
 		_admirerKnifeLabel.Visible  = false;
 		_uiLayer.AddChild(_admirerKnifeLabel);
+		SetupAdmirerAura();
+	}
+
+	private void SetupAdmirerAura()
+	{
+		// Build regardless of role check here, handle visibility in HandleAdmirerKnifeInput
+		if (_admirerAuraVisual != null && IsInstanceValid(_admirerAuraVisual)) return;
+
+		_admirerAuraVisual = new Node2D();
+		_admirerAuraVisual.Name = "AdmirerWitnessAura";
+		_admirerAuraVisual.ZIndex = -1; // behind characters, above floor
+		_admirerAuraVisual.Visible = false; // only show during hunt
+		AddChild(_admirerAuraVisual);
+
+		var visual = new Node2D();
+		visual.Name = "AuraCircle";
+		_admirerAuraVisual.AddChild(visual);
+
+		visual.Draw += () =>
+		{
+			// Draw subtle red pulsing radius (fixed 350f world units)
+			visual.DrawCircle(Vector2.Zero, KNIFE_WITNESS_RADIUS, new Color(1.0f, 0.1f, 0.1f, 0.15f));
+			visual.DrawArc(Vector2.Zero, KNIFE_WITNESS_RADIUS, 0, Mathf.Tau, 64, new Color(1.0f, 0.2f, 0.2f, 0.6f), 3.0f, true);
+		};
 	}
 
 	private void SetupProducerUI()
@@ -2477,6 +2515,35 @@ public partial class GameWorld : Node2D
 		if (_isGameOver || HasNode("GameOverOverlay")) return;
 
 		string roleLower = roleStr.ToLower();
+		
+		if (roleLower == "witness")
+		{
+			// Special case: just a floating red "-" sign for witnessing stabs
+			if (_npcEntities.TryGetValue(npcId, out var witnessNpc))
+			{
+				var label = new Label();
+				label.Text = "-";
+				label.AddThemeFontOverride("font", _customFont);
+				label.AddThemeFontSizeOverride("font_size", 48);
+				label.AddThemeColorOverride("font_color", Colors.Red);
+				label.AddThemeConstantOverride("outline_size", 4);
+				label.AddThemeColorOverride("font_outline_color", Colors.Black);
+				label.ZIndex = 100;
+				
+				// Position floating above NPC
+				label.Position = witnessNpc.Position - new Vector2(10, 80);
+				AddChild(label);
+
+				var tween = CreateTween();
+				tween.SetParallel(true);
+				Vector2 targetPos = label.Position - new Vector2(0, 100);
+				tween.TweenProperty(label, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+				tween.TweenProperty(label, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+				tween.Chain().TweenCallback(OfCallable(() => label.QueueFree()));
+			}
+			return;
+		}
+
 		string assetName = score >= 1 ? $"ai_{roleLower}_plusone.png" : $"ai_{roleLower}_minusone.png";
 		string path = $"res://assets/{assetName}";
 		var texture = ResourceLoader.Load<Texture2D>(path);
@@ -2845,6 +2912,39 @@ public partial class GameWorld : Node2D
 		// Prophet Ultimate: Mass Revelation
 		HandleProphetUltimateInput(delta);
 
+		// Handle bleeding trails for NPCs (Server only)
+		if (Multiplayer.IsServer() && _gameActive)
+		{
+			var keysToUpdate = _bleedingNpcTimers.Keys.ToList();
+			foreach (var npcId in keysToUpdate)
+			{
+				_bleedingNpcTimers[npcId] -= (float)delta;
+				if (_bleedingNpcTimers[npcId] <= 0)
+				{
+					_bleedingNpcTimers.Remove(npcId);
+					_npcBloodDropTimers.Remove(npcId);
+					continue;
+				}
+
+				// Handle periodic blood drops for trail
+				_npcBloodDropTimers[npcId] -= (float)delta;
+				if (_npcBloodDropTimers[npcId] <= 0)
+				{
+					_npcBloodDropTimers[npcId] = (float)BLOOD_DROP_INTERVAL;
+					if (_npcEntities.TryGetValue(npcId, out var npcEnt))
+					{
+						// DE-DUPLICATION: Only spawn if NPC moved enough
+						Vector2 currentPos = npcEnt.GlobalPosition;
+						if (!_lastBloodPositions.ContainsKey(npcId) || currentPos.DistanceTo(_lastBloodPositions[npcId]) > 80.0f)
+						{
+							Rpc(MethodName.RpcSpawnBloodPool, currentPos, true);
+							_lastBloodPositions[npcId] = currentPos;
+						}
+					}
+				}
+			}
+		}
+
 		// Non-prophet clients: keep the aura visual on the prophet puppet each frame
 		HandleNonProphetMassRevAura();
 	}
@@ -2860,6 +2960,11 @@ public partial class GameWorld : Node2D
 	{
 		if (_myRole?.ToLower() != "admirer") return;
 		if (IsLocalPlayerDead()) return;
+		if (_knifePermanentlyLost)
+		{
+			AddSlidingNotification("🔪 Your knife is gone...");
+			return;
+		}
 		if (_admirerStabCooldownTimer > 0) return; // still on cooldown
 
 		// Resolve local player
@@ -2891,10 +2996,28 @@ public partial class GameWorld : Node2D
 			return;
 		}
 
+		// ── DEFINITIVE FIX: Target Locking & Refreshing Timer ────────────────
+		// Once you start a hunt, you MUST finish it on the same NPC.
+		if (!string.IsNullOrEmpty(_admirerStabWindowTarget))
+		{
+			if (closestNpcId != _admirerStabWindowTarget)
+			{
+				AddSlidingNotification("🔪 You are already hunting someone else! Finish the job!");
+				return;
+			}
+			// Refresh the timer on every subsequent stab
+			_admirerStabWindowTimer  = ADMIRER_STAB_WINDOW;
+		}
+		else
+		{
+			// First stab: Lock in the target and start the 10s refreshing window
+			_admirerStabWindowTarget = closestNpcId;
+			_admirerStabWindowTimer  = ADMIRER_STAB_WINDOW;
+			AddSlidingNotification("🔪 Target Locked! Land the next stab within 10s...");
+		}
+
 		// Start cooldown
 		_admirerStabCooldownTimer = ADMIRER_STAB_COOLDOWN;
-		_admirerStabWindowTimer = ADMIRER_STAB_WINDOW;
-		_admirerStabWindowTarget = closestNpcId;
 
 		// Track count locally for UI display
 		ulong now = Time.GetTicksMsec();
@@ -2903,7 +3026,8 @@ public partial class GameWorld : Node2D
 		{
 			_npcStabCounts[closestNpcId] = 0;
 		}
-		_npcStabCounts[closestNpcId]++;
+		// (Stab count increment removed here to fix double-increment on server/host. The Rpc sets the truth.)
+		// _npcStabCounts[closestNpcId]++;
 		_npcStabLastTime[closestNpcId] = now;
 
 		GD.Print($"[AdmirerKnife] Admirer stabbing NPC {closestNpcId} (UI tracking: {_npcStabCounts[closestNpcId]}/{ADMIRER_STABS_TO_KILL})");
@@ -2929,6 +3053,65 @@ public partial class GameWorld : Node2D
 	{
 		if (_myRole?.ToLower() != "admirer") return;
 		if (IsLocalPlayerDead()) return;
+		if (_knifePermanentlyLost)
+		{
+			if (_admirerKnifeButton != null) _admirerKnifeButton.Visible = false;
+			if (_admirerKnifeLabel != null) _admirerKnifeLabel.Visible = false;
+			if (_admirerAuraVisual != null) _admirerAuraVisual.Visible = false;
+			return;
+		}
+
+		double dt = GetProcessDeltaTime();
+
+		// Tick down cooldown
+		if (_admirerStabCooldownTimer > 0)
+		{
+			_admirerStabCooldownTimer -= dt;
+			if (_admirerStabCooldownTimer < 0) _admirerStabCooldownTimer = 0;
+		}
+
+		// Tick down stab window timer
+		if (_admirerStabWindowTimer > 0)
+		{
+			_admirerStabWindowTimer -= dt;
+			if (_admirerStabWindowTimer <= 0)
+			{
+				_admirerStabWindowTimer  = 0;
+				// Ability Loss logic
+				if (!string.IsNullOrEmpty(_admirerStabWindowTarget))
+				{
+					_knifePermanentlyLost = true;
+					AddSlidingNotification("🔪 Hunt failed! The knife has been lost forever.");
+				}
+				_admirerStabWindowTarget = null;
+			}
+		}
+
+		// Keep aura centered on local player and visible only during a hunt
+		if (_admirerStabWindowTimer > 0)
+		{
+			if (_admirerAuraVisual == null) SetupAdmirerAura();
+			if (_admirerAuraVisual != null)
+			{
+				_admirerAuraVisual.Visible = true;
+				if (_localPlayer != null) _admirerAuraVisual.GlobalPosition = _localPlayer.GlobalPosition;
+			}
+		}
+		else if (_admirerAuraVisual != null)
+		{
+			_admirerAuraVisual.Visible = false;
+		}
+
+		// Resolve local player
+		if (_localPlayer == null)
+		{
+			var myId = Multiplayer.GetUniqueId();
+			_playerControllers.TryGetValue(myId, out _localPlayer);
+		}
+
+		// Update button state
+		if (_admirerKnifeButton != null)
+			_admirerKnifeButton.Disabled = _admirerStabCooldownTimer > 0;
 
 		// Check if any NPC is already dead (Admirer can only kill once)
 		bool anyDead = false;
@@ -2940,42 +3123,9 @@ public partial class GameWorld : Node2D
 				break;
 			}
 		}
-		if (anyDead) return; // Disable knife input completely if someone is dead
+		if (anyDead) return;
 
-		double dt = GetProcessDeltaTime();
-
-		// Tick down cooldown
-		if (_admirerStabCooldownTimer > 0)
-		{
-			_admirerStabCooldownTimer -= dt;
-			if (_admirerStabCooldownTimer < 0) _admirerStabCooldownTimer = 0;
-		}
-
-		// Tick down stab window timer (client-side display only; server has its own)
-		if (_admirerStabWindowTimer > 0)
-		{
-			_admirerStabWindowTimer -= dt;
-			if (_admirerStabWindowTimer <= 0)
-			{
-				_admirerStabWindowTimer  = 0;
-				_admirerStabWindowTarget = null;
-			}
-		}
-
-		// Resolve local player
-		if (_localPlayer == null)
-		{
-			var myId = Multiplayer.GetUniqueId();
-			_playerControllers.TryGetValue(myId, out _localPlayer);
-		}
-
-		// Update button state based on cooldown
-		if (_admirerKnifeButton != null)
-		{
-			_admirerKnifeButton.Disabled = _admirerStabCooldownTimer > 0;
-		}
-
-		// ── Q key detection (one-shot) ─────────────────────────────────────────
+		// ── Q key detection ───────────────────────────────────────────────────
 		bool qPressed = Input.IsKeyPressed(Key.Q);
 		if (qPressed && !_wasAdmirerUltPressed)
 		{
@@ -3042,6 +3192,14 @@ public partial class GameWorld : Node2D
 		// Visual flash on all clients
 		Rpc(MethodName.RpcFlashNpcDamage, npcId);
 
+		// Spawn blood pool and start bleeding trail
+		if (_npcEntities.TryGetValue(npcId, out var npcEnt))
+		{
+			Rpc(MethodName.RpcSpawnBloodPool, npcEnt.GlobalPosition, false);
+			_bleedingNpcTimers[npcId] = (float)BLOOD_TRAIL_DURATION;
+			_npcBloodDropTimers[npcId] = (float)BLOOD_DROP_INTERVAL;
+		}
+
 		// Find admirer position for flee direction
 		Vector2 admirerPos = Vector2.Zero;
 		foreach (var kvp in _playerControllers)
@@ -3054,6 +3212,9 @@ public partial class GameWorld : Node2D
 			}
 		}
 
+		// Witness AoE: nearby contestants (NPCs/Players) drop their view of the Admirer for every witnessed stab
+		ApplyKnifeWitnessAoE(npcId, npc.Name);
+
 		if (stabCount >= ADMIRER_STABS_TO_KILL)
 		{
 			// Kill the NPC on the final stab
@@ -3061,9 +3222,6 @@ public partial class GameWorld : Node2D
 			Rpc(MethodName.RpcSyncNpcStabStatus, npcId, ADMIRER_STABS_TO_KILL, 0f);
 			_gameEngine.GameState.AddNotification($"🔪 {npc.Name} has been eliminated by the Admirer!");
 			GD.Print($"[AdmirerKnife] NPC {npcId} ({npc.Name}) killed by Admirer after {stabCount} stabs.");
-
-			// Witness AoE: nearby alive NPCs gain a heavy negative view of the Admirer
-			ApplyKnifeWitnessAoE(npcId, npc.Name);
 		}
 		else
 		{
@@ -3083,7 +3241,7 @@ public partial class GameWorld : Node2D
 
 	// ── Witness AoE applied once per knife kill (server-only) ──────────────────
 	private const float KNIFE_WITNESS_RADIUS   = 350f;  // world-space radius around corpse
-	private const float KNIFE_WITNESS_PENALTY  = -2.0f; // Admirer score delta per witness
+	private const float KNIFE_WITNESS_PENALTY  = -0.5f; // Admirer score delta per witnessed STAB
 
 	private void ApplyKnifeWitnessAoE(string deadNpcId, string deadNpcName)
 	{
@@ -3106,7 +3264,26 @@ public partial class GameWorld : Node2D
 			witnessNpc.State = ScoringRules.ClampState(witnessNpc.State + penalty);
 			witnessCount++;
 
+			// ── DEFINITIVE FIX: Witness Feedback Signs (NPCs) ─────────────────
+			Rpc(MethodName.RpcShowNpcScoreFeedback, kvp.Key, "witness", -1);
+
 			GD.Print($"[KnifeWitness] {witnessNpc.Name} witnessed murder of {deadNpcName} (dist {dist:F0}). Admirer penalty {KNIFE_WITNESS_PENALTY}");
+		}
+
+		// ── DEFINITIVE FIX: Witness Feedback Signs (Players) ────────────────
+		foreach (var kvp in _playerControllers)
+		{
+			// Skip the Admirer themselves
+			if (_networkManager.Players.TryGetValue(kvp.Key, out var pInfo) && 
+				string.Equals(pInfo.Role, "Admirer", StringComparison.OrdinalIgnoreCase)) continue;
+
+			float dist = kvp.Value.GlobalPosition.DistanceTo(corpsePos);
+			if (dist <= KNIFE_WITNESS_RADIUS)
+			{
+				witnessCount++;
+				Rpc(MethodName.RpcShowPlayerScoreFeedback, kvp.Key, "witness", -1);
+				GD.Print($"[KnifeWitness] Player (Peer {kvp.Key}) witnessed murder. distance: {dist:F0}");
+			}
 		}
 
 		if (witnessCount > 0)
@@ -3127,6 +3304,15 @@ public partial class GameWorld : Node2D
 		{
 			npcEnt.UpdateStabStatus(stabCount, windowRemaining);
 		}
+
+		// ── DEFINITIVE FIX: Aura Cleanup ──────────────────────────────────────
+		// If the target is eliminated, clear the local Admirer's hunt state immediately
+		if (stabCount >= ADMIRER_STABS_TO_KILL && npcId == _admirerStabWindowTarget)
+		{
+			_admirerStabWindowTimer  = 0;
+			_admirerStabWindowTarget = null;
+			GD.Print($"[AdmirerKnife] Hunt concluded on {npcId}. Aura cleared.");
+		}
 	}
 
 	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
@@ -3146,7 +3332,89 @@ public partial class GameWorld : Node2D
 		if (_playerControllers.TryGetValue(playerId, out var playerCtrl))
 		{
 			playerCtrl.TriggerStabAnimation(facing, flipH);
+			// Play the Admirer's signature line
+			GetNode<SfxManager>("/root/SfxManager").PlayDontIgnoreMe();
 		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	public void RpcSpawnBloodPool(Vector2 position, bool isSmall)
+	{
+		// ── DEFINITIVE FIX: Physics-Based Wall Detection ──
+		// Before spawning, we check if this point overlaps a wall (Collision Layer 1)
+		var spaceState = GetWorld2D()?.DirectSpaceState;
+		if (spaceState != null)
+		{
+			var query = new PhysicsPointQueryParameters2D();
+			query.Position = position;
+			query.CollisionMask = 1; // Walls / Static Geometry
+			query.CollideWithAreas = false;
+			query.CollideWithBodies = true;
+			
+			var result = spaceState.IntersectPoint(query, 1);
+			if (result.Count > 0)
+			{
+				// Position is inside a wall — do not spawn blood here
+				return;
+			}
+		}
+
+		// 1. Load the splash assets (1-5)
+		if (_splashTextures == null || _splashTextures.Length == 0)
+		{
+			_splashTextures = new Texture2D[5];
+			for (int i = 0; i < 5; i++)
+			{
+				string path = $"res://assets/new-character-assets/splash-{i + 1}.png";
+				_splashTextures[i] = GD.Load<Texture2D>(path);
+				if (_splashTextures[i] == null)
+				{
+					GD.PrintErr($"[BloodSystem] ERROR: Failed to load splash asset: {path}");
+				}
+			}
+		}
+
+		// Pick a random splash texture
+		int splashIdx = GD.RandRange(0, 4);
+		var splashTex = _splashTextures[splashIdx];
+
+		if (splashTex == null) return;
+
+		// 2. Create Sprite
+		var blood = new Sprite2D();
+		blood.Texture = splashTex;
+		blood.TextureFilter = TextureFilterEnum.Nearest;
+		blood.ZAsRelative = false; // Ensure Z-index is absolute (-8) not relative to parent floor (-10)
+		blood.ZIndex = -8; // Render above carpet (-9) but under walls (-7)
+		
+		// Add the blood as a child of the floor layer or world first
+		// This ensures GlobalPosition and Scale are calculated relative to the correct parent
+		if (_floorLayer != null)
+		{
+			_floorLayer.AddChild(blood);
+		}
+		else
+		{
+			AddChild(blood);
+		}
+
+		// Set GlobalPosition AFTER adding to the scene tree
+		blood.GlobalPosition = position + new Vector2(0, 15f);
+
+		// Scaling: We must compensate for the IsometricWorldMap's 4.0x scale
+		// if we are parenting directly to the floor layer.
+		float worldScale = (_floorLayer != null) ? 4.0f : 1.0f;
+		float baseScale = (isSmall ? 0.12f : 0.28f) / worldScale;
+		float randomScale = baseScale * (0.8f + (float)GD.RandRange(0, 0.4));
+		blood.Scale = new Vector2(randomScale, randomScale);
+
+		// 3. Fade out and remove
+		var tween = CreateTween();
+		float lingerTime = isSmall ? 4.0f : 8.0f;
+		float fadeTime = 3.0f;
+		tween.TweenInterval(lingerTime);
+		tween.TweenProperty(blood, "modulate:a", 0.0f, fadeTime);
+		tween.TweenCallback(Callable.From(() => blood.QueueFree()));
 	}
 
 	// ── Producer Ultimate: Cash Trail ───────────────────────────────────────────
@@ -5441,6 +5709,69 @@ void fragment() {
 			_massRevNpcPoints.Clear();
 			foreach (var npcEnt in _npcEntities.Values)
 				npcEnt.ClearMarchTarget();
+		}
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	private void RpcShowPlayerScoreFeedback(long playerId, string roleStr, int score)
+	{
+		if (_isGameOver || HasNode("GameOverOverlay")) return;
+
+		string roleLower = roleStr.ToLower();
+		
+		if (roleLower == "witness")
+		{
+			// Special case: just a floating red "-" sign for witnessing stabs
+			if (_playerControllers.TryGetValue(playerId, out var witnessPlayer))
+			{
+				var label = new Label();
+				label.Text = "-";
+				label.AddThemeFontOverride("font", _customFont);
+				label.AddThemeFontSizeOverride("font_size", 48);
+				label.AddThemeColorOverride("font_color", Colors.Red);
+				label.AddThemeConstantOverride("outline_size", 4);
+				label.AddThemeColorOverride("font_outline_color", Colors.Black);
+				label.ZIndex = 100;
+
+				// Position floating above Player puppet
+				label.Position = witnessPlayer.Position - new Vector2(10, 80);
+				AddChild(label);
+
+				var tween = CreateTween();
+				tween.SetParallel(true);
+				Vector2 targetPos = label.Position - new Vector2(0, 100);
+				tween.TweenProperty(label, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+				tween.TweenProperty(label, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+				tween.Chain().TweenCallback(OfCallable(() => label.QueueFree()));
+			}
+			return;
+		}
+
+		string assetName = score >= 1 ? $"ai_{roleLower}_plusone.png" : $"ai_{roleLower}_minusone.png";
+		string path = $"res://assets/{assetName}";
+		var texture = ResourceLoader.Load<Texture2D>(path);
+
+		if (texture != null && _playerControllers.TryGetValue(playerId, out var player))
+		{
+			var floatingRect = new TextureRect();
+			floatingRect.Texture = texture;
+			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			floatingRect.ZIndex = 100;
+			floatingRect.Scale = new Vector2(0.05f, 0.05f); // smaller
+
+			Vector2 texSize = texture.GetSize() * floatingRect.Scale;
+			// Position floating above Player
+			floatingRect.Position = player.Position - new Vector2(texSize.X / 2, 80);
+			
+			AddChild(floatingRect);
+
+			var tween = CreateTween();
+			tween.SetParallel(true);
+			Vector2 targetPos = floatingRect.Position - new Vector2(0, 100);
+			tween.TweenProperty(floatingRect, "position", targetPos, 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+			tween.TweenProperty(floatingRect, "modulate", new Color(1, 1, 1, 0), 1.5f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
 		}
 	}
 }
