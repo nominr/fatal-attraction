@@ -2077,6 +2077,7 @@ public partial class GameWorld : Node2D
 		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
 		{
 			npcEntity.FlashDamage(0.5);
+			GetNode<SfxManager>("/root/SfxManager").PlayWilhelmScream();
 		}
 	}
 

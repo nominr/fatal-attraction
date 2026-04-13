@@ -3,11 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://wpomh35beej3"
-valid=false
+path="res://.godot/imported/behold.mp3-783a08150e2e728d6d74b911ac7f1e81.mp3str"
 
 [deps]
 
 source_file="res://assets/sounds/behold.mp3"
+dest_files=["res://.godot/imported/behold.mp3-783a08150e2e728d6d74b911ac7f1e81.mp3str"]
 
 [params]
 
