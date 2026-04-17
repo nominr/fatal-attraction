@@ -33,9 +33,11 @@ public partial class SfxManager : Node
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
 		_followMePlayer = CreatePlayer("res://assets/sounds/followme.wav");
 		_followMePlayer.VolumeDb = 9.0f;
-		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
+		_dontIgnoreMePlayer = CreatePlayerFromBytes("res://assets/sounds/not-gonna-be-ignored.mp3");
+		_dontIgnoreMePlayer.VolumeDb = 0.0f;
 
 		_wilhelmScreamPlayer = CreatePlayerFromBytes("res://assets/new-character-assets/wilhelmscream.mp3");
+		_wilhelmScreamPlayer.VolumeDb = -15.0f;
 
 		_beholdPlayer = CreatePlayerFromBytes("res://assets/sounds/behold.mp3");
 		_beholdPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
@@ -144,7 +146,7 @@ public partial class SfxManager : Node
 	}
 
 	/// <summary>
-	/// Plays the Admirer's "Don't ignore me" line and ducks music volume.
+	/// Plays the Admirer's "Not gonna be ignored" line and ducks music volume.
 	/// </summary>
 	public void PlayDontIgnoreMe()
 	{
@@ -152,14 +154,14 @@ public partial class SfxManager : Node
 		
 		_dontIgnoreMePlayer.Play();
 		
-		// Duck music
+		// Duck music signficantly so the voice line is clearly audible
 		var music = GetNodeOrNull<MusicManager>("/root/MusicManager");
 		if (music != null)
 		{
-			music.FadeTo(-15.0f, 0.15f);
+			music.FadeTo(-35.0f, 0.15f);
 			
 			// Restore music after delay (approx length of the clip)
-			var timer = GetTree().CreateTimer(2.5f);
+			var timer = GetTree().CreateTimer(1.5f);
 			timer.Timeout += () => {
 				music.FadeTo(0.0f, 0.6f);
 			};
