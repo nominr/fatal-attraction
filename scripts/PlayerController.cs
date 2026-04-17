@@ -975,11 +975,11 @@ public partial class PlayerController : CharacterBody2D
 			_auraSpriteTween.SetLoops();
 			_auraSpriteTween
 				.TweenProperty(_sprite, "modulate",
-					new Color(0.55f, 1.4f, 0.6f, 1.0f), 0.4f)   // saturated lime-green
+					new Color(0.4f, 1.6f, 0.5f, 1.0f), 0.25f)   // saturated lime-green (brighter peak)
 				.SetTrans(Tween.TransitionType.Sine);
 			_auraSpriteTween
 				.TweenProperty(_sprite, "modulate",
-					new Color(0.3f, 1.0f, 0.4f, 1.0f), 0.4f)    // deep green
+					new Color(0.2f, 0.85f, 0.3f, 1.0f), 0.25f)  // deep green (darker trough)
 				.SetTrans(Tween.TransitionType.Sine);
 		}
 
@@ -998,9 +998,9 @@ public partial class PlayerController : CharacterBody2D
 		// disc = large semi-transparent fill; arc = bright stroke outline.
 		var rings = new (float radius, Color discCol, Color arcCol, float arcWidth)[]
 		{
-			(280f, new Color(0.1f, 0.9f, 0.3f, 0.04f), new Color(0.3f, 1.0f, 0.4f, 0.10f), 22f),  // outer haze
-			(180f, new Color(0.2f, 1.0f, 0.4f, 0.07f), new Color(0.4f, 1.0f, 0.5f, 0.16f), 14f),  // mid glow
-			(110f, new Color(0.3f, 1.0f, 0.5f, 0.10f), new Color(0.6f, 1.0f, 0.6f, 0.22f), 8f),   // inner core
+			(280f, new Color(0.1f, 0.9f, 0.3f, 0.08f), new Color(0.3f, 1.0f, 0.4f, 0.20f), 26f),  // outer haze
+			(180f, new Color(0.2f, 1.0f, 0.4f, 0.13f), new Color(0.4f, 1.0f, 0.5f, 0.30f), 18f),  // mid glow
+			(110f, new Color(0.3f, 1.0f, 0.5f, 0.18f), new Color(0.6f, 1.0f, 0.6f, 0.40f), 12f),  // inner core
 		};
 
 		foreach (var (radius, discCol, arcCol, arcWidth) in rings)
@@ -1021,9 +1021,9 @@ public partial class PlayerController : CharacterBody2D
 			var t = auraNode.CreateTween();
 			t.SetLoops();
 			float phaseOffset = radius / 500f; // stagger phase by ring size
-			t.TweenProperty(ring, "scale", new Vector2(1.08f, 1.08f), 0.7f + phaseOffset)
+			t.TweenProperty(ring, "scale", new Vector2(1.18f, 1.18f), 0.45f + phaseOffset)
 				.SetTrans(Tween.TransitionType.Sine);
-			t.TweenProperty(ring, "scale", new Vector2(0.93f, 0.93f), 0.7f + phaseOffset)
+			t.TweenProperty(ring, "scale", new Vector2(0.85f, 0.85f), 0.45f + phaseOffset)
 				.SetTrans(Tween.TransitionType.Sine);
 
 			// QueueRedraw is needed every frame because Node2D.Draw doesn't
@@ -1040,7 +1040,7 @@ public partial class PlayerController : CharacterBody2D
 
 		// ── 3. Sparkle emitter (Timer that spawns rising dots) ────────────────
 		_sparkleTimer = new Timer();
-		_sparkleTimer.WaitTime = 0.10;
+		_sparkleTimer.WaitTime = 0.06;
 		_sparkleTimer.Autostart = true;
 		_sparkleTimer.Timeout += () =>
 		{

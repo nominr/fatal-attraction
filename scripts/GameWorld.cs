@@ -2574,6 +2574,46 @@ public partial class GameWorld : Node2D
 		}
 	}
 
+	/// <summary>
+	/// Shows a green "+" image floating above an NPC when they collect a Producer coin.
+	/// Uses the same image-based approach as the prophet feedback, tinted green.
+	/// Called on all peers via RPC.
+	/// </summary>
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	private void RpcShowCoinPickupFeedback(string npcId)
+	{
+		if (_isGameOver || HasNode("GameOverOverlay")) return;
+		if (!_npcEntities.TryGetValue(npcId, out var npc)) return;
+
+		string path = "res://assets/ai_prophet_one.png";
+		var texture = ResourceLoader.Load<Texture2D>(path);
+
+		if (texture != null)
+		{
+			var floatingRect = new TextureRect();
+			floatingRect.Texture = texture;
+			floatingRect.ExpandMode = TextureRect.ExpandModeEnum.KeepSize;
+			floatingRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+			floatingRect.ZIndex = 100;
+			floatingRect.Scale = new Vector2(0.025f, 0.025f);
+			floatingRect.Modulate = new Color(0.0f, 3.0f, 0.1f, 1.0f); // bright vivid green (G > 1 amplifies)
+
+			Vector2 texSize = texture.GetSize() * floatingRect.Scale;
+			floatingRect.Position = npc.Position - new Vector2(texSize.X / 2, 80);
+			AddChild(floatingRect);
+
+			var tween = CreateTween();
+			tween.SetParallel(true);
+			Vector2 targetPos = floatingRect.Position - new Vector2(0, 100);
+			tween.TweenProperty(floatingRect, "position", targetPos, 1.5f)
+				.SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+			tween.TweenProperty(floatingRect, "modulate", new Color(0.0f, 3.0f, 0.1f, 0f), 1.5f)
+				.SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+			tween.Chain().TweenCallback(Callable.From(() => floatingRect.QueueFree()));
+		}
+	}
+
+
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
 	private void RpcShowMassRevNpcFeedback(string npcId)
 	{
@@ -3606,10 +3646,11 @@ public partial class GameWorld : Node2D
 						// Increase Producer component (Z) of the NPC's state
 						var delta_v = new System.Numerics.Vector3(0f, 0f, CASH_INFLUENCE_GAIN);
 						npcData.State = ScoringRules.ClampState(npcData.State + delta_v);
-						_gameEngine.GameState.TriggerScoreChange(Role.Producer, 1);
 						_gameEngine.GameState.AddNotification($"{npcEnt.NpcName} picked up the Producer's cash!");
 						GD.Print($"[CashTrail] NPC {npcEnt.NpcId} collected coin {coinId}. Producer +{CASH_INFLUENCE_GAIN}");
 						BroadcastGameState();
+						// Show green +0.5 floating above the NPC on all peers
+						Rpc(MethodName.RpcShowCoinPickupFeedback, npcEnt.NpcId);
 					}
 					// Remove coin on all peers
 					Rpc(MethodName.RemoveCashCoin, coinId, true);
