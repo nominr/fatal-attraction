@@ -15,7 +15,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _massRevPlayer;
 	private AudioStreamPlayer _followMePlayer;
 	private AudioStreamPlayer _dontIgnoreMePlayer;
-	private AudioStreamPlayer _beholdPlayer;
+	private AudioStreamPlayer _showMeTheMoneyPlayer;
 	private Tween _massRevTween;
 	private const float MASS_REV_NORMAL_DB = 0.0f;
 
@@ -34,8 +34,8 @@ public partial class SfxManager : Node
 		_followMePlayer.VolumeDb = 9.0f;
 		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
 
-		_beholdPlayer = CreatePlayerFromBytes("res://assets/sounds/behold.mp3");
-		_beholdPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
+		_showMeTheMoneyPlayer = CreatePlayerFromBytes("res://assets/sounds/showmethemoney.mp3");
+		_showMeTheMoneyPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
 
 		_countdownStream = GD.Load<AudioStream>("res://assets/sounds/voicebosch-countdown-from-10-190389.mp3");
 		_countdownPlayer = new AudioStreamPlayer();
@@ -164,13 +164,13 @@ public partial class SfxManager : Node
 	}
 
 	/// <summary>
-	/// Plays the Producer's "Behold" voice line and ducks the music slightly.
+	/// Plays the Producer's "Show Me The Money" voice line and ducks the music slightly.
 	/// </summary>
 	public void PlayBehold()
 	{
-		if (_beholdPlayer == null) return;
-		_beholdPlayer.Stop(); // reset if already playing
-		_beholdPlayer.Play();
+		if (_showMeTheMoneyPlayer == null) return;
+		_showMeTheMoneyPlayer.Stop(); // reset if already playing
+		_showMeTheMoneyPlayer.Play();
 
 		// Duck music while the line plays
 		var music = GetNodeOrNull<MusicManager>("/root/MusicManager");
@@ -184,7 +184,7 @@ public partial class SfxManager : Node
 	}
 
 	/// <summary>
-	/// Stops the "Behold" voice line early if needed.
+	/// Stops the "Show Me The Money" voice line early if needed.
 	/// </summary>
-	public void StopBehold() => _beholdPlayer?.Stop();
+	public void StopBehold() => _showMeTheMoneyPlayer?.Stop();
 }
