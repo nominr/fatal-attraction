@@ -138,6 +138,7 @@ public partial class GameWorld : Node2D
 	private const float  MASS_REV_RADIUS     = 480f;   // NPC pull radius (world units)
 	private const float  MASS_REV_NPC_SPEED  = 65f;    // NPC march-toward-prophet speed
 	private const float  MASS_REV_PLAYER_SPD = 80f;    // Prophet reduced speed while chanting
+	private const float  MASS_REV_FADE       = 1.0f;   // audio fade duration (seconds)
 	private Button  _massRevButton;
 	private Label   _massRevLabel;
 	private Node2D  _massRevAuraVisual;                // pulsing aura circle node
@@ -2077,6 +2078,7 @@ public partial class GameWorld : Node2D
 		if (_npcEntities.TryGetValue(npcId, out var npcEntity))
 		{
 			npcEntity.FlashDamage(0.5);
+			GetNode<SfxManager>("/root/SfxManager").PlayWilhelmScream();
 		}
 	}
 
@@ -5311,7 +5313,6 @@ public partial class GameWorld
 		
 		// Play the actual character sprite replacement animation
 		_localPlayer.PlayMassRevelationAnimation();
-		const float MASS_REV_FADE = 1.0f;
 		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevIn();
 		GetNode<MusicManager>("/root/MusicManager")?.FadeOutForMassRev(MASS_REV_FADE);
 		GD.Print("[MassRev] Prophet activated Mass Revelation");
@@ -5501,7 +5502,7 @@ void fragment() {
 
 			// Tell the server to stop the server-side aura (NPC ticks / points)
 			if (Multiplayer.IsServer())
-				RpcEndMassRevelationAura(false);   // server calls directly
+				Rpc(MethodName.RpcEndMassRevelationAura, false, Multiplayer.GetUniqueId());   // broadcast to all peers
 			else
 				RpcId(1, MethodName.RequestEndMassRevelation); // client asks server
 		}
@@ -5541,7 +5542,6 @@ void fragment() {
 			? "💥 Mass Revelation shattered by a punch!"
 			: "🌀 Mass Revelation ended. Contestants keep their new positions!";
 		AddSlidingNotification(msg);
-		const float MASS_REV_FADE = 1.0f;
 		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevOut(MASS_REV_FADE);
 		GetNode<MusicManager>("/root/MusicManager")?.FadeInAfterMassRev(MASS_REV_FADE);
 		GD.Print($"[MassRev] Ended locally (shattered={shattered})");
@@ -5604,7 +5604,7 @@ void fragment() {
 			npcEnt.ClearMarchTarget();
 		_gameEngine?.GameState.AddNotification("💥 Mass Revelation shattered!");
 		GD.Print("[MassRev] Server: aura shattered by punch.");
-		Rpc(MethodName.RpcEndMassRevelationAura, true);
+		Rpc(MethodName.RpcEndMassRevelationAura, true, _massRevProphetPeerId);
 	}
 
 	// ── RPC: client requests server to start ─────────────────────────────
@@ -5636,13 +5636,14 @@ void fragment() {
 
 		GD.Print("[MassRev] Server: Prophet client reported natural expiry — ending server aura.");
 		_massRevServerActive  = false;
+		long endingProphetId  = _massRevProphetPeerId; // capture before zeroing
 		_massRevProphetPeerId = 0;
 		_massRevNpcTimers.Clear();
 		_massRevNpcPoints.Clear();
 		foreach (var npcEnt in _npcEntities.Values)
 			npcEnt.ClearMarchTarget();
-		// Broadcast the end to all other clients (server already cleaned up above)
-		Rpc(MethodName.RpcEndMassRevelationAura, false);
+		// Broadcast the end to all other clients, passing prophetPeerId so they know whose animation to stop
+		Rpc(MethodName.RpcEndMassRevelationAura, false, endingProphetId);
 	}
 
 	// ── RPC: all clients receive notification that aura started ──────────
@@ -5658,6 +5659,10 @@ void fragment() {
 		// Store prophet peer so the aura tracker in _Process can follow the puppet.
 		_massRevProphetPeerId    = prophetPeerId;
 		_massRevClientAuraActive = true;
+
+		// Play the Mass Revelation sounds on non-prophet screens too.
+		GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevIn();
+		GetNode<MusicManager>("/root/MusicManager")?.FadeOutForMassRev(MASS_REV_FADE);
 
 		// Find the prophet's puppet PlayerController and play the animation on it.
 		if (_playerControllers.TryGetValue(prophetPeerId, out var prophetPuppet))
@@ -5677,7 +5682,7 @@ void fragment() {
 	// ── RPC: server broadcasts aura end to all peers ──────────────────────
 	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true,
 		TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-	private void RpcEndMassRevelationAura(bool shattered)
+	private void RpcEndMassRevelationAura(bool shattered, long prophetPeerId)
 	{
 		if (_myRole?.ToLower() == "prophet")
 		{
@@ -5687,10 +5692,16 @@ void fragment() {
 		}
 		else
 		{
-			// Non-prophet clients: stop the overlay on the prophet puppet
-			if (_massRevProphetPeerId != 0 &&
-				_playerControllers.TryGetValue(_massRevProphetPeerId, out var prophetPuppet2))
+			// Non-prophet clients: stop the overlay on the prophet puppet.
+			// Use the prophetPeerId passed in the RPC — don't rely on _massRevProphetPeerId
+			// which may already be zeroed on the server before the RPC fires.
+			long peerId = prophetPeerId != 0 ? prophetPeerId : _massRevProphetPeerId;
+			if (peerId != 0 && _playerControllers.TryGetValue(peerId, out var prophetPuppet2))
 				prophetPuppet2.StopMassRevelationAnimation();
+
+			// Fade out the sounds that were started in RpcNotifyMassRevelationStart.
+			GetNode<SfxManager>("/root/SfxManager")?.FadeMassRevOut(MASS_REV_FADE);
+			GetNode<MusicManager>("/root/MusicManager")?.FadeInAfterMassRev(MASS_REV_FADE);
 
 			// Remove our copy of the aura visual and show notification
 			_massRevClientAuraActive = false;

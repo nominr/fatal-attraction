@@ -13,11 +13,12 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _countdownPlayer;
 	private AudioStream _countdownStream;
 	private AudioStreamPlayer _massRevPlayer;
-	private AudioStreamPlayer _followMePlayer;
+	private AudioStreamPlayer _miraclePlayer;
 	private AudioStreamPlayer _dontIgnoreMePlayer;
 	private AudioStreamPlayer _showMeTheMoneyPlayer;
+	private AudioStreamPlayer _wilhelmScreamPlayer;
 	private Tween _massRevTween;
-	private const float MASS_REV_NORMAL_DB = 0.0f;
+	private const float MASS_REV_NORMAL_DB = -6.0f;
 
 	// Offset in seconds to the start of the third countdown in the track
 	// Track is ~47s with 3 countdowns; third starts at roughly 33.5s
@@ -30,9 +31,13 @@ public partial class SfxManager : Node
 		_chatSuccessPlayer = CreatePlayer("res://assets/sounds/freesound_crunchpixstudio-purchase-success-384963.mp3");
 		_chatFailurePlayer = CreatePlayer("res://assets/sounds/freesound_community-failure-drum-sound-effect-2-7184.mp3");
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
-		_followMePlayer = CreatePlayer("res://assets/sounds/followme.wav");
-		_followMePlayer.VolumeDb = 9.0f;
-		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
+		_miraclePlayer = CreatePlayer("res://assets/sounds/miracle.mp3");
+		_miraclePlayer.VolumeDb = 18.0f;
+		_dontIgnoreMePlayer = CreatePlayerFromBytes("res://assets/sounds/not-gonna-be-ignored.mp3");
+		_dontIgnoreMePlayer.VolumeDb = 0.0f;
+
+		_wilhelmScreamPlayer = CreatePlayerFromBytes("res://assets/new-character-assets/wilhelmscream.mp3");
+		_wilhelmScreamPlayer.VolumeDb = -15.0f;
 
 		_showMeTheMoneyPlayer = CreatePlayerFromBytes("res://assets/sounds/showmethemoney.mp3");
 		_showMeTheMoneyPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
@@ -102,7 +107,7 @@ public partial class SfxManager : Node
 		_massRevTween?.Kill();
 		_massRevPlayer.VolumeDb = MASS_REV_NORMAL_DB;
 		_massRevPlayer.Play();
-		_followMePlayer?.Play();
+		_miraclePlayer?.Play();
 		GD.Print("[SfxManager] Mass Rev started at full volume");
 	}
 
@@ -141,7 +146,7 @@ public partial class SfxManager : Node
 	}
 
 	/// <summary>
-	/// Plays the Admirer's "Don't ignore me" line and ducks music volume.
+	/// Plays the Admirer's "Not gonna be ignored" line and ducks music volume.
 	/// </summary>
 	public void PlayDontIgnoreMe()
 	{
@@ -149,14 +154,14 @@ public partial class SfxManager : Node
 		
 		_dontIgnoreMePlayer.Play();
 		
-		// Duck music
+		// Duck music signficantly so the voice line is clearly audible
 		var music = GetNodeOrNull<MusicManager>("/root/MusicManager");
 		if (music != null)
 		{
-			music.FadeTo(-15.0f, 0.15f);
+			music.FadeTo(-35.0f, 0.15f);
 			
 			// Restore music after delay (approx length of the clip)
-			var timer = GetTree().CreateTimer(2.5f);
+			var timer = GetTree().CreateTimer(1.5f);
 			timer.Timeout += () => {
 				music.FadeTo(0.0f, 0.6f);
 			};
@@ -187,4 +192,12 @@ public partial class SfxManager : Node
 	/// Stops the "Show Me The Money" voice line early if needed.
 	/// </summary>
 	public void StopBehold() => _showMeTheMoneyPlayer?.Stop();
+
+	/// <summary>
+	/// Plays the iconic Wilhelm Scream sound effect.
+	/// </summary>
+	public void PlayWilhelmScream()
+	{
+		_wilhelmScreamPlayer?.Play();
+	}
 }

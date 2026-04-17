@@ -935,6 +935,24 @@ public partial class PlayerController : CharacterBody2D
 		_sprite.Modulate = _isLocalPlayer
 			? new Color(1f, 1f, 1f, alpha)
 			: new Color(0.8f, 0.8f, 0.8f, alpha);
+
+		// Explicitly switch back to idle so the mass_revelation animation
+		// never lingers, even if UpdateAnimation() hasn't run yet this frame.
+		string idleAnim = _lastFacingDirection switch
+		{
+			"up"       => "idle_up",
+			"up_right" => "idle_up_right",
+			"up_left"  => "idle_up_left",
+			"down"     => "idle_down",
+			"left"     => "idle_left",
+			_          => "idle_right",
+		};
+		if (_sprite.SpriteFrames != null && _sprite.SpriteFrames.HasAnimation(idleAnim))
+		{
+			_sprite.Play(idleAnim);
+			if (_animationScales.TryGetValue(idleAnim, out float s))
+				_sprite.Scale = new Vector2(s, s);
+		}
 	}
 
 	// ── Producer Cash-Trail Aura ───────────────────────────────────────────────
