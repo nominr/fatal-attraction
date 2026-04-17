@@ -13,7 +13,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _countdownPlayer;
 	private AudioStream _countdownStream;
 	private AudioStreamPlayer _massRevPlayer;
-	private AudioStreamPlayer _followMePlayer;
+	private AudioStreamPlayer _miraclePlayer;
 	private AudioStreamPlayer _dontIgnoreMePlayer;
 	private AudioStreamPlayer _beholdPlayer;
 	private AudioStreamPlayer _wilhelmScreamPlayer;
@@ -31,8 +31,8 @@ public partial class SfxManager : Node
 		_chatSuccessPlayer = CreatePlayer("res://assets/sounds/freesound_crunchpixstudio-purchase-success-384963.mp3");
 		_chatFailurePlayer = CreatePlayer("res://assets/sounds/freesound_community-failure-drum-sound-effect-2-7184.mp3");
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
-		_followMePlayer = CreatePlayer("res://assets/sounds/followme.wav");
-		_followMePlayer.VolumeDb = 9.0f;
+		_miraclePlayer = CreatePlayer("res://assets/sounds/miracle.mp3");
+		_miraclePlayer.VolumeDb = 18.0f;
 		_dontIgnoreMePlayer = CreatePlayer("res://assets/new-character-assets/dont-ignore-me.mp3");
 
 		_wilhelmScreamPlayer = CreatePlayerFromBytes("res://assets/new-character-assets/wilhelmscream.mp3");
@@ -105,7 +105,7 @@ public partial class SfxManager : Node
 		_massRevTween?.Kill();
 		_massRevPlayer.VolumeDb = MASS_REV_NORMAL_DB;
 		_massRevPlayer.Play();
-		_followMePlayer?.Play();
+		_miraclePlayer?.Play();
 		GD.Print("[SfxManager] Mass Rev started at full volume");
 	}
 
