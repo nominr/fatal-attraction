@@ -286,12 +286,19 @@ public partial class GameWorld : Node2D
 			GD.Print($"[Isometric] IsometricWorldMap scaled to {isoMapNode.Scale} and positioned at {isoMapNode.Position}");
 			
 			// Layer z-index setup — target TileMapLayer6 by name so index drift never breaks it.
+			// TileMapLayer5 is also matched by name so it is always pinned behind characters.
 			int layerIdx = 0;
 			foreach (var child in isoMapNode.GetChildren())
 			{
 				if (child is Node2D childLayer)
 				{
-					if (layerIdx <= 1)
+					if (childLayer.Name == "TileMapLayer5")
+					{
+						// Always behind NPCs and players — absolute Z so Y-sort cannot override it.
+						childLayer.ZAsRelative = false;
+						childLayer.ZIndex = -1;
+					}
+					else if (layerIdx <= 1)
 					{
 						// Base Floor / Carpet layers
 						childLayer.ZIndex = -10 + layerIdx; // Floor = -10, Carpet = -9
