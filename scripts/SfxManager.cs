@@ -33,13 +33,13 @@ public partial class SfxManager : Node
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
 		_miraclePlayer = CreatePlayer("res://assets/sounds/miracle.mp3");
 		_miraclePlayer.VolumeDb = 18.0f;
-		_dontIgnoreMePlayer = CreatePlayerFromBytes("res://assets/sounds/not-gonna-be-ignored.mp3");
+		_dontIgnoreMePlayer = CreatePlayer("res://assets/sounds/not-gonna-be-ignored.mp3");
 		_dontIgnoreMePlayer.VolumeDb = 0.0f;
 
-		_wilhelmScreamPlayer = CreatePlayerFromBytes("res://assets/new-character-assets/wilhelmscream.mp3");
+		_wilhelmScreamPlayer = CreatePlayer("res://assets/new-character-assets/wilhelmscream.mp3");
 		_wilhelmScreamPlayer.VolumeDb = -15.0f;
 
-		_showMeTheMoneyPlayer = CreatePlayerFromBytes("res://assets/sounds/showmethemoney.mp3");
+		_showMeTheMoneyPlayer = CreatePlayer("res://assets/sounds/showmethemoney.mp3");
 		_showMeTheMoneyPlayer.VolumeDb = 6.0f; // slightly louder so it cuts through the music
 
 		_countdownStream = GD.Load<AudioStream>("res://assets/sounds/voicebosch-countdown-from-10-190389.mp3");
