@@ -150,14 +150,17 @@ public partial class NetworkManager : Node
 
 		if (Multiplayer.IsServer())
 		{
-			// Broadcast the new player to all peers
+			// Broadcast the new player to all peers (including the server itself via CallLocal)
 			Rpc(MethodName.SyncPlayerJoined, id, name);
-			// Send the full current player list to the newly joined peer
+			// Send the full current player list to the newly joined peer,
+			// but skip their own entry — they already received it from the broadcast above.
 			foreach (var kvp in Players)
 			{
+				if (kvp.Key == id) continue; // already sent via broadcast
 				RpcId(id, MethodName.SyncPlayerJoined, kvp.Key, kvp.Value.Name);
-				// Also sync role for each player
-				RpcId(id, MethodName.SyncPlayerRole, kvp.Key, kvp.Value.Role);
+				// Also sync non-Observer roles so the new peer sees correct role assignments
+				if (kvp.Value.Role != "Observer")
+					RpcId(id, MethodName.SyncPlayerRole, kvp.Key, kvp.Value.Role);
 			}
 		}
 		else
@@ -173,6 +176,44 @@ public partial class NetworkManager : Node
 		{
 			GD.Print($"Server sending StartGame RPC to {Multiplayer.GetPeers().Length} peers.");
 			Rpc(MethodName.StartGame);
+		}
+	}
+
+	/// <summary>
+	/// Request the server send a full lobby snapshot to the caller.
+	/// Clients send this to the server; the server calls it directly.
+	/// </summary>
+	public void RequestLobbySync()
+	{
+		if (Multiplayer.HasMultiplayerPeer() && Multiplayer.IsServer())
+		{
+			// Host calls directly — reply to self
+			SendLobbySyncTo(Multiplayer.GetUniqueId());
+		}
+		else if (Multiplayer.HasMultiplayerPeer())
+		{
+			// Client sends request to server via RPC
+			RpcId(1, MethodName.ReceiveLobbySyncRequest);
+		}
+	}
+
+	/// <summary>Server-side RPC handler: a remote client is asking for a full lobby snapshot.</summary>
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+	private void ReceiveLobbySyncRequest()
+	{
+		if (!Multiplayer.IsServer()) return;
+		long requesterId = Multiplayer.GetRemoteSenderId();
+		GD.Print($"[NetworkManager] LobbySync requested by {requesterId}. Sending {Players.Count} players.");
+		SendLobbySyncTo(requesterId);
+	}
+
+	private void SendLobbySyncTo(long peerId)
+	{
+		foreach (var kvp in Players)
+		{
+			RpcId(peerId, MethodName.SyncPlayerJoined, kvp.Key, kvp.Value.Name);
+			if (kvp.Value.Role != "Observer")
+				RpcId(peerId, MethodName.SyncPlayerRole, kvp.Key, kvp.Value.Role);
 		}
 	}
 

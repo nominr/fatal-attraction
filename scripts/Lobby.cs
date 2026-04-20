@@ -113,6 +113,38 @@ public partial class Lobby : Control
 
 		_startButton.Disabled = true;
 
+		// ── Detect if we're returning from a game with a live connection ──
+		bool alreadyConnected = Multiplayer.HasMultiplayerPeer();
+		if (alreadyConnected)
+		{
+			_isHosting   = Multiplayer.IsServer();
+			_isConnected = true;
+
+			// Hide setup buttons; show cancel
+			_hostButton.Disabled   = true;
+			_joinButton.Disabled   = true;
+			_cancelButton.Visible  = true;
+
+			// Role buttons always available when returning
+			_admireButton.Disabled  = false;
+			_prophetButton.Disabled = false;
+			_producerButton.Disabled = false;
+
+			if (_isHosting)
+			{
+				_startButton.Disabled = false;
+				_statusLabel.Text = "Returned to lobby. Start a new game or wait for players.";
+			}
+			else
+			{
+				_statusLabel.Text = "Returned to lobby. Select a role to play again.";
+			}
+
+			// Pull a fresh snapshot of all connected players from the server
+			UpdatePlayerList();
+			_networkManager.RequestLobbySync();
+		}
+
 		// Display Local IP(s) to help with LAN hosting
 		var ips = Godot.IP.GetLocalAddresses();
 		string ipText = "Your IP: ";
@@ -377,6 +409,10 @@ public partial class Lobby : Control
 		_producerButton.Disabled = false;
 
 		UpdateAvailableRoles();
+
+		// Ask the server for a full snapshot of the current lobby so we see
+		// all already-connected players immediately (handles reconnect/restart cases).
+		_networkManager.RequestLobbySync();
 
 		if (!string.IsNullOrEmpty(_autoJoinRole))
 		{

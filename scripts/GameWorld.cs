@@ -241,6 +241,16 @@ public partial class GameWorld : Node2D
 		return false;
 	}
 
+	public override void _ExitTree()
+	{
+		if (_networkManager != null)
+		{
+			_networkManager.PlayerConnected -= OnNetworkPlayerConnected;
+			_networkManager.PlayerDisconnected -= OnNetworkPlayerDisconnected;
+			_networkManager.PlayerInteraction -= OnNetworkPlayerInteraction;
+		}
+	}
+
 	public override void _Ready()
 	{
 		// Enable Y-sort for proper NPC/player overlap rendering
@@ -5100,30 +5110,24 @@ public partial class GameWorld : Node2D
 	private void OnReturnToLobbyPressed()
 	{
 		GD.Print("[GameWorld] Return to Lobby button pressed");
-		
+
 		if (Multiplayer.IsServer())
 		{
-			// Send the return signal to all connected clients first,
-			// then the server closes its own peer after a short delay so the
-			// RPC has time to reach clients before the connection drops.
-			Rpc(MethodName.ReturnToLobbyClient);
-			// Use a timer so the RPC packet is flushed before we close the peer
-			var timer = GetTree().CreateTimer(0.3);
-			timer.Timeout += () =>
+			// Reset all player roles to Observer so the lobby starts fresh for a new game.
+			var ids = new System.Collections.Generic.List<long>(_networkManager.Players.Keys);
+			foreach (var pid in ids)
 			{
-				GD.Print("[GameWorld] Server returning to lobby...");
-				_networkManager.Players.Clear();
-				if (Multiplayer.HasMultiplayerPeer())
-				{
-					Multiplayer.MultiplayerPeer.Close();
-					Multiplayer.MultiplayerPeer = null;
-				}
-				GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
-			};
+				var info = _networkManager.Players[pid];
+				info.Role = "Observer";
+				_networkManager.Players[pid] = info;
+			}
+			// Tell everyone (including self) to go back to the lobby.
+			// Keep the peer alive — the Lobby will detect the live connection.
+			Rpc(MethodName.ReturnToLobbyClient);
 		}
 		else
 		{
-			// Client asks server to initiate return to lobby for everyone
+			// Client asks the server to trigger the return for everyone
 			RpcId(1, MethodName.RequestReturnToLobby);
 		}
 	}
@@ -5133,22 +5137,14 @@ public partial class GameWorld : Node2D
 	{
 		if (!Multiplayer.IsServer()) return;
 		GD.Print("[GameWorld] Server received request to return to lobby");
-		// Reuse the same pressed handler so the timer logic is shared
 		OnReturnToLobbyPressed();
 	}
 
-	// Called on all clients (not the server) to return them to the lobby.
-	// Clients disconnect their own peer and change scene immediately.
-	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false)]
+	// Called on all peers (server included via CallLocal = true) to change scene.
+	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
 	private void ReturnToLobbyClient()
 	{
-		GD.Print("[GameWorld] Client returning to lobby...");
-		_networkManager.Players.Clear();
-		if (Multiplayer.HasMultiplayerPeer())
-		{
-			Multiplayer.MultiplayerPeer.Close();
-			Multiplayer.MultiplayerPeer = null;
-		}
+		GD.Print("[GameWorld] Returning to lobby (peer kept alive)...");
 		GetTree().ChangeSceneToFile("res://scenes/Lobby.tscn");
 	}
 
