@@ -19,6 +19,7 @@ public partial class SfxManager : Node
 	private AudioStreamPlayer _wilhelmScreamPlayer;
 	private Tween _massRevTween;
 	private const float MASS_REV_NORMAL_DB = -6.0f;
+	private bool _miracleRepeatActive = false;
 
 	// Offset in seconds to the start of the third countdown in the track
 	// Track is ~47s with 3 countdowns; third starts at roughly 33.5s
@@ -32,7 +33,7 @@ public partial class SfxManager : Node
 		_chatFailurePlayer = CreatePlayer("res://assets/sounds/freesound_community-failure-drum-sound-effect-2-7184.mp3");
 		_massRevPlayer = CreatePlayer("res://assets/mass_revelation_sound.mp3");
 		_miraclePlayer = CreatePlayer("res://assets/sounds/miracle.mp3");
-		_miraclePlayer.VolumeDb = 18.0f;
+		_miraclePlayer.VolumeDb = 23.0f;
 		_dontIgnoreMePlayer = CreatePlayerFromBytes("res://assets/sounds/not-gonna-be-ignored.mp3");
 		_dontIgnoreMePlayer.VolumeDb = 0.0f;
 
@@ -107,7 +108,25 @@ public partial class SfxManager : Node
 		_massRevTween?.Kill();
 		_massRevPlayer.VolumeDb = MASS_REV_NORMAL_DB;
 		_massRevPlayer.Play();
+
+		// Play miracle sound 3 times evenly across the 10-second ritual
+		// Intervals: t=0s, t=3.33s, t=6.67s
+		const float interval = 10.0f / 3.0f; // ~3.33s
+		_miracleRepeatActive = true;
 		_miraclePlayer?.Play();
+
+		var t1 = GetTree().CreateTimer(interval);
+		t1.Timeout += () =>
+		{
+			if (_miracleRepeatActive) _miraclePlayer?.Play();
+		};
+
+		var t2 = GetTree().CreateTimer(interval * 2f);
+		t2.Timeout += () =>
+		{
+			if (_miracleRepeatActive) _miraclePlayer?.Play();
+		};
+
 		GD.Print("[SfxManager] Mass Rev started at full volume");
 	}
 
@@ -118,6 +137,7 @@ public partial class SfxManager : Node
 	public void FadeMassRevOut(float durationSec)
 	{
 		if (_massRevPlayer == null) return;
+		_miracleRepeatActive = false; // cancel any pending miracle repeats
 		_massRevTween?.Kill();
 		_massRevTween = CreateTween();
 		_massRevTween.TweenProperty(_massRevPlayer, "volume_db", -80f, durationSec)
