@@ -995,14 +995,14 @@ public partial class GameWorld : Node2D
 		_ultimateButton.CustomMinimumSize = new Vector2(220, 55);
 		_ultimateButton.Visible           = false; // shown only for Producer
 
-		var ulStyle = CreateTrapStyle(new Color(1.0f, 0.85f, 0.0f, 1f), Colors.Black); // gold
+		var ulStyle = CreateTrapStyle(new Color(0.13f, 0.7f, 0.25f, 1f), Colors.Black); // green
 		_ultimateButton.AddThemeStyleboxOverride("normal",   ulStyle);
-		_ultimateButton.AddThemeStyleboxOverride("hover",    CreateTrapStyle(new Color(0.9f, 0.75f, 0.0f, 1f), Colors.Black));
-		_ultimateButton.AddThemeStyleboxOverride("pressed",  CreateTrapStyle(new Color(0.7f, 0.6f,  0.0f, 1f), Colors.Black));
+		_ultimateButton.AddThemeStyleboxOverride("hover",    CreateTrapStyle(new Color(0.18f, 0.85f, 0.32f, 1f), Colors.Black));
+		_ultimateButton.AddThemeStyleboxOverride("pressed",  CreateTrapStyle(new Color(0.09f, 0.5f,  0.18f, 1f), Colors.Black));
 		_ultimateButton.AddThemeStyleboxOverride("disabled", CreateTrapStyle(new Color(0.4f, 0.4f,  0.4f, 0.8f), Colors.DarkGray));
-		_ultimateButton.AddThemeColorOverride("font_color",          Colors.Black);
-		_ultimateButton.AddThemeColorOverride("font_hover_color",    Colors.Black);
-		_ultimateButton.AddThemeColorOverride("font_pressed_color",  Colors.Black);
+		_ultimateButton.AddThemeColorOverride("font_color",          Colors.White);
+		_ultimateButton.AddThemeColorOverride("font_hover_color",    Colors.White);
+		_ultimateButton.AddThemeColorOverride("font_pressed_color",  Colors.White);
 		_ultimateButton.AddThemeColorOverride("font_disabled_color", new Color(0.6f, 0.6f, 0.6f, 1f));
 		_ultimateButton.Pressed += OnUltimateButtonPressed;
 		_uiLayer.AddChild(_ultimateButton);
