@@ -1064,12 +1064,6 @@ public partial class NPCEntity : CharacterBody2D
 
 		AddAnimationFrames("idle_down", $"{basePath}{npcAsset}-front-idle.png");
 
-		// Add collapse/stun animations for NPC1 and NPC2
-		if (npcAsset == "npc1" || npcAsset == "npc2")
-		{
-			AddAnimationFrames("stun_front", $"{basePath}{npcAsset}-collapse-front.png", false, 1.0f, false);
-			AddAnimationFrames("stun_back", $"{basePath}{npcAsset}-collapse-back.png", false, 1.0f, false);
-		}
 
 		_animationScales = generatedScales;
 		_spriteFramesCache[npcAsset] = frames;
