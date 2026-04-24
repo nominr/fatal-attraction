@@ -1741,6 +1741,7 @@ public partial class GameWorld : Node2D
 			player.SetLocalPlayer(isLocal);
 			if (isLocal)
 			{
+				_localPlayer = player;
 				player.PositionChanged += OnPlayerPositionChanged;
 				GD.Print($"[GameWorld] Connected PositionChanged signal for local player {kvp.Key}");
 			}
